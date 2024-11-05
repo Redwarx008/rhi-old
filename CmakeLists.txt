@@ -1,0 +1,10 @@
+project(rhi_samples)
+
+#set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+cmake_minimum_required(VERSION 3.13)
+
+add_subdirectory(rhi)
+add_subdirectory(samples/third_party)
+add_subdirectory(samples/draw_traingle)
+

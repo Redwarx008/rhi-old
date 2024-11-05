@@ -1,0 +1,16 @@
+cmake_minimum_required (VERSION 3.13)
+
+set(project draw_traingle)
+set(folder "Samples/Draw Triangle")
+
+
+add_executable(${project}  draw_traingle.cpp camera.hpp)
+
+
+target_link_libraries(${project} rhi glfw glm)
+
+set_target_properties(${project} PROPERTIES FOLDER ${folder})
+
+if (MSVC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /MP")
+endif()
