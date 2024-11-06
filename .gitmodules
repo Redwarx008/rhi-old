@@ -1,6 +1,3 @@
-[submodule "rhi/third_party/vma"]
-	path = rhi/third_party/vma
-	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
 [submodule "samples/third_party/glfw"]
 	path = samples/third_party/glfw
 	url = https://github.com/glfw/glfw
