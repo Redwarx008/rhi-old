@@ -818,6 +818,19 @@ namespace rhi
 		bool operator !=(const Rect& b) const { return !(*this == b); }
 	};
 
+	inline bool operator == (const Viewport & viewport, const Rect & rect)
+	{
+		return (int)viewport.minX == rect.minX &&
+			(int)viewport.minY == rect.maxY &&
+			(int)viewport.getWidth() == rect.getWidth() &&
+			(int)viewport.getHeight() == rect.getHeight();
+	}
+
+	inline bool operator != (const Viewport& viewport, const Rect& rect)
+	{
+		return !(viewport == rect);
+	}
+
 	class IPipeline : public IObject
 	{
 	public:
@@ -928,10 +941,8 @@ namespace rhi
 		ITexture* renderTargetTextures[g_MaxColorAttachments];
 		ITexture* depthStencilTexture = nullptr;
 
-		Viewport viewports[g_MaxViewPorts];
-		Rect scissors[g_MaxViewPorts];
 		uint32_t viewportCount = 0;
-		uint32_t scissorCount = 0;
+		Viewport viewports[g_MaxViewPorts];
 
 		IResourceSet* resourceSets[g_MaxBoundDescriptorSets];
 		uint32_t resourceSetCount = 0;
@@ -1017,6 +1028,7 @@ namespace rhi
 		virtual void* mapBuffer(IBuffer& buffer) = 0;
 		virtual void updateTexture(ITexture& texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo) = 0;
 
+		virtual void setScissors(const Rect* scissors, uint32_t scissorCount) = 0;
 		virtual void setGraphicsState(const GraphicsState& state) = 0;
 		virtual void draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance) = 0;
 		virtual void drawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) = 0;

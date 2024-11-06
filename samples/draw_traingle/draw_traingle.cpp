@@ -149,6 +149,7 @@ public:
 
 		m_RenderDevice->writeResourceSet(*m_ResourceSet, items, 1);
 
+		// create pipeline
 		GraphicsPipelineCreateInfo pipelineCI{};
 		pipelineCI.primType = PrimitiveType::TriangleList;
 		pipelineCI.vertexInputAttributes = vertexInputs;
@@ -184,8 +185,6 @@ public:
 		m_GraphicState.vertexBuffers[0] = VertexBufferBinding().setBuffer(m_VertexBuffer).setSlot(0).setOffset(0);
 		m_GraphicState.viewportCount = 1;
 		m_GraphicState.viewports[0] = { (float)m_windowWidth, (float)m_windowHeight };
-		m_GraphicState.scissorCount = 1;
-		m_GraphicState.scissors[0] = { (int)m_windowWidth, (int)m_windowHeight };
 		m_GraphicState.clearRenderTarget = true;
 	}
 
@@ -215,11 +214,13 @@ public:
 
 		m_GraphicState.renderTargetTextures[0] = renderTarget;
 		m_GraphicState.depthStencilTexture = depthStencil;
-
+		// If no scissor is provided, it will be set to the corresponding viewport size.
+		Rect scissor{ (int)m_windowWidth / 4 * 3, (int)m_windowHeight / 4 * 3 };
 
 		m_CmdList->open();
 		m_CmdList->updateBuffer(*m_UniformBuffer, &shaderData, sizeof(ShaderData), 0);
 		m_CmdList->setGraphicsState(m_GraphicState);
+		m_CmdList->setScissors(&scissor, 1);
 		m_CmdList->drawIndexed(indices.size(), 1, 0, 0, 0);
 		m_CmdList->close();
 

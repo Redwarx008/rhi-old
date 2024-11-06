@@ -567,19 +567,17 @@ namespace rhi
 				viewports[i] = convertViewport(state.viewports[i]);
 			}
 			vkCmdSetViewport(m_CurrentCmdBuf->vkCmdBuf, 0, state.viewportCount, viewports);
-		}
-		ASSERT_MSG(state.scissorCount == checked_cast<GraphicsPipelineVk*>(state.pipeline)->getDesc().viewportCount, 
-			"The number of scissors must be the same as the number of viewports.");
-		if (pipelineTypeChanged || arraysAreDifferent(state.scissors, state.scissorCount,
-			m_LastGraphicsState.scissors, m_LastGraphicsState.scissorCount))
-		{
+
+			// If no scissor is provided, it will be set to the corresponding viewport size.
 			VkRect2D scissors[g_MaxViewPorts]{};
-			for (uint32_t i = 0; i < state.scissorCount; ++i)
+			uint32_t scissorsCount = state.viewportCount;
+			for (uint32_t i = 0; i < scissorsCount; ++i)
 			{
-				scissors[i].offset = { state.scissors[i].minX, state.scissors[i].minY };
-				scissors[i].extent = { static_cast<uint32_t>(std::abs(state.scissors[i].getWidth())), static_cast<uint32_t>(std::abs(state.scissors[i].getHeight())) };
+				scissors[i].offset = { (int)state.viewports[i].minX, (int)state.viewports[i].minY };
+				scissors[i].extent = { static_cast<uint32_t>(std::abs(state.viewports[i].getWidth())), static_cast<uint32_t>(std::abs(state.viewports[i].getHeight())) };
 			}
-			vkCmdSetScissor(m_CurrentCmdBuf->vkCmdBuf, 0, state.scissorCount, scissors);
+
+			vkCmdSetScissor(m_CurrentCmdBuf->vkCmdBuf, 0, scissorsCount, scissors);
 		}
 
 		assert(state.pipeline != nullptr);
@@ -605,6 +603,23 @@ namespace rhi
 
 		m_LastPipelineType = PipelineType::Graphics;
 		m_LastGraphicsState = state;
+	}
+
+	void CommandListVk::setScissors(const Rect* scissors, uint32_t scissorCount)
+	{
+		assert(m_CurrentCmdBuf);
+		ASSERT_MSG(m_LastGraphicsState.pipeline, "set GraphicsState before set scissors");
+		ASSERT_MSG(scissorCount == checked_cast<GraphicsPipelineVk*>(m_LastGraphicsState.pipeline)->getDesc().viewportCount,
+			"The number of scissors must be the same as the number of viewports.");
+
+		VkRect2D rects[g_MaxViewPorts]{};
+		for (uint32_t i = 0; i < scissorCount; ++i)
+		{
+			rects[i].offset = { scissors[i].minX, scissors[i].minY };
+			rects[i].extent = { static_cast<uint32_t>(std::abs(scissors[i].getWidth())), static_cast<uint32_t>(std::abs(scissors[i].getHeight())) };
+		}
+
+		vkCmdSetScissor(m_CurrentCmdBuf->vkCmdBuf, 0, scissorCount, rects);
 	}
 
 	void CommandListVk::draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)

@@ -51,6 +51,7 @@ namespace rhi
 		void* mapBuffer(IBuffer& buffer) override;
 		void updateTexture(ITexture& texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo) override;
 
+		void setScissors(const Rect* scissors, uint32_t scissorCount) override;
 		void setGraphicsState(const GraphicsState& state) override;
 		void draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance) override;
 		void drawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) override;
