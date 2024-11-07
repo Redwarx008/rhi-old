@@ -320,12 +320,7 @@ namespace rhi
 		vmaDestroyAllocator(m_Allocator);
 		vkDestroySemaphore(context.device, m_TrackingSubmittedSemaphore, nullptr);
 
-		for (auto commandBuffer : m_CommandBufferPool)
-		{
-			delete commandBuffer;
-			commandBuffer = nullptr;
-		}
-		for (auto commandBuffer : m_CommandBufferInFlight)
+		for (auto commandBuffer : m_AllCommandBuffers)
 		{
 			delete commandBuffer;
 			commandBuffer = nullptr;
@@ -1252,6 +1247,7 @@ namespace rhi
 		{
 			assert(cmdLists[i] != nullptr);
 			auto cmdList = checked_cast<CommandListVk*>(cmdLists[i]);
+			cmdList->updateSubmittedState();
 			CommandBuffer* cmdBuffer = cmdList->getCommandBuffer();
 			cmdBuffer->submitID = lastSubmittedID;
 			m_CommandBufferInFlight.push_back(cmdBuffer);
@@ -1352,6 +1348,7 @@ namespace rhi
 				delete cmdBuf;
 				return nullptr;
 			}
+			m_AllCommandBuffers.push_back(cmdBuf);
 		}
 		else
 		{
@@ -1362,7 +1359,7 @@ namespace rhi
 		return cmdBuf;
 	}
 
-	void RenderDeviceVk::RecycleCommandBuffers()
+	void RenderDeviceVk::recycleCommandBuffers()
 	{
 		std::vector<CommandBuffer*> submittedCmdBuf = std::move(m_CommandBufferInFlight);
 

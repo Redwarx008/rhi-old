@@ -70,6 +70,36 @@ namespace rhi
 		return (state & writeAccessStates) == state;
 	}
 
+	void CommandListVk::transitionFromSubmmitedState(ITexture& texture, ResourceState newState)
+	{
+		auto& textureVk = static_cast<TextureVk&>(texture);
+
+		ResourceState oldState = textureVk.submittedState;
+
+		// Always add barrier after writes.
+		bool isAfterWrites = resourceStateHasWriteAccess(oldState);
+		bool transitionNecessary = oldState != newState || isAfterWrites;
+
+		if (transitionNecessary)
+		{
+			TextureBarrier& barrier = m_TextureBarriers.emplace_back();
+			barrier.texture = &textureVk;
+			barrier.stateBefore = oldState;
+			barrier.stateAfter = newState;
+		}
+
+		textureVk.setState(newState);
+	}
+
+	void CommandListVk::updateSubmittedState()
+	{
+		for (auto texture : m_TrackingSubmittedStates)
+		{
+			texture->submittedState = texture->getState();
+		}
+		m_TrackingSubmittedStates.clear();
+	}
+
 	void CommandListVk::transitionTextureState(ITexture& texture, ResourceState newState)
 	{
 		auto& textureVk = static_cast<TextureVk&>(texture);
@@ -88,6 +118,7 @@ namespace rhi
 			barrier.stateAfter = newState;
 		}
 
+		m_TrackingSubmittedStates.push_back(&textureVk);
 		textureVk.setState(newState);
 	}
 
@@ -127,6 +158,7 @@ namespace rhi
 			barrier.stateBefore = oldState;
 			barrier.stateAfter = newState;
 		}
+
 		bufferVk.setState(newState);
 	}
 
@@ -306,7 +338,7 @@ namespace rhi
 		}
 	}
 
-	void* CommandListVk::mapBuffer(IBuffer& buffer)
+	void* CommandListVk::mapBuffer(IBuffer& buffer, MapBufferUsage usage)
 	{
 		assert(m_CurrentCmdBuf);
 		auto& buf = static_cast<BufferVk&>(buffer);
@@ -314,7 +346,11 @@ namespace rhi
 		ASSERT_MSG(buf.getDesc().access != BufferAccess::CpuRead,
 			"Only tagged with BufferAccess::CpuRead buffer can be mapped.");
 
-		setBufferBarrier(buf, VK_PIPELINE_STAGE_2_HOST_BIT, VK_ACCESS_2_HOST_READ_BIT);
+		if (usage == MapBufferUsage::Read)
+		{
+			setBufferBarrier(buf, VK_PIPELINE_STAGE_2_HOST_BIT, VK_ACCESS_2_HOST_READ_BIT);
+		}
+		// do noting, Submission guarantees the host write being complete.
 
 		return buf.allocaionInfo.pMappedData;
 	}

@@ -54,7 +54,8 @@ namespace rhi
 		const TextureDesc& getDesc() const override { return desc; }
 		Object getNativeObject(NativeObjectType type) const override;
 		~TextureVk();
-
+		
+		ResourceState submittedState = ResourceState::Undefined;
 		TextureDesc desc;
 		VkImage image = VK_NULL_HANDLE;
 		VkImageView	view = VK_NULL_HANDLE;
@@ -63,6 +64,7 @@ namespace rhi
 		TextureVk() = default;
 		const ContextVk& m_Context;
 		const VmaAllocator& m_Allocator;
+		ResourceState m_State = ResourceState::Undefined;
 	};
 
 	struct TextureCopyInfo
@@ -106,12 +108,15 @@ namespace rhi
 		const BufferDesc& getDesc() const override { return desc; }
 		Object getNativeObject(NativeObjectType type) const override;
 		~BufferVk();
+
+		//ResourceState submittedState = ResourceState::Undefined;
 		BufferDesc desc;
 		VkBuffer buffer = nullptr;
-		VmaAllocationInfo allocaionInfo;
+		VmaAllocationInfo allocaionInfo{};
 	private:
 		const ContextVk& m_Context;
 		const VmaAllocator& m_Allocator;
+		ResourceState m_State = ResourceState::Undefined;
 	};
 
 	// shader

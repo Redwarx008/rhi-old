@@ -113,8 +113,6 @@ namespace rhi
 	{
 	public:
 		virtual ResourceState getState() const = 0;
-	protected:
-		ResourceState m_State = ResourceState::Undefined;
 	};
 
 	// buffer
@@ -1011,6 +1009,12 @@ namespace rhi
 		uint32_t    z;
 	};
 
+	enum class MapBufferUsage : uint8_t
+	{
+		Read,
+		Write
+	};
+
 	class ICommandList : public IObject
 	{
 	public:
@@ -1025,7 +1029,7 @@ namespace rhi
 		virtual void transitionBufferState(IBuffer& buffer, ResourceState newState) = 0;
 		virtual void updateBuffer(IBuffer& buffer, const void* data, uint64_t dataSize, uint64_t offset) = 0;
 		virtual void copyBuffer(IBuffer& srcBuffer, uint64_t srcOffset, IBuffer& dstBuffer, uint64_t dstOffset, uint64_t dataSize) = 0;
-		virtual void* mapBuffer(IBuffer& buffer) = 0;
+		virtual void* mapBuffer(IBuffer& buffer, MapBufferUsage usage) = 0;
 		virtual void updateTexture(ITexture& texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo) = 0;
 
 		virtual void setScissors(const Rect* scissors, uint32_t scissorCount) = 0;

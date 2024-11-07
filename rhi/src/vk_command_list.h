@@ -48,7 +48,7 @@ namespace rhi
 		void transitionBufferState(IBuffer& buffer, ResourceState newState) override;
 		void updateBuffer(IBuffer& buffer, const void* data, uint64_t dataSize, uint64_t offset) override;
 		void copyBuffer(IBuffer& srcBuffer, uint64_t srcOffset, IBuffer& dstBuffer, uint64_t dstOffset, uint64_t dataSize) override;
-		void* mapBuffer(IBuffer& buffer) override;
+		void* mapBuffer(IBuffer& buffer, MapBufferUsage usage) override;
 		void updateTexture(ITexture& texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo) override;
 
 		void setScissors(const Rect* scissors, uint32_t scissorCount) override;
@@ -64,6 +64,8 @@ namespace rhi
 
 		Object getNativeObject(NativeObjectType type) const override;
 
+		void transitionFromSubmmitedState(ITexture& texture, ResourceState newState);
+		void updateSubmittedState();
 		CommandBuffer* getCommandBuffer() const { return m_CurrentCmdBuf; }
 	private:
 		CommandListVk() = delete;
@@ -96,6 +98,8 @@ namespace rhi
 		};
 		std::vector<TextureBarrier> m_TextureBarriers;
 		std::vector<BufferBarrier> m_BufferBarriers;
+
+		std::vector<TextureVk*> m_TrackingSubmittedStates;
 
 		std::vector<VkImageMemoryBarrier2> m_VkImageMemoryBarriers;
 		std::vector<VkBufferMemoryBarrier2> m_VkBufferMemoryBarriers;

@@ -22,10 +22,9 @@ namespace rhi
 		void setSwapChainImageAvailableSeamaphore(const VkSemaphore& semaphore);
 		void setRenderCompleteSemaphore(const VkSemaphore& semaphore);
 		TextureVk* createTextureWithExistImage(const TextureDesc& desc, VkImage image);
-		void RecycleCommandBuffers();
+		void recycleCommandBuffers();
 
 		ContextVk context{};
-
 		VkQueue queue{ VK_NULL_HANDLE };
 		uint32_t queueFamilyIndex = UINT32_MAX;
 
@@ -70,6 +69,7 @@ namespace rhi
 		std::vector<VkCommandBufferSubmitInfo> m_CmdBufSubmitInfos;
 		std::vector<CommandBuffer*> m_CommandBufferInFlight;
 		std::vector<CommandBuffer*> m_CommandBufferPool;
+		std::vector<CommandBuffer*> m_AllCommandBuffers; // to release CommandBuffers
 	};
 }
 

@@ -332,7 +332,7 @@ namespace rhi
 		m_RenderDevice->setRenderCompleteSemaphore(semaphore);
 		// to ensure that all commandBuffers on this queue have been executed to completion and transition the colorattchment layout.
 		m_CompleteRenderingCmdList->open();
-		m_CompleteRenderingCmdList->transitionTextureState(*getCurrentRenderTargetTexture(), ResourceState::Present);
+		m_CompleteRenderingCmdList->transitionFromSubmmitedState(*getCurrentRenderTargetTexture(), ResourceState::Present);
 		m_CompleteRenderingCmdList->commitBarriers();
 		m_CompleteRenderingCmdList->close();
 		ICommandList* cmdLists[] = { m_CompleteRenderingCmdList.get() };
@@ -366,7 +366,7 @@ namespace rhi
 
 		m_LastSubmittedIDPerFrame.push(m_RenderDevice->lastSubmittedID);
 
-		m_RenderDevice->RecycleCommandBuffers();
+		m_RenderDevice->recycleCommandBuffers();
 	}
 
 	ITexture* SwapChainVk::getCurrentRenderTargetTexture()
