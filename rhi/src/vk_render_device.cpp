@@ -399,29 +399,34 @@ namespace rhi
 		VkBufferCreateInfo bufferCI{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 		bufferCI.size = desc.size;
 		bufferCI.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-		switch (desc.usage)
+
+		if ((desc.usage & BufferUsage::VertexBuffer) != 0)
 		{
-		case BufferUsage::VertexBuffer:
 			bufferCI.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-			break;
-		case BufferUsage::IndexBuffer:
+		}
+		if ((desc.usage & BufferUsage::IndexBuffer) != 0)
+		{
 			bufferCI.usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-			break;
-		case BufferUsage::IndirectBuffer:
+		}
+		if ((desc.usage & BufferUsage::IndirectBuffer) != 0)
+		{
 			bufferCI.usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
-			break;
-		case BufferUsage::UniformBuffer:
+		}
+		if ((desc.usage & BufferUsage::UniformBuffer) != 0)
+		{
 			bufferCI.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-			break;
-		case BufferUsage::StorageBuffer:
+		}
+		if ((desc.usage & BufferUsage::StorageBuffer) != 0)
+		{
 			bufferCI.usage |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
-			break;
-		case BufferUsage::UniformTexelBuffer:
+		}
+		if ((desc.usage & BufferUsage::UniformTexelBuffer) != 0)
+		{
 			bufferCI.usage |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
-			break;
-		case BufferUsage::StorageTexelBuffer:
+		}
+		if ((desc.usage & BufferUsage::StorageTexelBuffer) != 0)
+		{
 			bufferCI.usage |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
-			break;
 		}
 
 		VmaAllocationCreateInfo allocCI{};

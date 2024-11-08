@@ -128,18 +128,19 @@ namespace rhi
 		CpuRead,
 	};
 
-
-	enum class BufferUsage : uint8_t
+	// defualt VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+	enum class BufferUsage : uint32_t
 	{
-		None, // defualt VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
-		VertexBuffer,
-		IndexBuffer,
-		IndirectBuffer,
-		UniformBuffer,
-		StorageBuffer,
-		UniformTexelBuffer,
-		StorageTexelBuffer
+		None = 0 << 0,
+		VertexBuffer = 1 << 0,
+		IndexBuffer = 1 << 1,
+		IndirectBuffer = 1 << 2,
+		UniformBuffer = 1 << 3,
+		StorageBuffer = 1 << 4,
+		UniformTexelBuffer = 1 << 5,
+		StorageTexelBuffer = 1 << 6
 	};
+	ENUM_CLASS_FLAG_OPERATORS(BufferUsage)
 
 	struct BufferDesc
 	{
