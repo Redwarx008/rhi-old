@@ -239,26 +239,27 @@ namespace rhi
 
 		VkImageUsageFlags flags = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
-		if (desc.usage == TextureUsage::ShaderResource)
+		if ((desc.usage & TextureUsage::ShaderResource) != 0)
 		{
 			flags |= VK_IMAGE_USAGE_SAMPLED_BIT;
 		}
 
-		if (desc.usage == TextureUsage::UnorderedAccess)
+		if ((desc.usage & TextureUsage::UnorderedAccess) != 0)
 		{
 			flags |= VK_IMAGE_USAGE_STORAGE_BIT;
 		}
 
-		if (desc.usage == TextureUsage::DepthStencil)
+		if ((desc.usage & TextureUsage::DepthStencil) != 0)
 		{
 			assert(formatInfo.hasDepth || formatInfo.hasStencil);
 			flags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 		}
 
-		if (desc.usage == TextureUsage::RenderTarget)
+		if ((desc.usage & TextureUsage::RenderTarget) != 0)
 		{
 			flags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 		}
+
 		return flags;
 	}
 

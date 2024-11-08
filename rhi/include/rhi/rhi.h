@@ -254,12 +254,13 @@ namespace rhi
 
 	enum class TextureUsage : uint8_t
 	{
-		Unknown,
-		ShaderResource,
-		UnorderedAccess,
-		RenderTarget,
-		DepthStencil
+		Unknown = 0 << 0,
+		ShaderResource = 1 << 0,
+		UnorderedAccess = 1 << 1,
+		RenderTarget = 1 << 2,
+		DepthStencil = 1 << 3
 	};
+	ENUM_CLASS_FLAG_OPERATORS(TextureUsage)
 
 	struct Region3D
 	{
