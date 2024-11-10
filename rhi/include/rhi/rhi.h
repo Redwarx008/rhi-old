@@ -1093,7 +1093,7 @@ namespace rhi
 		virtual void* mapBuffer(IBuffer& buffer) = 0;
 		virtual ICommandList* createCommandList() = 0;
 		virtual uint64_t executeCommandLists(ICommandList** cmdLists, size_t numCmdLists) = 0;
-		virtual void waitForExecution(uint64_t executeID, uint64_t timeout) = 0;
+		virtual void waitForExecution(uint64_t executeID, uint64_t timeout = UINT64_MAX) = 0;
 	};
 
 	// swap chain

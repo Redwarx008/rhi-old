@@ -40,7 +40,7 @@ namespace rhi
 		void* mapBuffer(IBuffer& buffer) override;
 		ICommandList* createCommandList() override;
 		uint64_t executeCommandLists(ICommandList** cmdLists, size_t numCmdLists) override;
-		void waitForExecution(uint64_t executeID, uint64_t timeout) override;
+		void waitForExecution(uint64_t executeID, uint64_t timeout = UINT64_MAX) override;
 		IResourceSetLayout* createResourceSetLayout(const ResourceSetLayoutItem* items, uint32_t itemCount) override;
 		IResourceSet* createResourceSet(const IResourceSetLayout& layout) override;
 		void writeResourceSet(IResourceSet& set, const ResourceSetItem* items, uint32_t itemCount) override;
