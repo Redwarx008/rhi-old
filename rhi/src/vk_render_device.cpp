@@ -1302,7 +1302,7 @@ namespace rhi
 		return lastSubmittedID;
 	}
 
-	void RenderDeviceVk::waitForExecution(uint64_t executeID, uint64_t timeout = UINT64_MAX)
+	void RenderDeviceVk::waitForExecution(uint64_t executeID, uint64_t timeout)
 	{
 		uint64_t lastFinishedID; 
 		VkResult err = vkGetSemaphoreCounterValue(context.device, m_TrackingSubmittedSemaphore, &lastFinishedID);
