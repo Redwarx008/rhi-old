@@ -66,6 +66,7 @@ namespace rhi
 
 		void transitionFromSubmmitedState(ITexture& texture, ResourceState newState);
 		void updateSubmittedState();
+		bool hasSetGraphicPipeline() const { return m_LastGraphicsState.pipeline != nullptr; }
 		CommandBuffer* getCommandBuffer() const { return m_CurrentCmdBuf; }
 	private:
 		CommandListVk() = delete;

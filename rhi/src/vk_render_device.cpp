@@ -201,8 +201,8 @@ namespace rhi
 
 		VkPhysicalDeviceFeatures deviceFeatures{};
 		deviceFeatures.textureCompressionBC = true;
-		deviceFeatures.geometryShader = desc.enableGeometryShader;
-		deviceFeatures.tessellationShader = desc.enableTessellationShader;
+		deviceFeatures.geometryShader = true;
+		deviceFeatures.tessellationShader = true;
 		deviceFeatures.multiViewport = desc.enableMultiViewport;
 		deviceFeatures.depthBiasClamp = desc.enableDepthBiasClamp;
 		deviceFeatures.depthClamp = desc.enableDepthClamp;
@@ -1246,13 +1246,15 @@ namespace rhi
 	uint64_t RenderDeviceVk::executeCommandLists(ICommandList** cmdLists, size_t numCmdLists)
 	{
 		++lastSubmittedID;
-
+		bool hasGraphicPipeline = false;
 		m_CmdBufSubmitInfos.resize(numCmdLists);
 		for (int i = 0; i < numCmdLists; ++i)
 		{
 			assert(cmdLists[i] != nullptr);
 			auto cmdList = checked_cast<CommandListVk*>(cmdLists[i]);
 			cmdList->updateSubmittedState();
+			hasGraphicPipeline = cmdList->hasSetGraphicPipeline();
+
 			CommandBuffer* cmdBuffer = cmdList->getCommandBuffer();
 			cmdBuffer->submitID = lastSubmittedID;
 			m_CommandBufferInFlight.push_back(cmdBuffer);
@@ -1267,7 +1269,7 @@ namespace rhi
 		VkSemaphoreSubmitInfo waitSemaphoreSubmitInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
 		waitSemaphoreSubmitInfo.semaphore = m_SwapChainImgAvailableSemaphore;
 		waitSemaphoreSubmitInfo.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-		if (m_SwapChainImgAvailableSemaphore != VK_NULL_HANDLE)
+		if (hasGraphicPipeline && m_SwapChainImgAvailableSemaphore != VK_NULL_HANDLE)
 		{
 			submitInfo.waitSemaphoreInfoCount = 1;
 			submitInfo.pWaitSemaphoreInfos = &waitSemaphoreSubmitInfo;
@@ -1296,7 +1298,7 @@ namespace rhi
 
 		m_CmdBufSubmitInfos.clear();
 
-		// we only need to wait for swapChain image available at first time.
+		// we only need to wait for swapChain image available at first time that graphicPipeline is set.
 		m_SwapChainImgAvailableSemaphore = VK_NULL_HANDLE;
 		m_RenderCompleteSemaphore = VK_NULL_HANDLE;
 		return lastSubmittedID;

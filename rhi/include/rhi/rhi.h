@@ -1065,8 +1065,6 @@ namespace rhi
 		DebugMessageCallbackFunc messageCallback;
 		bool enableValidationLayer;
 		// enable instance features
-		bool enableGeometryShader;
-		bool enableTessellationShader;
 		bool enableMultiViewport;
 		bool enableSampleRateShading;
 		bool enableTextureCompressionETC2;
