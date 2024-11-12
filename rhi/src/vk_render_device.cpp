@@ -621,7 +621,7 @@ namespace rhi
 
 		VkDescriptorPoolCreateInfo poolCI{};
 		poolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolCI.flags = 0;
+		poolCI.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
 		poolCI.maxSets = 1;
 		poolCI.poolSizeCount = static_cast<uint32_t>(descriptorPoolSizes.size());
 		poolCI.pPoolSizes = descriptorPoolSizes.data();
