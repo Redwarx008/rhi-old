@@ -26,7 +26,6 @@ namespace rhi
 		VkCommandPool vkCmdPool{ VK_NULL_HANDLE };
 
 		std::vector<std::unique_ptr<BufferVk>> referencedStageBuffer;
-
 		uint64_t submitID = 0;
 	private:
 		const ContextVk& m_Context;
@@ -77,10 +76,11 @@ namespace rhi
 		bool m_RenderingStarted = false;
 		enum class PipelineType
 		{
+			Unknown,
 			Graphics,
 			Compute,
 		};
-		PipelineType m_LastPipelineType;
+		PipelineType m_LastPipelineType = PipelineType::Unknown;
 		GraphicsState m_LastGraphicsState;
 		ComputeState m_LastComputeState;
 
@@ -105,7 +105,7 @@ namespace rhi
 		std::vector<VkImageMemoryBarrier2> m_VkImageMemoryBarriers;
 		std::vector<VkBufferMemoryBarrier2> m_VkBufferMemoryBarriers;
 
-		CommandBuffer* m_CurrentCmdBuf;
+		CommandBuffer* m_CurrentCmdBuf = nullptr;
 
 		RenderDeviceVk& m_RenderDevice;
 	};

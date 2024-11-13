@@ -948,8 +948,8 @@ namespace rhi
 	struct IndexBufferBinding
 	{
 		IBuffer* buffer = nullptr;
-		Format format;
-		uint32_t offset;
+		Format format = Format::UNKNOWN;
+		uint32_t offset = 0;
 
 		bool operator ==(const IndexBufferBinding& b) const
 		{

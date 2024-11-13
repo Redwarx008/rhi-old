@@ -219,7 +219,7 @@ public:
 		m_CmdList->updateBuffer(*m_UniformBuffer, &shaderData, sizeof(ShaderData), 0);
 		m_CmdList->setGraphicsState(m_GraphicState);
 		m_CmdList->setScissors(&scissor, 1);
-		m_CmdList->drawIndexed(indices.size(), 1, 0, 0, 0);
+		m_CmdList->drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 		m_CmdList->close();
 
 		m_RenderDevice->executeCommandLists(&m_CmdList, 1);

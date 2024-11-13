@@ -19,9 +19,9 @@ namespace rhi
 		Object getNativeObject(NativeObjectType type) const override;
 
 		GraphicsPipelineDesc desc;
-		VkPipelineLayout pipelineLayout;
-		VkPipeline pipeline;
-		VkPipelineCache pipelineCache;
+		VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+		VkPipeline pipeline = VK_NULL_HANDLE;
+		VkPipelineCache pipelineCache = VK_NULL_HANDLE;
 	private:
 		const ContextVk& m_Context;
 	};

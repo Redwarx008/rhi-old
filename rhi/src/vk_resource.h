@@ -153,7 +153,8 @@ namespace rhi
 		~ShaderVk();
 		Object getNativeObject(NativeObjectType type) const override;
 		const ShaderDesc& getDesc() const override { return m_Desc; }
-		VkShaderModule shaderModule;
+
+		VkShaderModule shaderModule = VK_NULL_HANDLE;
 		std::vector<SpecializationConstant> specializationConstants;
 	private:
 		const ContextVk& m_Context;
