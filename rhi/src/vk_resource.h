@@ -23,6 +23,17 @@ namespace rhi
 		VkDevice device{ VK_NULL_HANDLE };
 	};
 
+	enum class FormatComponentType : uint8_t
+	{
+		Undefined,
+		Float,
+		Snorm,
+		Unorm,
+		UnormSrgb,
+		Sint,
+		Uint,
+	};
+
 	struct FormatInfo
 	{
 		Format format;
@@ -39,7 +50,7 @@ namespace rhi
 		bool hasAlpha : 1;
 		bool hasDepth : 1;
 		bool hasStencil : 1;
-
+		FormatComponentType componentType;
 		bool isCompressed() const { return blockSize != 1; }
 	};
 
@@ -230,4 +241,6 @@ namespace rhi
 
 	VkSamplerAddressMode convertVkSamplerAddressMode(SamplerAddressMode mode);
 	VkBorderColor convertVkBorderColor(BorderColor color);
+
+	VkClearColorValue convertVkClearColor(ClearColor color, Format textureFormat);
 }

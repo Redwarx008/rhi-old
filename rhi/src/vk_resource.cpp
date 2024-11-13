@@ -157,73 +157,73 @@ namespace rhi
 
 	// Format mapping table. The rows must be in the exactly same order as Format enum members are defined.
 	static const FormatInfo c_FormatInfo[] = {
-		//  format                   name             bytes blk   red   green   blue  alpha  depth  stencl 
-	{ Format::UNKNOWN,           "UNKNOWN",           0,   0,  false, false, false, false, false, false,  },
-	{ Format::R8_UINT,           "R8_UINT",           1,   1,  true,  false, false, false, false, false,  },
-	{ Format::R8_SINT,           "R8_SINT",           1,   1,  true,  false, false, false, false, false,  },
-	{ Format::R8_UNORM,          "R8_UNORM",          1,   1,  true,  false, false, false, false, false,  },
-	{ Format::R8_SNORM,          "R8_SNORM",          1,   1,  true,  false, false, false, false, false,  },
-	{ Format::RG8_UINT,          "RG8_UINT",          2,   1,  true,  true,  false, false, false, false,  },
-	{ Format::RG8_SINT,          "RG8_SINT",          2,   1,  true,  true,  false, false, false, false,  },
-	{ Format::RG8_UNORM,         "RG8_UNORM",         2,   1,  true,  true,  false, false, false, false,  },
-	{ Format::RG8_SNORM,         "RG8_SNORM",         2,   1,  true,  true,  false, false, false, false,  },
-	{ Format::R16_UINT,          "R16_UINT",          2,   1,  true,  false, false, false, false, false,  },
-	{ Format::R16_SINT,          "R16_SINT",          2,   1,  true,  false, false, false, false, false,  },
-	{ Format::R16_UNORM,         "R16_UNORM",         2,   1,  true,  false, false, false, false, false,  },
-	{ Format::R16_SNORM,         "R16_SNORM",         2,   1,  true,  false, false, false, false, false,  },
-	{ Format::R16_FLOAT,         "R16_FLOAT",         2,   1,  true,  false, false, false, false, false,  },
-	{ Format::BGRA4_UNORM,       "BGRA4_UNORM",       2,   1,  true,  true,  true,  true,  false, false,  },
-	{ Format::B5G6R5_UNORM,      "B5G6R5_UNORM",      2,   1,  true,  true,  true,  false, false, false,  },
-	{ Format::B5G5R5A1_UNORM,    "B5G5R5A1_UNORM",    2,   1,  true,  true,  true,  true,  false, false,  },
-	{ Format::RGBA8_UINT,        "RGBA8_UINT",        4,   1,  true,  true,  true,  true,  false, false,  },
-	{ Format::RGBA8_SINT,        "RGBA8_SINT",        4,   1,  true,  true,  true,  true,  false, false,  },
-	{ Format::RGBA8_UNORM,       "RGBA8_UNORM",       4,   1,  true,  true,  true,  true,  false, false,  },
-	{ Format::RGBA8_SNORM,       "RGBA8_SNORM",       4,   1,  true,  true,  true,  true,  false, false,  },
-	{ Format::BGRA8_UNORM,       "BGRA8_UNORM",       4,   1,  true,  true,  true,  true,  false, false,  },
-	{ Format::RGBA8_SRGB,		 "RGBA8_SRGB",		  4,   1,  true,  true,  true,  true,  false, false,  },
-	{ Format::BGRA8_SRGB,		 "BGRA8_SRGB",		  4,   1,  true,  true,  true,  true,  false, false,  },
-	{ Format::R10G10B10A2_UNORM, "R10G10B10A2_UNORM", 4,   1,  true,  true,  true,  true,  false, false,  },
-	{ Format::R11G11B10_FLOAT,   "R11G11B10_FLOAT",   4,   1,  true,  true,  true,  false, false, false,  },
-	{ Format::RG16_UINT,         "RG16_UINT",         4,   1,  true,  true,  false, false, false, false,  },
-	{ Format::RG16_SINT,         "RG16_SINT",         4,   1,  true,  true,  false, false, false, false,  },
-	{ Format::RG16_UNORM,        "RG16_UNORM",        4,   1,  true,  true,  false, false, false, false,  },
-	{ Format::RG16_SNORM,        "RG16_SNORM",        4,   1,  true,  true,  false, false, false, false,  },
-	{ Format::RG16_FLOAT,        "RG16_FLOAT",        4,   1,  true,  true,  false, false, false, false,  },
-	{ Format::R32_UINT,          "R32_UINT",          4,   1,  true,  false, false, false, false, false,  },
-	{ Format::R32_SINT,          "R32_SINT",          4,   1,  true,  false, false, false, false, false,  },
-	{ Format::R32_FLOAT,         "R32_FLOAT",         4,   1,  true,  false, false, false, false, false,  },
-	{ Format::RGBA16_UINT,       "RGBA16_UINT",       8,   1,  true,  true,  true,  true,  false, false,  },
-	{ Format::RGBA16_SINT,       "RGBA16_SINT",       8,   1,  true,  true,  true,  true,  false, false,  },
-	{ Format::RGBA16_FLOAT,      "RGBA16_FLOAT",      8,   1,  true,  true,  true,  true,  false, false,  },
-	{ Format::RGBA16_UNORM,      "RGBA16_UNORM",      8,   1,  true,  true,  true,  true,  false, false,  },
-	{ Format::RGBA16_SNORM,      "RGBA16_SNORM",      8,   1,  true,  true,  true,  true,  false, false,  },
-	{ Format::RG32_UINT,         "RG32_UINT",         8,   1,  true,  true,  false, false, false, false,  },
-	{ Format::RG32_SINT,         "RG32_SINT",         8,   1,  true,  true,  false, false, false, false,  },
-	{ Format::RG32_FLOAT,        "RG32_FLOAT",        8,   1,  true,  true,  false, false, false, false,  },
-	{ Format::RGB32_UINT,        "RGB32_UINT",        12,  1,  true,  true,  true,  false, false, false,  },
-	{ Format::RGB32_SINT,        "RGB32_SINT",        12,  1,  true,  true,  true,  false, false, false,  },
-	{ Format::RGB32_FLOAT,       "RGB32_FLOAT",       12,  1,  true,  true,  true,  false, false, false,  },
-	{ Format::RGBA32_UINT,       "RGBA32_UINT",       16,  1,  true,  true,  true,  true,  false, false,  },
-	{ Format::RGBA32_SINT,       "RGBA32_SINT",       16,  1,  true,  true,  true,  true,  false, false,  },
-	{ Format::RGBA32_FLOAT,      "RGBA32_FLOAT",      16,  1,  true,  true,  true,  true,  false, false,  },
-	{ Format::D16_UNORM,         "D16_UNORM",         2,   1,  false, false, false, false, true,  false,  },
-	{ Format::D24_UNORM_S8_UINT, "D24_UNORM_S8_UINT", 4,   1,  false, false, false, false, true,  true,   },
-	{ Format::D32_UNORM,         "D32_UNORM",         4,   1,  false, false, false, false, true,  false,  },
-	{ Format::D32_UNORM_S8_UINT, "D32_UNORM_S8_UINT", 8,   1,  false, false, false, false, true,  true,   },
-	{ Format::BC1_UNORM,         "BC1_UNORM",         8,   4,  true,  true,  true,  true,  false, false,  },
-	{ Format::BC1_UNORM_SRGB,    "BC1_UNORM_SRGB",    8,   4,  true,  true,  true,  true,  false, false,  },
-	{ Format::BC2_UNORM,         "BC2_UNORM",         16,  4,  true,  true,  true,  true,  false, false,  },
-	{ Format::BC2_UNORM_SRGB,    "BC2_UNORM_SRGB",    16,  4,  true,  true,  true,  true,  false, false,  },
-	{ Format::BC3_UNORM,         "BC3_UNORM",         16,  4,  true,  true,  true,  true,  false, false,  },
-	{ Format::BC3_UNORM_SRGB,    "BC3_UNORM_SRGB",    16,  4,  true,  true,  true,  true,  false, false,  },
-	{ Format::BC4_UNORM,         "BC4_UNORM",         8,   4,  true,  false, false, false, false, false,  },
-	{ Format::BC4_SNORM,         "BC4_SNORM",         8,   4,  true,  false, false, false, false, false,  },
-	{ Format::BC5_UNORM,         "BC5_UNORM",         16,  4,  true,  true,  false, false, false, false,  },
-	{ Format::BC5_SNORM,         "BC5_SNORM",         16,  4,  true,  true,  false, false, false, false,  },
-	{ Format::BC6H_UFLOAT,       "BC6H_UFLOAT",       16,  4,  true,  true,  true,  false, false, false,  },
-	{ Format::BC6H_SFLOAT,       "BC6H_SFLOAT",       16,  4,  true,  true,  true,  false, false, false,  },
-	{ Format::BC7_UNORM,         "BC7_UNORM",         16,  4,  true,  true,  true,  true,  false, false,  },
-	{ Format::BC7_UNORM_SRGB,    "BC7_UNORM_SRGB",    16,  4,  true,  true,  true,  true,  false, false,  },
+		//  format                   name           bytes blockSize   red   green   blue  alpha  depth  stencl type
+	{ Format::UNKNOWN,           "UNKNOWN",           0,   0,  false, false, false, false, false, false,  FormatComponentType::Undefined},
+	{ Format::R8_UINT,           "R8_UINT",           1,   1,  true,  false, false, false, false, false,  FormatComponentType::Uint		},
+	{ Format::R8_SINT,           "R8_SINT",           1,   1,  true,  false, false, false, false, false,  FormatComponentType::Sint		},
+	{ Format::R8_UNORM,          "R8_UNORM",          1,   1,  true,  false, false, false, false, false,  FormatComponentType::Unorm	},
+	{ Format::R8_SNORM,          "R8_SNORM",          1,   1,  true,  false, false, false, false, false,  FormatComponentType::Snorm	},
+	{ Format::RG8_UINT,          "RG8_UINT",          2,   1,  true,  true,  false, false, false, false,  FormatComponentType::Uint		},
+	{ Format::RG8_SINT,          "RG8_SINT",          2,   1,  true,  true,  false, false, false, false,  FormatComponentType::Sint		},
+	{ Format::RG8_UNORM,         "RG8_UNORM",         2,   1,  true,  true,  false, false, false, false,  FormatComponentType::Unorm	},
+	{ Format::RG8_SNORM,         "RG8_SNORM",         2,   1,  true,  true,  false, false, false, false,  FormatComponentType::Snorm	},
+	{ Format::R16_UINT,          "R16_UINT",          2,   1,  true,  false, false, false, false, false,  FormatComponentType::Uint		},
+	{ Format::R16_SINT,          "R16_SINT",          2,   1,  true,  false, false, false, false, false,  FormatComponentType::Sint		},
+	{ Format::R16_UNORM,         "R16_UNORM",         2,   1,  true,  false, false, false, false, false,  FormatComponentType::Unorm	},
+	{ Format::R16_SNORM,         "R16_SNORM",         2,   1,  true,  false, false, false, false, false,  FormatComponentType::Snorm	},
+	{ Format::R16_FLOAT,         "R16_FLOAT",         2,   1,  true,  false, false, false, false, false,  FormatComponentType::Float	},
+	{ Format::BGRA4_UNORM,       "BGRA4_UNORM",       2,   1,  true,  true,  true,  true,  false, false,  FormatComponentType::Unorm	},
+	{ Format::B5G6R5_UNORM,      "B5G6R5_UNORM",      2,   1,  true,  true,  true,  false, false, false,  FormatComponentType::Unorm	},
+	{ Format::B5G5R5A1_UNORM,    "B5G5R5A1_UNORM",    2,   1,  true,  true,  true,  true,  false, false,  FormatComponentType::Unorm	},
+	{ Format::RGBA8_UINT,        "RGBA8_UINT",        4,   1,  true,  true,  true,  true,  false, false,  FormatComponentType::Uint		},
+	{ Format::RGBA8_SINT,        "RGBA8_SINT",        4,   1,  true,  true,  true,  true,  false, false,  FormatComponentType::Sint		},
+	{ Format::RGBA8_UNORM,       "RGBA8_UNORM",       4,   1,  true,  true,  true,  true,  false, false,  FormatComponentType::Unorm	},
+	{ Format::RGBA8_SNORM,       "RGBA8_SNORM",       4,   1,  true,  true,  true,  true,  false, false,  FormatComponentType::Snorm	},
+	{ Format::BGRA8_UNORM,       "BGRA8_UNORM",       4,   1,  true,  true,  true,  true,  false, false,  FormatComponentType::Unorm	},
+	{ Format::RGBA8_SRGB,		 "RGBA8_SRGB",		  4,   1,  true,  true,  true,  true,  false, false,  FormatComponentType::UnormSrgb},
+	{ Format::BGRA8_SRGB,		 "BGRA8_SRGB",		  4,   1,  true,  true,  true,  true,  false, false,  FormatComponentType::UnormSrgb},
+	{ Format::R10G10B10A2_UNORM, "R10G10B10A2_UNORM", 4,   1,  true,  true,  true,  true,  false, false,  FormatComponentType::Unorm	},
+	{ Format::R11G11B10_FLOAT,   "R11G11B10_FLOAT",   4,   1,  true,  true,  true,  false, false, false,  FormatComponentType::Float	},
+	{ Format::RG16_UINT,         "RG16_UINT",         4,   1,  true,  true,  false, false, false, false,  FormatComponentType::Uint		},
+	{ Format::RG16_SINT,         "RG16_SINT",         4,   1,  true,  true,  false, false, false, false,  FormatComponentType::Sint		},
+	{ Format::RG16_UNORM,        "RG16_UNORM",        4,   1,  true,  true,  false, false, false, false,  FormatComponentType::Unorm	},
+	{ Format::RG16_SNORM,        "RG16_SNORM",        4,   1,  true,  true,  false, false, false, false,  FormatComponentType::Snorm	},
+	{ Format::RG16_FLOAT,        "RG16_FLOAT",        4,   1,  true,  true,  false, false, false, false,  FormatComponentType::Float	},
+	{ Format::R32_UINT,          "R32_UINT",          4,   1,  true,  false, false, false, false, false,  FormatComponentType::Uint		},
+	{ Format::R32_SINT,          "R32_SINT",          4,   1,  true,  false, false, false, false, false,  FormatComponentType::Sint		},
+	{ Format::R32_FLOAT,         "R32_FLOAT",         4,   1,  true,  false, false, false, false, false,  FormatComponentType::Float	},
+	{ Format::RGBA16_UINT,       "RGBA16_UINT",       8,   1,  true,  true,  true,  true,  false, false,  FormatComponentType::Uint		},
+	{ Format::RGBA16_SINT,       "RGBA16_SINT",       8,   1,  true,  true,  true,  true,  false, false,  FormatComponentType::Sint		},
+	{ Format::RGBA16_FLOAT,      "RGBA16_FLOAT",      8,   1,  true,  true,  true,  true,  false, false,  FormatComponentType::Float	},
+	{ Format::RGBA16_UNORM,      "RGBA16_UNORM",      8,   1,  true,  true,  true,  true,  false, false,  FormatComponentType::Unorm	},
+	{ Format::RGBA16_SNORM,      "RGBA16_SNORM",      8,   1,  true,  true,  true,  true,  false, false,  FormatComponentType::Snorm	},
+	{ Format::RG32_UINT,         "RG32_UINT",         8,   1,  true,  true,  false, false, false, false,  FormatComponentType::Uint		},
+	{ Format::RG32_SINT,         "RG32_SINT",         8,   1,  true,  true,  false, false, false, false,  FormatComponentType::Sint		},
+	{ Format::RG32_FLOAT,        "RG32_FLOAT",        8,   1,  true,  true,  false, false, false, false,  FormatComponentType::Float	},
+	{ Format::RGB32_UINT,        "RGB32_UINT",        12,  1,  true,  true,  true,  false, false, false,  FormatComponentType::Uint		},
+	{ Format::RGB32_SINT,        "RGB32_SINT",        12,  1,  true,  true,  true,  false, false, false,  FormatComponentType::Sint		},
+	{ Format::RGB32_FLOAT,       "RGB32_FLOAT",       12,  1,  true,  true,  true,  false, false, false,  FormatComponentType::Float	},
+	{ Format::RGBA32_UINT,       "RGBA32_UINT",       16,  1,  true,  true,  true,  true,  false, false,  FormatComponentType::Uint		},
+	{ Format::RGBA32_SINT,       "RGBA32_SINT",       16,  1,  true,  true,  true,  true,  false, false,  FormatComponentType::Sint		},
+	{ Format::RGBA32_FLOAT,      "RGBA32_FLOAT",      16,  1,  true,  true,  true,  true,  false, false,  FormatComponentType::Float	},
+	{ Format::D16_UNORM,         "D16_UNORM",         2,   1,  false, false, false, false, true,  false,  FormatComponentType::Undefined},
+	{ Format::D24_UNORM_S8_UINT, "D24_UNORM_S8_UINT", 4,   1,  false, false, false, false, true,  true,   FormatComponentType::Undefined},
+	{ Format::D32_UNORM,         "D32_UNORM",         4,   1,  false, false, false, false, true,  false,  FormatComponentType::Undefined},
+	{ Format::D32_UNORM_S8_UINT, "D32_UNORM_S8_UINT", 8,   1,  false, false, false, false, true,  true,   FormatComponentType::Undefined},
+	{ Format::BC1_UNORM,         "BC1_UNORM",         8,   4,  true,  true,  true,  true,  false, false,  FormatComponentType::Undefined},
+	{ Format::BC1_UNORM_SRGB,    "BC1_UNORM_SRGB",    8,   4,  true,  true,  true,  true,  false, false,  FormatComponentType::Undefined},
+	{ Format::BC2_UNORM,         "BC2_UNORM",         16,  4,  true,  true,  true,  true,  false, false,  FormatComponentType::Undefined},
+	{ Format::BC2_UNORM_SRGB,    "BC2_UNORM_SRGB",    16,  4,  true,  true,  true,  true,  false, false,  FormatComponentType::Undefined},
+	{ Format::BC3_UNORM,         "BC3_UNORM",         16,  4,  true,  true,  true,  true,  false, false,  FormatComponentType::Undefined},
+	{ Format::BC3_UNORM_SRGB,    "BC3_UNORM_SRGB",    16,  4,  true,  true,  true,  true,  false, false,  FormatComponentType::Undefined},
+	{ Format::BC4_UNORM,         "BC4_UNORM",         8,   4,  true,  false, false, false, false, false,  FormatComponentType::Undefined},
+	{ Format::BC4_SNORM,         "BC4_SNORM",         8,   4,  true,  false, false, false, false, false,  FormatComponentType::Undefined},
+	{ Format::BC5_UNORM,         "BC5_UNORM",         16,  4,  true,  true,  false, false, false, false,  FormatComponentType::Undefined},
+	{ Format::BC5_SNORM,         "BC5_SNORM",         16,  4,  true,  true,  false, false, false, false,  FormatComponentType::Undefined},
+	{ Format::BC6H_UFLOAT,       "BC6H_UFLOAT",       16,  4,  true,  true,  true,  false, false, false,  FormatComponentType::Undefined},
+	{ Format::BC6H_SFLOAT,       "BC6H_SFLOAT",       16,  4,  true,  true,  true,  false, false, false,  FormatComponentType::Undefined},
+	{ Format::BC7_UNORM,         "BC7_UNORM",         16,  4,  true,  true,  true,  true,  false, false,  FormatComponentType::Undefined},
+	{ Format::BC7_UNORM_SRGB,    "BC7_UNORM_SRGB",    16,  4,  true,  true,  true,  true,  false, false,  FormatComponentType::Undefined},
 	};
 	const FormatInfo& getFormatInfo(Format format)
 	{
@@ -805,5 +805,35 @@ namespace rhi
 			assert(!"Invalid BorderColor");
 			return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
 		}
+	}
+
+	VkClearColorValue convertVkClearColor(ClearColor color, Format textureFormat)
+	{
+		VkClearColorValue val{};
+		const FormatInfo& formatInfo = getFormatInfo(textureFormat);
+
+		if (formatInfo.componentType == FormatComponentType::Float)
+		{
+			for (int i = 0; i < 4; ++i)
+			{
+				val.float32[i] = color.float32[i];
+			}
+		}
+		else if (formatInfo.componentType == FormatComponentType::Uint)
+		{
+			for (int i = 0; i < 4; ++i)
+			{
+				val.uint32[i] = color.uint32[i];
+			}
+		}
+		else 
+		{
+			for (int i = 0; i < 4; ++i)
+			{
+				val.int32[i] = color.int32[i];
+			}
+		}
+
+		return val;
 	}
 }

@@ -1048,6 +1048,45 @@ namespace rhi
 		Write
 	};
 
+	struct ClearColor
+	{
+		union
+		{
+			float float32[4];
+			int32_t int32[4];
+			uint32_t uint32[4]{};
+		};
+
+		explicit ClearColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
+		{
+			uint32[0] = r;
+			uint32[1] = g;
+			uint32[2] = b;
+			uint32[3] = a;
+		}
+		explicit ClearColor(int32_t r, int32_t g, int32_t b, int32_t a)
+		{
+			int32[0] = r;
+			int32[1] = g;
+			int32[2] = b;
+			int32[3] = a;
+		}
+		explicit ClearColor(float r, float g, float b, float a)
+		{
+			float32[0] = r;
+			float32[1] = g;
+			float32[2] = b;
+			float32[3] = a;
+		}
+	};
+
+	enum class ClearDepthStencilFlag : uint8_t
+	{
+		Depth = 0 << 0,
+		Stencil = 1 << 0
+	};
+	ENUM_CLASS_FLAG_OPERATORS(ClearDepthStencilFlag)
+
 	class ICommandList : public IObject
 	{
 	public:
@@ -1060,6 +1099,9 @@ namespace rhi
 		virtual void commitBarriers() = 0;
 		virtual void transitionTextureState(ITexture& texture, ResourceState newState) = 0;
 		virtual void transitionBufferState(IBuffer& buffer, ResourceState newState) = 0;
+
+		virtual void clearColorTexture(ITextureView& textureView, const ClearColor& color) = 0;
+		virtual void clearDepthStencil(ITextureView& textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal) = 0;
 		virtual void updateBuffer(IBuffer& buffer, const void* data, uint64_t dataSize, uint64_t offset) = 0;
 		virtual void copyBuffer(IBuffer& srcBuffer, uint64_t srcOffset, IBuffer& dstBuffer, uint64_t dstOffset, uint64_t dataSize) = 0;
 		virtual void* mapBuffer(IBuffer& buffer, MapBufferUsage usage) = 0;

@@ -276,6 +276,116 @@ namespace rhi
 		vkCmdPipelineBarrier2(m_CurrentCmdBuf->vkCmdBuf, &dependencyInfo);
 	}
 
+	void CommandListVk::clearColorTexture(ITextureView& textureView, const ClearColor& color)
+	{
+		assert(m_CurrentCmdBuf);
+		auto& tv = static_cast<TextureViewVk&>(textureView);
+
+		VkClearColorValue clearValue = convertVkClearColor(color, tv.texture.desc.format);
+
+		// Check if the textureView is one of the currently bound renderTargetView
+		int rendetTargetIndex = -1;
+		for (uint32_t i = 0; i < m_LastGraphicsState.renderTargetCount; ++i)
+		{
+			if (m_LastGraphicsState.renderTargetViews[i] == &textureView)
+			{
+				rendetTargetIndex = i;
+			}
+		}
+
+		if (rendetTargetIndex != -1)
+		{
+			VkClearAttachment clearAttachment{};
+			clearAttachment.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			clearAttachment.colorAttachment = static_cast<uint32_t>(rendetTargetIndex);
+			clearAttachment.clearValue.color = clearValue;
+
+			VkClearRect clearRect{};
+			clearRect.rect.offset = { 0, 0 };
+			clearRect.rect.extent = { tv.texture.desc.width,  tv.texture.desc.height };
+			clearRect.baseArrayLayer = 0;
+			clearRect.layerCount = tv.texture.desc.arraySize;
+
+			vkCmdClearAttachments(m_CurrentCmdBuf->vkCmdBuf, 1, &clearAttachment, 1, &clearRect);
+		}
+		else
+		{
+			if (m_EnableAutoTransition)
+			{
+				transitionTextureState(tv.texture, ResourceState::CopyDest);
+			}
+			commitBarriers();
+
+			VkImageSubresourceRange imageSubresourceRange{};
+			imageSubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			imageSubresourceRange.baseArrayLayer = tv.desc.baseArrayLayer;
+			imageSubresourceRange.layerCount = tv.desc.arrayLayerCount;
+			imageSubresourceRange.baseMipLevel = tv.desc.baseMipLevel;
+			imageSubresourceRange.levelCount = tv.desc.mipLevelCount;
+
+			vkCmdClearColorImage(m_CurrentCmdBuf->vkCmdBuf, tv.texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &imageSubresourceRange);
+		}
+	}
+
+	void CommandListVk::clearDepthStencil(ITextureView& textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal)
+	{
+		assert(m_CurrentCmdBuf);
+		auto& tv = static_cast<TextureViewVk&>(textureView);
+
+		if (&textureView == m_LastGraphicsState.depthStencilView)
+		{
+			VkClearAttachment clearAttachment{};
+			if ((flag & ClearDepthStencilFlag::Depth) != 0)
+			{
+				clearAttachment.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+			}
+			if ((flag & ClearDepthStencilFlag::Stencil) != 0)
+			{
+				clearAttachment.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+			}
+
+			clearAttachment.colorAttachment = VK_ATTACHMENT_UNUSED;
+			clearAttachment.clearValue.depthStencil.depth = depthVal;
+			clearAttachment.clearValue.depthStencil.stencil = stencilVal;
+
+			VkClearRect clearRect{};
+			clearRect.rect.offset = { 0, 0 };
+			clearRect.rect.extent = { tv.texture.desc.width,  tv.texture.desc.height };
+			clearRect.baseArrayLayer = 0;
+			clearRect.layerCount = tv.texture.desc.arraySize;
+
+			vkCmdClearAttachments(m_CurrentCmdBuf->vkCmdBuf, 1, &clearAttachment, 1, &clearRect);
+		}
+		else
+		{
+			if (m_EnableAutoTransition)
+			{
+				transitionTextureState(tv.texture, ResourceState::CopyDest);
+			}
+			commitBarriers();
+
+			VkImageSubresourceRange imageSubresourceRange{};
+			if ((flag & ClearDepthStencilFlag::Depth) != 0)
+			{
+				imageSubresourceRange.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+			}
+			if ((flag & ClearDepthStencilFlag::Stencil) != 0)
+			{
+				imageSubresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+			}
+			imageSubresourceRange.baseArrayLayer = tv.desc.baseArrayLayer;
+			imageSubresourceRange.layerCount = tv.desc.arrayLayerCount;
+			imageSubresourceRange.baseMipLevel = tv.desc.baseMipLevel;
+			imageSubresourceRange.levelCount = tv.desc.mipLevelCount;
+
+			VkClearDepthStencilValue clearValue;
+			clearValue.depth = depthVal;
+			clearValue.stencil = stencilVal;
+
+			vkCmdClearDepthStencilImage(m_CurrentCmdBuf->vkCmdBuf, tv.texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &imageSubresourceRange);
+		}
+	}
+
 	void CommandListVk::copyBuffer(IBuffer& srcBuffer, uint64_t srcOffset, IBuffer& dstBuffer, uint64_t dstOffset, uint64_t dataSize)
 	{
 		assert(m_CurrentCmdBuf);
