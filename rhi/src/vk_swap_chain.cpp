@@ -257,7 +257,7 @@ namespace rhi
 		for (int i = 0; i < m_ColorAttachments.size(); ++i)
 		{
 			TextureVk* colorTex = m_RenderDevice->createTextureWithExistImage(colorTextureDesc, images[i]);
-			m_ColorAttachments[i] = std::unique_ptr<ITexture>(colorTex);
+			m_ColorAttachments[i] = std::unique_ptr<TextureVk>(colorTex);
 		}
 
 		if (m_DepthStencilFormat != Format::UNKNOWN)
@@ -269,7 +269,7 @@ namespace rhi
 			depthStencilDesc.usage = TextureUsage::DepthStencil;
 			depthStencilDesc.dimension = TextureDimension::Texture2D;
 			TextureVk* depthStencilTex = static_cast<TextureVk*>(m_RenderDevice->createTexture(depthStencilDesc));
-			m_DepthStencilAttachments = std::unique_ptr<ITexture>(depthStencilTex);
+			m_DepthStencilAttachments = std::unique_ptr<TextureVk>(depthStencilTex);
 		}
 
 		// The semaphores need to be rebuilt
@@ -332,7 +332,7 @@ namespace rhi
 		m_RenderDevice->setRenderCompleteSemaphore(semaphore);
 		// to ensure that all commandBuffers on this queue have been executed to completion and transition the colorattchment layout.
 		m_CompleteRenderingCmdList->open();
-		m_CompleteRenderingCmdList->transitionFromSubmmitedState(*getCurrentRenderTargetTexture(), ResourceState::Present);
+		m_CompleteRenderingCmdList->transitionFromSubmmitedState(*m_ColorAttachments[m_SwapChainImageIndex], ResourceState::Present);
 		m_CompleteRenderingCmdList->commitBarriers();
 		m_CompleteRenderingCmdList->close();
 		ICommandList* cmdLists[] = { m_CompleteRenderingCmdList.get() };
@@ -369,14 +369,14 @@ namespace rhi
 		m_RenderDevice->recycleCommandBuffers();
 	}
 
-	ITexture* SwapChainVk::getCurrentRenderTargetTexture()
+	ITextureView* SwapChainVk::getCurrentRenderTargetView()
 	{
-		return m_ColorAttachments[m_SwapChainImageIndex].get();
+		return m_ColorAttachments[m_SwapChainImageIndex]->getDefaultView();
 	}
 
-	ITexture* SwapChainVk::getDepthStencilTexture()
+	ITextureView* SwapChainVk::getDepthStencilView()
 	{
-		return m_DepthStencilAttachments.get();
+		return m_DepthStencilAttachments->getDefaultView();
 	}
 
 	void SwapChainVk::resize()

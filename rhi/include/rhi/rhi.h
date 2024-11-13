@@ -285,6 +285,25 @@ namespace rhi
 		Region3D dstRegion;
 	};
 
+	struct TextureViewDesc
+	{
+		TextureDimension dimension = TextureDimension::Undefined;
+		union 
+		{
+			uint32_t baseArrayLayer = 0;
+			uint32_t baseDepthLayer;
+		};
+
+		union
+		{
+			uint32_t arrayLayerCount = 1;
+			uint32_t depthLayerCount;
+		};
+
+		uint32_t baseMipLevel = 0;
+		uint32_t mipLevelCount = 1;
+	};
+
 	struct TextureDesc
 	{
 		TextureDimension dimension = TextureDimension::Undefined;
@@ -309,11 +328,22 @@ namespace rhi
 		constexpr TextureDesc& setDimension(TextureDimension value) { dimension = value; return *this; }
 	};
 
+	class ITexture;
+	class ITextureView : public IObject
+	{
+	public:
+		virtual ~ITextureView() = default;
+		virtual const TextureViewDesc& getDesc() const = 0;
+		virtual const ITexture* getTexture() const = 0;
+	};
+
 	class ITexture : public IResource
 	{
 	public:
 		virtual ~ITexture() = default;
 		virtual const TextureDesc& getDesc() const = 0;
+		virtual const ITextureView* getDefaultView() const = 0;
+		virtual ITextureView* createView(TextureViewDesc desc) = 0;
 	};
 
 	enum class SamplerAddressMode : uint8_t
@@ -380,7 +410,7 @@ namespace rhi
 		UniformTexelBuffer,
 		StorageTexelBuffer,
 		Sampler,
-		TextureSampler // Combined texture and sampler
+		TextureWithSampler // Combined texture and sampler
 	};
 
 	enum class ShaderType : uint32_t
@@ -502,11 +532,11 @@ namespace rhi
 			res.bindingSlot = bindingSlot;
 			return res;
 		}
-		static ResourceSetLayoutItem TextureSampler(ShaderType stage, const uint32_t bindingSlot)
+		static ResourceSetLayoutItem TextureWithSampler(ShaderType stage, const uint32_t bindingSlot)
 		{
 			ResourceSetLayoutItem res{};
 			res.visibleStages = stage;
-			res.type = ShaderResourceType::TextureSampler;
+			res.type = ShaderResourceType::TextureWithSampler;
 			res.bindingSlot = bindingSlot;
 			return res;
 		}
@@ -520,28 +550,29 @@ namespace rhi
 		uint32_t bindingSlot = 0;
 		uint32_t arrayItemIndex = 0;
 
-		IResource* resource = nullptr;
+		ITextureView* textureView = nullptr;
 		ISampler* sampler = nullptr;
+		IBuffer* buffer = nullptr;
 
 		//for buffer
 		uint32_t bufferOffset = 0;
 		uint32_t bufferRange = 0;  // if range is 0, use the range from offset to the end of the buffer.
 
-		static ResourceSetItem SampledTexture(ITexture* texture, uint32_t bindingSlot)
+		static ResourceSetItem SampledTexture(ITextureView* textureView, uint32_t bindingSlot)
 		{
 			ResourceSetItem item{};
 			item.type = ShaderResourceType::SampledTexture;
 			item.bindingSlot = bindingSlot;
-			item.resource = texture;
+			item.textureView = textureView;
 			return item;
 		}
 
-		static ResourceSetItem StorageTexture(ITexture* texture, uint32_t bindingSlot)
+		static ResourceSetItem StorageTexture(ITextureView* textureView, uint32_t bindingSlot)
 		{
 			ResourceSetItem item{};
 			item.type = ShaderResourceType::StorageTexture;
 			item.bindingSlot = bindingSlot;
-			item.resource = texture;
+			item.textureView = textureView;
 			return item;
 		}
 
@@ -550,7 +581,7 @@ namespace rhi
 			ResourceSetItem item{};
 			item.type = ShaderResourceType::UniformBuffer;
 			item.bindingSlot = bindingSlot;
-			item.resource = buffer;
+			item.buffer = buffer;
 			item.bufferOffset = offset;
 			item.bufferRange = range;
 			return item;
@@ -561,7 +592,7 @@ namespace rhi
 			ResourceSetItem item{};
 			item.type = ShaderResourceType::StorageBuffer;
 			item.bindingSlot = bindingSlot;
-			item.resource = buffer;
+			item.buffer = buffer;
 			item.bufferOffset = offset;
 			item.bufferRange = range;
 			return item;
@@ -576,12 +607,12 @@ namespace rhi
 			return item;
 		}
 
-		static ResourceSetItem TextureSampler(ITexture* texture, ISampler* sampler, uint32_t bindingSlot)
+		static ResourceSetItem TextureWithSampler(ITextureView* textureView, ISampler* sampler, uint32_t bindingSlot)
 		{
 			ResourceSetItem item{};
-			item.type = ShaderResourceType::TextureSampler;
+			item.type = ShaderResourceType::TextureWithSampler;
 			item.bindingSlot = bindingSlot;
-			item.resource = texture;
+			item.textureView = textureView;
 			item.sampler = sampler;
 			return item;
 		}
@@ -898,8 +929,8 @@ namespace rhi
 	struct VertexBufferBinding
 	{
 		IBuffer* buffer = nullptr;
-		uint32_t bindingSlot;
-		uint64_t offset;
+		uint32_t bindingSlot = 0;
+		uint64_t offset = 0;
 
 		bool operator ==(const VertexBufferBinding& b) const
 		{
@@ -938,8 +969,8 @@ namespace rhi
 		IGraphicsPipeline* pipeline = nullptr;
 
 		uint32_t renderTargetCount = 0;
-		ITexture* renderTargetTextures[g_MaxColorAttachments];
-		ITexture* depthStencilTexture = nullptr;
+		ITextureView* renderTargetViews[g_MaxColorAttachments];
+		ITextureView* depthStencilView = nullptr;
 
 		uint32_t viewportCount = 0;
 		Viewport viewports[g_MaxViewPorts];
@@ -1115,8 +1146,8 @@ namespace rhi
 		virtual void beginFrame() = 0;
 		virtual void present() = 0;
 		virtual void resize() = 0;
-		virtual ITexture* getCurrentRenderTargetTexture() = 0;
-		virtual ITexture* getDepthStencilTexture() = 0;
+		virtual ITextureView* getCurrentRenderTargetView() = 0;
+		virtual ITextureView* getDepthStencilView() = 0;
 		virtual Format getRenderTargetFormat() = 0;
 		virtual Format getDepthStencilFormat() = 0;
 	};

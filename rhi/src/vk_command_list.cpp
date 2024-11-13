@@ -59,7 +59,7 @@ namespace rhi
 		m_EnableAutoTransition = enable;
 	}
 
-	inline bool resourceStateHasWriteAccess(ResourceState state)
+	inline static bool resourceStateHasWriteAccess(ResourceState state)
 	{
 		const ResourceState writeAccessStates =
 			ResourceState::RenderTarget |
@@ -420,32 +420,32 @@ namespace rhi
 
 			switch (itemWithVisibleStages.item.type)
 			{
-			case ShaderResourceType::TextureSampler:
+			case ShaderResourceType::TextureWithSampler:
 			case ShaderResourceType::SampledTexture:
 			{
-				assert(itemWithVisibleStages.item.resource);
-				auto& texture = static_cast<TextureVk&>(*itemWithVisibleStages.item.resource);
-				transitionTextureState(texture, ResourceState::ShaderResource);
+				assert(itemWithVisibleStages.item.textureView);
+				auto textureView = checked_cast<TextureViewVk*>(itemWithVisibleStages.item.textureView);
+				transitionTextureState(textureView->texture, ResourceState::ShaderResource);
 				break;
 			}
 			case ShaderResourceType::StorageTexture:
 			{
-				assert(itemWithVisibleStages.item.resource);
-				auto& texture = static_cast<TextureVk&>(*itemWithVisibleStages.item.resource);
-				transitionTextureState(texture, ResourceState::UnorderedAccess);
+				assert(itemWithVisibleStages.item.textureView);
+				auto textureView = checked_cast<TextureViewVk*>(itemWithVisibleStages.item.textureView);
+				transitionTextureState(textureView->texture, ResourceState::UnorderedAccess);
 				break;
 			}
 			case ShaderResourceType::UniformBuffer:
 			{
-				assert(itemWithVisibleStages.item.resource);
-				auto& buffer = static_cast<BufferVk&>(*itemWithVisibleStages.item.resource);
+				assert(itemWithVisibleStages.item.buffer);
+				auto& buffer = static_cast<BufferVk&>(*itemWithVisibleStages.item.buffer);
 				transitionBufferState(buffer, ResourceState::ShaderResource);
 				break;
 			}
 			case ShaderResourceType::StorageBuffer:
 			{
-				assert(itemWithVisibleStages.item.resource);
-				auto& buffer = static_cast<BufferVk&>(*itemWithVisibleStages.item.resource);
+				assert(itemWithVisibleStages.item.buffer);
+				auto& buffer = static_cast<BufferVk&>(*itemWithVisibleStages.item.buffer);
 				transitionBufferState(buffer, ResourceState::UnorderedAccess);
 				break;
 			}
@@ -461,23 +461,23 @@ namespace rhi
 	{
 		if (state.renderTargetCount > 0)
 		{
-			auto rt = checked_cast<TextureVk*>(state.renderTargetTextures[0]);
-			renderingInfo.renderArea.extent = { rt->getDesc().width , rt->getDesc().height };
+			auto rtv = checked_cast<TextureViewVk*>(state.renderTargetViews[0]);
+			renderingInfo.renderArea.extent = { rtv->texture.getDesc().width , rtv->texture.getDesc().height };
 		}
 		else
 		{
-			auto ds = checked_cast<TextureVk*>(state.depthStencilTexture);
-			renderingInfo.renderArea.extent = { ds->getDesc().width , ds->getDesc().height };
+			auto dsv = checked_cast<TextureViewVk*>(state.depthStencilView);
+			renderingInfo.renderArea.extent = { dsv->texture.getDesc().width , dsv->texture.getDesc().height };
 		}
 		renderingInfo.layerCount = 1;
 
 		for (uint32_t i = 0; i < state.renderTargetCount; ++i)
 		{
-			auto renderTarget = checked_cast<TextureVk*>(state.renderTargetTextures[i]);
+			auto rtv = checked_cast<TextureViewVk*>(state.renderTargetViews[i]);
 			auto& colorAttachment = colorAttachments[i];
 			colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 			colorAttachment.pNext = nullptr;
-			colorAttachment.imageView = renderTarget->view;
+			colorAttachment.imageView = rtv->imageView;
 			colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 			colorAttachment.loadOp = state.clearRenderTarget ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
 			colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -486,7 +486,7 @@ namespace rhi
 
 		depthStencilAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 		depthStencilAttachment.pNext = nullptr;
-		depthStencilAttachment.imageView = checked_cast<TextureVk*>(state.depthStencilTexture)->view;
+		depthStencilAttachment.imageView = checked_cast<TextureViewVk*>(state.depthStencilView)->imageView;
 		depthStencilAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 		depthStencilAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		depthStencilAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -542,17 +542,17 @@ namespace rhi
 			}
 		}
 
-		assert(state.renderTargetCount > 0 || state.depthStencilTexture != nullptr);
+		assert(state.renderTargetCount > 0 || state.depthStencilView != nullptr);
 		for (uint32_t i = 0; i < state.renderTargetCount; ++i)
 		{
-			assert(state.renderTargetTextures[i] != nullptr);
-			auto& renderTarget = static_cast<TextureVk&>(*state.renderTargetTextures[i]);
-			transitionTextureState(renderTarget, ResourceState::RenderTarget);
+			assert(state.renderTargetViews[i] != nullptr);
+			auto& renderTargetView = static_cast<TextureViewVk&>(*state.renderTargetViews[i]);
+			transitionTextureState(renderTargetView.texture, ResourceState::RenderTarget);
 		}
-		if (state.depthStencilTexture)
+		if (state.depthStencilView)
 		{
-			auto& depthStencil = static_cast<TextureVk&>(*state.depthStencilTexture);
-			transitionTextureState(depthStencil, ResourceState::DepthWrite);
+			auto& depthStencilView = static_cast<TextureViewVk&>(*state.depthStencilView);
+			transitionTextureState(depthStencilView.texture, ResourceState::DepthWrite);
 		}
 		// Because once the graphics state is set, the render target is always changed. 
 		// and Barrier must not be placed within a render section started with vkCmdBeginRendering

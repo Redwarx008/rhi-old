@@ -43,6 +43,7 @@ namespace rhi
 		bool isCompressed() const { return blockSize != 1; }
 	};
 
+
 	class TextureVk final : public ITexture, public MemoryResource
 	{
 	public:
@@ -52,19 +53,41 @@ namespace rhi
 		void setState(ResourceState state) { m_State = state; }
 		ResourceState getState() const override { return m_State; }
 		const TextureDesc& getDesc() const override { return desc; }
+		ITextureView* getDefaultView() const override { return m_DefaultView; }
+		ITextureView* createView(TextureViewDesc desc) override;
 		Object getNativeObject(NativeObjectType type) const override;
 		~TextureVk();
 		
+		void createDefaultView();
 		ResourceState submittedState = ResourceState::Undefined;
 		TextureDesc desc;
 		VkImage image = VK_NULL_HANDLE;
-		VkImageView	view = VK_NULL_HANDLE;
 		VkFormat format = VK_FORMAT_UNDEFINED;
 	private:
 		TextureVk() = default;
 		const ContextVk& m_Context;
 		const VmaAllocator& m_Allocator;
 		ResourceState m_State = ResourceState::Undefined;
+		ITextureView* m_DefaultView = nullptr;
+	};
+
+	class TextureViewVk final : public ITextureView
+	{
+	public:
+		explicit TextureViewVk(const ContextVk& context, TextureVk& texture)
+			:m_Context(context),
+			texture(texture){}
+		const TextureViewDesc& getDesc() const override { return desc; }
+		ITexture* getTexture() const override { return &texture; }
+		Object getNativeObject(NativeObjectType type) const override;
+		~TextureViewVk();
+
+		TextureViewDesc desc;
+		TextureVk& texture;
+		VkImageView imageView = VK_NULL_HANDLE;
+	private:
+		TextureViewVk() = default;
+		const ContextVk& m_Context;
 	};
 
 	struct TextureCopyInfo

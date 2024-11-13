@@ -335,23 +335,6 @@ namespace rhi
 		vkDeviceWaitIdle(context.device);
 	}
 
-	static void createDefaultImageView(VkDevice device, ITexture& texture, const TextureDesc& desc)
-	{
-		TextureVk& tex = static_cast<TextureVk&>(texture);
-		VkImageViewCreateInfo viewCreateInfo{};
-		viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		viewCreateInfo.viewType = getVkImageViewType(desc.dimension);
-		viewCreateInfo.format = tex.format;
-		viewCreateInfo.image = tex.image;
-		viewCreateInfo.subresourceRange.aspectMask = getVkAspectMask(tex.format);
-		viewCreateInfo.subresourceRange.baseArrayLayer = 0;
-		viewCreateInfo.subresourceRange.layerCount = desc.arraySize;
-		viewCreateInfo.subresourceRange.baseMipLevel = 0;
-		viewCreateInfo.subresourceRange.levelCount = desc.mipLevels;
-		VkResult res = vkCreateImageView(device, &viewCreateInfo, nullptr, &tex.view);
-		CHECK_VK_RESULT(res, "Could not create vkImageView");
-	}
-
 	ITexture* RenderDeviceVk::createTexture(const TextureDesc& desc)
 	{
 		assert(desc.format != Format::UNKNOWN);
@@ -387,7 +370,7 @@ namespace rhi
 			return nullptr;
 		}
 		tex->managed = true;
-		createDefaultImageView(context.device, *tex, desc);
+		tex->createDefaultView();
 
 		return tex;
 	}
@@ -682,15 +665,12 @@ namespace rhi
 			{
 			case ShaderResourceType::SampledTexture:
 			{
-				assert(item.resource != nullptr);
-
-				auto texture = checked_cast<TextureVk*>(item.resource);
-	
-				VkImageView view = texture->view;
+				assert(item.textureView != nullptr);
+				auto textureView = checked_cast<TextureViewVk*>(item.textureView);
 
 				VkDescriptorImageInfo descriptorImageInfo{};
 				descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				descriptorImageInfo.imageView = view;
+				descriptorImageInfo.imageView = textureView->imageView;
 
 				auto& setWriter = descriptorSetWriters.emplace_back();
 				setWriter.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -708,14 +688,12 @@ namespace rhi
 			}
 			case ShaderResourceType::StorageTexture:
 			{
-				assert(item.resource != nullptr);
-				auto texture = checked_cast<TextureVk*>(item.resource);
-
-				VkImageView view = texture->view;
+				assert(item.textureView != nullptr);
+				auto textureView = checked_cast<TextureViewVk*>(item.textureView);
 
 				VkDescriptorImageInfo descriptorImageInfo{};
 				descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-				descriptorImageInfo.imageView = view;
+				descriptorImageInfo.imageView = textureView->imageView;
 
 				auto& setWriter = descriptorSetWriters.emplace_back();
 				setWriter.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -731,18 +709,15 @@ namespace rhi
 
 				break;
 			}
-			case ShaderResourceType::TextureSampler:
+			case ShaderResourceType::TextureWithSampler:
 			{
-				assert(item.resource != nullptr);
+				assert(item.textureView != nullptr);
 				assert(item.sampler != nullptr);
-
-				auto texture = checked_cast<TextureVk*>(item.resource);
-
-				VkImageView view = texture->view;
+				auto textureView = checked_cast<TextureViewVk*>(item.textureView);
 
 				VkDescriptorImageInfo descriptorImageInfo{};
 				descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				descriptorImageInfo.imageView = view;
+				descriptorImageInfo.imageView = textureView->imageView;
 				descriptorImageInfo.sampler = checked_cast<SamplerVk*>(item.sampler)->sampler;
 
 				auto& setWriter = descriptorSetWriters.emplace_back();
@@ -762,9 +737,8 @@ namespace rhi
 			case ShaderResourceType::StorageBuffer:
 			case ShaderResourceType::UniformBuffer:
 			{
-				assert(item.resource != nullptr);
-
-				auto buffer = checked_cast<BufferVk*>(item.resource);
+				assert(item.buffer != nullptr);
+				auto buffer = checked_cast<BufferVk*>(item.buffer);
 
 				VkDescriptorBufferInfo descriptorBufferInfo{};
 				descriptorBufferInfo.buffer = buffer->buffer;
@@ -1222,8 +1196,7 @@ namespace rhi
 		tex->managed = false;
 		tex->format = formatToVkFormat(desc.format);
 		tex->desc = desc;
-
-		createDefaultImageView(context.device, *tex, desc);
+		tex->createDefaultView();
 
 		return tex;
 	}

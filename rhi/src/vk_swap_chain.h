@@ -12,6 +12,7 @@ namespace rhi
 {
 	static constexpr uint32_t g_MaxConcurrentFrames = 2;
 
+	class TextureVk;
 	class RenderDeviceVk;
 	class CommandListVk;
 	class SwapChainVk final : public ISwapChain
@@ -22,8 +23,8 @@ namespace rhi
 		void beginFrame() override;
 		void present() override;
 		void resize() override;
-		ITexture* getCurrentRenderTargetTexture() override;
-		ITexture* getDepthStencilTexture() override;
+		ITextureView* getCurrentRenderTargetView() override;
+		ITextureView* getDepthStencilView() override;
 		Format getRenderTargetFormat() override { return m_ColorFormat; }
 		Format getDepthStencilFormat() override { return m_DepthStencilFormat; }
 	private:
@@ -53,7 +54,7 @@ namespace rhi
 
 		std::unique_ptr<CommandListVk> m_CompleteRenderingCmdList;
 
-		std::vector<std::unique_ptr<ITexture>> m_ColorAttachments;
-		std::unique_ptr<ITexture> m_DepthStencilAttachments;
+		std::vector<std::unique_ptr<TextureVk>> m_ColorAttachments;
+		std::unique_ptr<TextureVk> m_DepthStencilAttachments;
 	};
 }

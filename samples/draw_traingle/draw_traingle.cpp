@@ -94,8 +94,6 @@ public:
 
 		RenderDeviceCreateInfo rdCI{};
 		rdCI.enableValidationLayer = true;
-		rdCI.enableGeometryShader = true;
-		rdCI.enableTessellationShader = true;
 		
 		m_RenderDevice = std::unique_ptr<IRenderDevice>(createRenderDevice(rdCI));
 
@@ -209,11 +207,11 @@ public:
 		shaderData.viewMatrix = camera.matrices.view;
 		shaderData.modelMatrix = glm::mat4(1.0f);
 
-		auto renderTarget = m_SwapChain->getCurrentRenderTargetTexture();
-		auto depthStencil = m_SwapChain->getDepthStencilTexture();
+		auto rtv = m_SwapChain->getCurrentRenderTargetView();
+		auto dsv = m_SwapChain->getDepthStencilView();
 
-		m_GraphicState.renderTargetTextures[0] = renderTarget;
-		m_GraphicState.depthStencilTexture = depthStencil;
+		m_GraphicState.renderTargetViews[0] = rtv;
+		m_GraphicState.depthStencilView = dsv;
 		// If no scissor is provided, it will be set to the corresponding viewport size.
 		Rect scissor{ (int)m_windowWidth / 4 * 3, (int)m_windowHeight / 4 * 3 };
 

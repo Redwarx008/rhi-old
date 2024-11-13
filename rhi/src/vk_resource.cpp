@@ -3,6 +3,7 @@
 
 #include <array>
 #include <unordered_map>
+#include "vk_errors.h"
 
 namespace rhi
 {
@@ -440,10 +441,46 @@ namespace rhi
 			vmaDestroyImage(m_Allocator, image, allocation);
 		}
 
-		if (view)
+		if (m_DefaultView)
 		{
-			vkDestroyImageView(m_Context.device, view, nullptr);
+			delete m_DefaultView;
+			m_DefaultView = nullptr; 
 		}
+	}
+
+	ITextureView* TextureVk::createView(TextureViewDesc desc)
+	{
+		auto textureView = new TextureViewVk(m_Context, *this);
+
+		VkImageViewCreateInfo viewCreateInfo{};
+		viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		viewCreateInfo.viewType = getVkImageViewType(desc.dimension);
+		viewCreateInfo.format = format;
+		viewCreateInfo.image = image;
+		viewCreateInfo.subresourceRange.aspectMask = getVkAspectMask(format);
+		viewCreateInfo.subresourceRange.baseArrayLayer = desc.baseArrayLayer;
+		viewCreateInfo.subresourceRange.layerCount = desc.arrayLayerCount;
+		viewCreateInfo.subresourceRange.baseMipLevel = desc.baseMipLevel;
+		viewCreateInfo.subresourceRange.levelCount = desc.mipLevelCount;
+		VkResult err = vkCreateImageView(m_Context.device, &viewCreateInfo, nullptr, &textureView->imageView);
+		CHECK_VK_RESULT(err, "Could not create TextureView");
+		if (err != VK_SUCCESS)
+		{
+			delete textureView;
+		}
+		return textureView;
+	}
+
+	void TextureVk::createDefaultView()
+	{
+		assert(this->m_DefaultView == nullptr);
+		TextureViewDesc desc{};
+		desc.dimension = this->desc.dimension;
+		desc.baseArrayLayer = 0;
+		desc.arrayLayerCount = this->desc.arraySize;
+		desc.baseMipLevel = 0;
+		desc.mipLevelCount = this->desc.mipLevels;
+		this->m_DefaultView = checked_cast<TextureViewVk*>(createView(desc));
 	}
 
 	Object TextureVk::getNativeObject(NativeObjectType type) const
@@ -453,10 +490,24 @@ namespace rhi
 		case NativeObjectType::VK_Image:
 			return static_cast<Object>(image);
 		case NativeObjectType::VK_ImageView:
-			return static_cast<Object>(view);
+			return static_cast<Object>(m_DefaultView);
 		default:
 			return nullptr;
 		}
+	}
+
+	TextureViewVk::~TextureViewVk()
+	{
+		vkDestroyImageView(m_Context.device, imageView, nullptr);
+	}
+
+	Object TextureViewVk::getNativeObject(NativeObjectType type) const
+	{
+		if (type == NativeObjectType::VK_ImageView)
+		{
+			return static_cast<Object>(imageView);
+		}
+		return nullptr;
 	}
 
 	// buffer
@@ -683,7 +734,7 @@ namespace rhi
 		VkDescriptorType descriptorType{};
 		switch (type)
 		{
-		case ShaderResourceType::TextureSampler:
+		case ShaderResourceType::TextureWithSampler:
 			descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 			break;
 		case ShaderResourceType::Sampler:
