@@ -83,15 +83,7 @@ ENDIF()
 add_subdirectory(third_party)
 
 set(interface_rhi 
-	
-	
-	
-	
 	"include/rhi/rhi.h"
-	
-	
-	
-	
 	 )
 set(common_rhi
 	"include/rhi/common/Error.h"
@@ -102,21 +94,14 @@ set(src_vk
 	"src/vk_vma.cpp"
 	"src/vk_render_device.h"
 	"src/vk_render_device.cpp"
-	 
-	
 	"src/vk_resource.h"
 	"src/vk_resource.cpp"
-	
 	"src/vk_swap_chain.h"
 	"src/vk_swap_chain.cpp"
 	"src/vk_rhi.cpp"
 	"src/vk_errors.h"
 	"src/vk_command_list.h"
 	"src/vk_command_list.cpp"
-	 
-	 
-	 
-	 
 	"src/vk_pipeline.h"
 	"src/vk_pipeline.cpp"  )
 
