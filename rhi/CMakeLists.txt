@@ -84,7 +84,7 @@ add_subdirectory(third_party)
 
 set(interface_rhi 
 	"include/rhi/rhi.h"
-	 )
+	"include/rhi/rhi_struct.h")
 set(common_rhi
 	"include/rhi/common/Error.h"
 	"include/rhi/common/Utils.h"
