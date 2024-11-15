@@ -49,12 +49,14 @@ namespace rhi
 
 #define ENUM_CLASS_FLAG_OPERATORS(T) \
     inline constexpr T operator | (T a, T b) { return T(uint32_t(a) | uint32_t(b)); } \
+	inline constexpr T operator |= (T a, T b) {return T(a = a | b);}\
     inline constexpr T operator & (T a, T b) { return T(uint32_t(a) & uint32_t(b)); } /* NOLINT(bugprone-macro-parentheses) */ \
+	inline constexpr T operator &= (T a, T b) {return T(a = a & b);}\
     inline constexpr T operator ~ (T a) { return T(~uint32_t(a)); } /* NOLINT(bugprone-macro-parentheses) */ \
     inline constexpr bool operator !(T a) { return uint32_t(a) == 0; } \
     inline constexpr bool operator ==(T a, uint32_t b) { return uint32_t(a) == b; } \
     inline constexpr bool operator !=(T a, uint32_t b) { return uint32_t(a) != b; }	\
-
+	
 
 	template <typename T>
 	bool isPowerOfTwo(T val)

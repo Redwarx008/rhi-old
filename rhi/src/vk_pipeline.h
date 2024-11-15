@@ -3,7 +3,7 @@
 #include <vulkan/vulkan.h>
 
 #include "rhi/rhi.h"
-
+#include <vector>
 namespace rhi
 {
 	struct ContextVk;
@@ -22,6 +22,13 @@ namespace rhi
 		VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 		VkPipeline pipeline = VK_NULL_HANDLE;
 		VkPipelineCache pipelineCache = VK_NULL_HANDLE;
+
+		struct PushConstantInfo
+		{
+			PushConstantDesc desc{};
+			uint32_t offset = 0;
+		};
+		std::vector<PushConstantInfo> pushConstantInfos;
 	private:
 		const ContextVk& m_Context;
 	};
@@ -35,9 +42,16 @@ namespace rhi
 		bool getPipelineCacheData(void* pData, size_t* pDataSize) const override;
 		Object getNativeObject(NativeObjectType type) const override;
 
-		VkPipelineLayout pipelineLayout;
-		VkPipeline pipeline;
-		VkPipelineCache pipelineCache;
+		VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+		VkPipeline pipeline = VK_NULL_HANDLE;
+		VkPipelineCache pipelineCache = VK_NULL_HANDLE;
+
+		struct PushConstantInfo
+		{
+			PushConstantDesc desc{};
+			uint32_t offset = 0;
+		};
+		std::vector<PushConstantInfo> pushConstantInfos;
 	private:
 		const ContextVk& m_Context;
 	};

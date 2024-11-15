@@ -6,6 +6,7 @@
 #include "rhi/common/Error.h"
 
 #include <array>
+#include <optional>
 
 namespace rhi
 {
@@ -766,6 +767,39 @@ namespace rhi
 		}
 
 		vkCmdSetScissor(m_CurrentCmdBuf->vkCmdBuf, 0, scissorCount, rects);
+	}
+
+	void CommandListVk::setPushConstant(ShaderType stages, const void* data)
+	{
+		assert(m_CurrentCmdBuf);
+		ASSERT_MSG(m_LastGraphicsState.pipeline || m_LastComputeState.pipeline, "set PipelineState before push constant");
+
+		if (m_LastGraphicsState.pipeline)
+		{
+			auto pipeline = checked_cast<GraphicsPipelineVk*>(m_LastGraphicsState.pipeline);
+			for (auto& info : pipeline->pushConstantInfos)
+			{
+				if (stages == info.desc.stage)
+				{
+					vkCmdPushConstants(m_CurrentCmdBuf->vkCmdBuf, pipeline->pipelineLayout,
+						shaderTypeToVkShaderStageFlagBits(stages), info.offset, info.desc.size, data);
+					break;
+				}
+			}
+		}
+		else if (m_LastComputeState.pipeline)
+		{
+			auto pipeline = checked_cast<ComputePipelineVk*>(m_LastComputeState.pipeline);
+			for (auto& info : pipeline->pushConstantInfos)
+			{
+				if (stages == info.desc.stage)
+				{
+					vkCmdPushConstants(m_CurrentCmdBuf->vkCmdBuf, pipeline->pipelineLayout,
+						shaderTypeToVkShaderStageFlagBits(stages), info.offset, info.desc.size, data);
+					break;
+				}
+			}
+		}
 	}
 
 	void CommandListVk::draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)

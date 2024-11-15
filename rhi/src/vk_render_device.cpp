@@ -925,7 +925,24 @@ namespace rhi
 			auto resourceSetLayout = checked_cast<ResourceSetLayoutVk*>(pipelineCI.resourceSetLayouts[i]);
 			descriptorSetLayouts[i] = resourceSetLayout->descriptorSetLayout;
 		}
+		
+		std::vector<VkPushConstantRange> pushConstantRanges(pipelineCI.pushConstantCount);
+		ShaderType usedStages = ShaderType::Unknown;
+		uint32_t offset = 0;
+		for (uint32_t i = 0; i < pushConstantRanges.size(); ++i)
+		{
+			ASSERT_MSG((pipelineCI.pushConstantDescs[i].stage & usedStages) == 0, "Each pipeline stage can only have one pushConstants."); // to simplify the design
+			pushConstantRanges[i].stageFlags = shaderTypeToVkShaderStageFlagBits(pipelineCI.pushConstantDescs[i].stage);
+			pushConstantRanges[i].size = pipelineCI.pushConstantDescs[i].size;
+			pushConstantRanges[i].offset = offset;
+			pipeline->pushConstantInfos.push_back({ pipelineCI.pushConstantDescs[i], offset });
+			offset += pushConstantRanges[i].size;
+			usedStages = usedStages | pipelineCI.pushConstantDescs[i].stage;
+		}
+
 		VkPipelineLayoutCreateInfo pipelineLayoutCI{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+		pipelineLayoutCI.pushConstantRangeCount = static_cast<uint32_t>(pushConstantRanges.size());
+		pipelineLayoutCI.pPushConstantRanges = pushConstantRanges.data();
 		pipelineLayoutCI.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
 		pipelineLayoutCI.pSetLayouts = descriptorSetLayouts.data();
 		VkResult err = vkCreatePipelineLayout(context.device, &pipelineLayoutCI, nullptr, &pipeline->pipelineLayout);
@@ -1140,7 +1157,20 @@ namespace rhi
 			descriptorSetLayouts[i] = resourceSetLayout->descriptorSetLayout;
 		}
 
+		std::vector<VkPushConstantRange> pushConstantRanges(pipelineCI.pushConstantCount);
+		uint32_t offset = 0;
+		for (uint32_t i = 0; i < pushConstantRanges.size(); ++i)
+		{
+			ASSERT_MSG(pipelineCI.pushConstantDescs[i].size & 3 == 0, "pushConstant size must be a multiple of 4.");
+			pushConstantRanges[i].stageFlags = shaderTypeToVkShaderStageFlagBits(pipelineCI.pushConstantDescs[i].stage);
+			pushConstantRanges[i].size = pipelineCI.pushConstantDescs[i].size;
+			pushConstantRanges[i].offset = offset;
+			offset += pushConstantRanges[i].size;
+		}
+
 		VkPipelineLayoutCreateInfo pipelineLayoutCI{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+		pipelineLayoutCI.pushConstantRangeCount = static_cast<uint32_t>(pushConstantRanges.size());
+		pipelineLayoutCI.pPushConstantRanges = pushConstantRanges.data();
 		pipelineLayoutCI.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
 		pipelineLayoutCI.pSetLayouts = descriptorSetLayouts.data();
 		VkResult err = vkCreatePipelineLayout(context.device, &pipelineLayoutCI, nullptr, &pipeline->pipelineLayout);

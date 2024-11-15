@@ -130,8 +130,10 @@ namespace rhi
 		virtual void* mapBuffer(IBuffer& buffer, MapBufferUsage usage) = 0;
 		virtual void updateTexture(ITexture& texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo) = 0;
 
+		virtual void setPushConstant(ShaderType stages, const void* data) = 0;
 		virtual void setScissors(const Rect* scissors, uint32_t scissorCount) = 0;
 		virtual void setGraphicsState(const GraphicsState& state) = 0;
+
 		virtual void draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance) = 0;
 		virtual void drawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) = 0;
 		virtual void drawIndirect(uint64_t offset, uint32_t drawCount) = 0;

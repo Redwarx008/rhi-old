@@ -357,7 +357,21 @@ namespace rhi
 		AllGraphics = Vertex | TessellationControl | TessellationEvaluation | Geometry | Fragment,
 		All = Vertex | TessellationControl | TessellationEvaluation | Geometry | Fragment | Task | Mesh | Compute
 	};
-	ENUM_CLASS_FLAG_OPERATORS(ShaderType);
+	inline constexpr ShaderType operator | (ShaderType a, ShaderType b) {
+		return ShaderType(uint32_t(a) | uint32_t(b));
+	} inline constexpr ShaderType operator |= (ShaderType a, ShaderType b) {
+		return ShaderType(a = a | b);
+	} inline constexpr ShaderType operator & (ShaderType a, ShaderType b) {
+		return ShaderType(uint32_t(a) & uint32_t(b));
+	} inline constexpr ShaderType operator ~ (ShaderType a) {
+		return ShaderType(~uint32_t(a));
+	} inline constexpr bool operator !(ShaderType a) {
+		return uint32_t(a) == 0;
+	} inline constexpr bool operator ==(ShaderType a, uint32_t b) {
+		return uint32_t(a) == b;
+	} inline constexpr bool operator !=(ShaderType a, uint32_t b) {
+		return uint32_t(a) != b;
+	};
 
 	struct SpecializationConstant
 	{
@@ -808,6 +822,12 @@ namespace rhi
 		IndexBufferBinding& setOffset(uint32_t value) { offset = value; return *this; }
 	};
 
+	struct PushConstantDesc
+	{
+		ShaderType stage = ShaderType::Unknown;
+		uint32_t size = 0;
+	};
+
 	struct GraphicsPipelineCreateInfo
 	{
 		PrimitiveType primType = PrimitiveType::TriangleList;
@@ -815,8 +835,11 @@ namespace rhi
 		VertexInputAttribute* vertexInputAttributes;
 		uint32_t vertexInputAttributeCount = 0;
 
-		IResourceSetLayout** resourceSetLayouts;
+		IResourceSetLayout* const* resourceSetLayouts;
 		uint32_t resourceSetLayoutCount = 0;
+
+		const PushConstantDesc* pushConstantDescs;
+		uint32_t pushConstantCount = 0;
 
 		IShader* vertexShader = nullptr;
 		IShader* fragmentShader = nullptr;
@@ -847,25 +870,28 @@ namespace rhi
 		IResourceSetLayout** resourceSetLayouts;
 		uint32_t resourceSetLayoutCount = 0;
 
+		const PushConstantDesc* pushConstantDescs;
+		uint32_t pushConstantCount = 0;
+
 		const void* cacheData = nullptr;
 		uint64_t cacheSize = 0;
 	};
 
 	struct GraphicsPipelineDesc
 	{
-		PrimitiveType primType;
+		PrimitiveType primType = PrimitiveType::TriangleList;
 
 		BlendState blendState;
 		RasterState rasterState;
 		DepthStencilState depthStencilState;
 
-		Format renderTargetFormats[g_MaxColorAttachments];
+		Format renderTargetFormats[g_MaxColorAttachments]{};
 		uint32_t renderTargetFormatCount = 0;
 		Format depthStencilFormat = Format::UNKNOWN;
 
-		uint8_t sampleCount;
-		uint32_t patchControlPoints;
-		uint32_t viewportCount;
+		uint8_t sampleCount = 1;
+		uint32_t patchControlPoints = 0;
+		uint32_t viewportCount = 1;
 	};
 
 	struct GraphicsState
@@ -873,21 +899,21 @@ namespace rhi
 		IGraphicsPipeline* pipeline = nullptr;
 
 		uint32_t renderTargetCount = 0;
-		ITextureView* renderTargetViews[g_MaxColorAttachments];
+		ITextureView* renderTargetViews[g_MaxColorAttachments]{};
 		ITextureView* depthStencilView = nullptr;
 
 		uint32_t viewportCount = 0;
 		Viewport viewports[g_MaxViewPorts];
 
-		IResourceSet* resourceSets[g_MaxBoundDescriptorSets];
+		IResourceSet* resourceSets[g_MaxBoundDescriptorSets]{};
 		uint32_t resourceSetCount = 0;
 
-		VertexBufferBinding vertexBuffers[g_MaxVertexInputBindings];
+		VertexBufferBinding vertexBuffers[g_MaxVertexInputBindings]{};
 		uint32_t vertexBufferCount = 0;
 
 		IndexBufferBinding indexBuffer;
 
-		IBuffer* indirectBuffer;
+		IBuffer* indirectBuffer = nullptr;
 		// clear all rendertaget
 		bool clearRenderTarget = false;
 		bool clearDepthStencil = false;
@@ -899,7 +925,7 @@ namespace rhi
 
 		IBuffer* indirectBuffer = nullptr;
 
-		IResourceSet* resourceSets[g_MaxBoundDescriptorSets];
+		IResourceSet* resourceSets[g_MaxBoundDescriptorSets]{};
 		uint32_t resourceSetCount = 0;
 	};
 
