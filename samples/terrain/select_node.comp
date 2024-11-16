@@ -1,0 +1,30 @@
+#version 450
+
+layout(binding = 0) uniform sampler2D lowerMinMaxErrorMapMip;
+
+layout(binding = 1, std430) buffer ConsumeNodeList 
+{
+	uint count;
+	uvec2 data[];
+} consumeNodeList;
+
+layout(binding = 2, std430) buffer AppendNodeList 
+{
+	uint count;
+	uvec2 data[];
+} appendNodeList;
+
+layout(binding = 3, std430) buffer FinalNodeList 
+{
+	uint count;
+	uvec3 data[];
+} finalNodeList;
+
+
+void main()
+{
+	
+}
+
+
+
