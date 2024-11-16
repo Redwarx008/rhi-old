@@ -37,13 +37,13 @@ namespace rhi
 		IBuffer* createBuffer(const BufferDesc& desc, const void* data, size_t dataSize) override;
 		IShader* createShader(const ShaderCreateInfo& shaderCI, const uint32_t* pCode, size_t codeSize) override;
 		ISampler* createSampler(const SamplerDesc& desc) override;
-		void* mapBuffer(IBuffer& buffer) override;
+		void* mapBuffer(IBuffer* buffer) override;
 		ICommandList* createCommandList() override;
 		uint64_t executeCommandLists(ICommandList** cmdLists, size_t numCmdLists) override;
 		void waitForExecution(uint64_t executeID, uint64_t timeout = UINT64_MAX) override;
 		IResourceSetLayout* createResourceSetLayout(const ResourceSetLayoutItem* items, uint32_t itemCount) override;
-		IResourceSet* createResourceSet(const IResourceSetLayout& layout) override;
-		void writeResourceSet(IResourceSet& set, const ResourceSetItem* items, uint32_t itemCount) override;
+		IResourceSet* createResourceSet(const IResourceSetLayout* layout) override;
+		void writeResourceSet(IResourceSet* set, const ResourceSetItem* items, uint32_t itemCount) override;
 		IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineCreateInfo& pipelineCI) override;
 		IComputePipeline* createComputePipeline(const ComputePipelineCreateInfo& pipelineCI) override;
 	private:

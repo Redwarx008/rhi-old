@@ -71,11 +71,12 @@ namespace rhi
 		return (state & writeAccessStates) == state;
 	}
 
-	void CommandListVk::transitionFromSubmmitedState(ITexture& texture, ResourceState newState)
+	void CommandListVk::transitionFromSubmmitedState(ITexture* texture, ResourceState newState)
 	{
-		auto& textureVk = static_cast<TextureVk&>(texture);
+		assert(texture);
+		auto textureVk = checked_cast<TextureVk*>(texture);
 
-		ResourceState oldState = textureVk.submittedState;
+		ResourceState oldState = textureVk->submittedState;
 
 		// Always add barrier after writes.
 		bool isAfterWrites = resourceStateHasWriteAccess(oldState);
@@ -84,12 +85,12 @@ namespace rhi
 		if (transitionNecessary)
 		{
 			TextureBarrier& barrier = m_TextureBarriers.emplace_back();
-			barrier.texture = &textureVk;
+			barrier.texture = textureVk;
 			barrier.stateBefore = oldState;
 			barrier.stateAfter = newState;
 		}
 
-		textureVk.setState(newState);
+		textureVk->setState(newState);
 	}
 
 	void CommandListVk::updateSubmittedState()
@@ -101,11 +102,12 @@ namespace rhi
 		m_TrackingSubmittedStates.clear();
 	}
 
-	void CommandListVk::transitionTextureState(ITexture& texture, ResourceState newState)
+	void CommandListVk::transitionTextureState(ITexture* texture, ResourceState newState)
 	{
-		auto& textureVk = static_cast<TextureVk&>(texture);
+		assert(texture);
+		auto textureVk = checked_cast<TextureVk*>(texture);
 
-		ResourceState oldState = textureVk.getState();
+		ResourceState oldState = textureVk->getState();
 
 		// Always add barrier after writes.
 		bool isAfterWrites = resourceStateHasWriteAccess(oldState);
@@ -114,20 +116,21 @@ namespace rhi
 		if (transitionNecessary)
 		{
 			TextureBarrier& barrier = m_TextureBarriers.emplace_back();
-			barrier.texture = &textureVk;
+			barrier.texture = textureVk;
 			barrier.stateBefore = oldState;
 			barrier.stateAfter = newState;
 		}
 
-		m_TrackingSubmittedStates.push_back(&textureVk);
-		textureVk.setState(newState);
+		m_TrackingSubmittedStates.push_back(textureVk);
+		textureVk->setState(newState);
 	}
 
-	void CommandListVk::transitionBufferState(IBuffer& buffer, ResourceState newState)
+	void CommandListVk::transitionBufferState(IBuffer* buffer, ResourceState newState)
 	{
-		auto& bufferVk = static_cast<BufferVk&>(buffer);
+		assert(buffer);
+		auto bufferVk = checked_cast<BufferVk*>(buffer);
 
-		ResourceState oldState = bufferVk.getState();
+		ResourceState oldState = bufferVk->getState();
 
 		//if (bufferVk.getDesc().access != BufferAccess::GpuOnly)
 		//{
@@ -146,21 +149,21 @@ namespace rhi
 			// Example: same buffer used as index and vertex buffer, or as SRV and indirect arguments.
 			for (BufferBarrier& barrier : m_BufferBarriers)
 			{
-				if (barrier.buffer == &bufferVk)
+				if (barrier.buffer == bufferVk)
 				{
 					barrier.stateAfter = ResourceState(barrier.stateAfter | newState);
-					bufferVk.setState(barrier.stateAfter);
+					bufferVk->setState(barrier.stateAfter);
 					return;
 				}
 			}
 
 			BufferBarrier& barrier = m_BufferBarriers.emplace_back();
-			barrier.buffer = &bufferVk;
+			barrier.buffer = bufferVk;
 			barrier.stateBefore = oldState;
 			barrier.stateAfter = newState;
 		}
 
-		bufferVk.setState(newState);
+		bufferVk->setState(newState);
 	}
 
 	void CommandListVk::commitBarriers()
@@ -254,18 +257,18 @@ namespace rhi
 		m_VkImageMemoryBarriers.clear();
 	}
 
-	void CommandListVk::setBufferBarrier(BufferVk& buffer, VkPipelineStageFlags2 dstStage, VkAccessFlags2 dstAccess)
+	void CommandListVk::setBufferBarrier(BufferVk* buffer, VkPipelineStageFlags2 dstStage, VkAccessFlags2 dstAccess)
 	{
-		auto& buf = static_cast<BufferVk&>(buffer);
+		assert(buffer);
 
 		VkBufferMemoryBarrier2 barrier{ VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 };
 		barrier.pNext = nullptr;
-		barrier.srcStageMask = resourceStatesToVkPipelineStageFlags2(buf.getState());
-		barrier.srcAccessMask = resourceStatesToVkAccessFlags2(buf.getState());
+		barrier.srcStageMask = resourceStatesToVkPipelineStageFlags2(buffer->getState());
+		barrier.srcAccessMask = resourceStatesToVkAccessFlags2(buffer->getState());
 		barrier.dstStageMask = dstStage;
 		barrier.dstAccessMask = dstAccess;
-		barrier.buffer = buf.buffer;
-		barrier.size = buf.getDesc().size;
+		barrier.buffer = buffer->buffer;
+		barrier.size = buffer->getDesc().size;
 		barrier.offset = 0;
 
 		VkDependencyInfo dependencyInfo{ VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
@@ -277,18 +280,19 @@ namespace rhi
 		vkCmdPipelineBarrier2(m_CurrentCmdBuf->vkCmdBuf, &dependencyInfo);
 	}
 
-	void CommandListVk::clearColorTexture(ITextureView& textureView, const ClearColor& color)
+	void CommandListVk::clearColorTexture(ITextureView* textureView, const ClearColor& color)
 	{
+		assert(textureView);
 		assert(m_CurrentCmdBuf);
-		auto& tv = static_cast<TextureViewVk&>(textureView);
-
-		VkClearColorValue clearValue = convertVkClearColor(color, tv.texture.desc.format);
+		auto tv = checked_cast<TextureViewVk*>(textureView);
+		auto texture = checked_cast<TextureVk*>(tv->getTexture());
+		VkClearColorValue clearValue = convertVkClearColor(color, texture->desc.format);
 
 		// Check if the textureView is one of the currently bound renderTargetView
 		int rendetTargetIndex = -1;
 		for (uint32_t i = 0; i < m_LastGraphicsState.renderTargetCount; ++i)
 		{
-			if (m_LastGraphicsState.renderTargetViews[i] == &textureView)
+			if (m_LastGraphicsState.renderTargetViews[i] == textureView)
 			{
 				rendetTargetIndex = i;
 			}
@@ -303,9 +307,9 @@ namespace rhi
 
 			VkClearRect clearRect{};
 			clearRect.rect.offset = { 0, 0 };
-			clearRect.rect.extent = { tv.texture.desc.width,  tv.texture.desc.height };
+			clearRect.rect.extent = { texture->desc.width,  texture->desc.height };
 			clearRect.baseArrayLayer = 0;
-			clearRect.layerCount = tv.texture.desc.arraySize;
+			clearRect.layerCount = texture->desc.arraySize;
 
 			vkCmdClearAttachments(m_CurrentCmdBuf->vkCmdBuf, 1, &clearAttachment, 1, &clearRect);
 		}
@@ -313,27 +317,29 @@ namespace rhi
 		{
 			if (m_EnableAutoTransition)
 			{
-				transitionTextureState(tv.texture, ResourceState::CopyDest);
+				transitionTextureState(tv->getTexture(), ResourceState::CopyDest);
 			}
 			commitBarriers();
 
 			VkImageSubresourceRange imageSubresourceRange{};
 			imageSubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			imageSubresourceRange.baseArrayLayer = tv.desc.baseArrayLayer;
-			imageSubresourceRange.layerCount = tv.desc.arrayLayerCount;
-			imageSubresourceRange.baseMipLevel = tv.desc.baseMipLevel;
-			imageSubresourceRange.levelCount = tv.desc.mipLevelCount;
+			imageSubresourceRange.baseArrayLayer = tv->desc.baseArrayLayer;
+			imageSubresourceRange.layerCount = tv->desc.arrayLayerCount;
+			imageSubresourceRange.baseMipLevel = tv->desc.baseMipLevel;
+			imageSubresourceRange.levelCount = tv->desc.mipLevelCount;
 
-			vkCmdClearColorImage(m_CurrentCmdBuf->vkCmdBuf, tv.texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &imageSubresourceRange);
+			vkCmdClearColorImage(m_CurrentCmdBuf->vkCmdBuf, texture->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &imageSubresourceRange);
 		}
 	}
 
-	void CommandListVk::clearDepthStencil(ITextureView& textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal)
+	void CommandListVk::clearDepthStencil(ITextureView* textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal)
 	{
+		assert(textureView);
 		assert(m_CurrentCmdBuf);
-		auto& tv = static_cast<TextureViewVk&>(textureView);
+		auto tv = checked_cast<TextureViewVk*>(textureView);
+		auto texture = checked_cast<TextureVk*>(tv->getTexture());
 
-		if (&textureView == m_LastGraphicsState.depthStencilView)
+		if (textureView == m_LastGraphicsState.depthStencilView)
 		{
 			VkClearAttachment clearAttachment{};
 			if ((flag & ClearDepthStencilFlag::Depth) != 0)
@@ -351,9 +357,9 @@ namespace rhi
 
 			VkClearRect clearRect{};
 			clearRect.rect.offset = { 0, 0 };
-			clearRect.rect.extent = { tv.texture.desc.width,  tv.texture.desc.height };
+			clearRect.rect.extent = { texture->desc.width,  texture->desc.height };
 			clearRect.baseArrayLayer = 0;
-			clearRect.layerCount = tv.texture.desc.arraySize;
+			clearRect.layerCount = texture->desc.arraySize;
 
 			vkCmdClearAttachments(m_CurrentCmdBuf->vkCmdBuf, 1, &clearAttachment, 1, &clearRect);
 		}
@@ -361,7 +367,7 @@ namespace rhi
 		{
 			if (m_EnableAutoTransition)
 			{
-				transitionTextureState(tv.texture, ResourceState::CopyDest);
+				transitionTextureState(texture, ResourceState::CopyDest);
 			}
 			commitBarriers();
 
@@ -374,28 +380,29 @@ namespace rhi
 			{
 				imageSubresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 			}
-			imageSubresourceRange.baseArrayLayer = tv.desc.baseArrayLayer;
-			imageSubresourceRange.layerCount = tv.desc.arrayLayerCount;
-			imageSubresourceRange.baseMipLevel = tv.desc.baseMipLevel;
-			imageSubresourceRange.levelCount = tv.desc.mipLevelCount;
+			imageSubresourceRange.baseArrayLayer = tv->desc.baseArrayLayer;
+			imageSubresourceRange.layerCount = tv->desc.arrayLayerCount;
+			imageSubresourceRange.baseMipLevel = tv->desc.baseMipLevel;
+			imageSubresourceRange.levelCount = tv->desc.mipLevelCount;
 
 			VkClearDepthStencilValue clearValue;
 			clearValue.depth = depthVal;
 			clearValue.stencil = stencilVal;
 
-			vkCmdClearDepthStencilImage(m_CurrentCmdBuf->vkCmdBuf, tv.texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &imageSubresourceRange);
+			vkCmdClearDepthStencilImage(m_CurrentCmdBuf->vkCmdBuf, texture->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &imageSubresourceRange);
 		}
 	}
 
-	void CommandListVk::copyBuffer(IBuffer& srcBuffer, uint64_t srcOffset, IBuffer& dstBuffer, uint64_t dstOffset, uint64_t dataSize)
+	void CommandListVk::copyBuffer(IBuffer* srcBuffer, uint64_t srcOffset, IBuffer* dstBuffer, uint64_t dstOffset, uint64_t dataSize)
 	{
+		assert(srcBuffer && dstBuffer);
 		assert(m_CurrentCmdBuf);
 
-		BufferVk& srcBuf = static_cast<BufferVk&>(srcBuffer);
-		BufferVk& dstBuf = static_cast<BufferVk&>(dstBuffer);
+		auto srcBuf = checked_cast<BufferVk*>(srcBuffer);
+		auto dstBuf = checked_cast<BufferVk*>(dstBuffer);
 
-		assert(srcOffset + dataSize <= srcBuf.getDesc().size);
-		assert(dstOffset + dataSize <= dstBuf.getDesc().size);
+		assert(srcOffset + dataSize <= srcBuf->getDesc().size);
+		assert(dstOffset + dataSize <= dstBuf->getDesc().size);
 
 		if (m_EnableAutoTransition)
 		{
@@ -408,15 +415,16 @@ namespace rhi
 		copyRegion.srcOffset = srcOffset;
 		copyRegion.dstOffset = dstOffset;
 		copyRegion.size = dataSize;
-		vkCmdCopyBuffer(m_CurrentCmdBuf->vkCmdBuf, srcBuf.buffer, dstBuf.buffer, 1, &copyRegion);
+		vkCmdCopyBuffer(m_CurrentCmdBuf->vkCmdBuf, srcBuf->buffer, dstBuf->buffer, 1, &copyRegion);
 	}
 
-	void CommandListVk::updateBuffer(IBuffer& buffer, const void* data, uint64_t dataSize, uint64_t offset)
+	void CommandListVk::updateBuffer(IBuffer* buffer, const void* data, uint64_t dataSize, uint64_t offset)
 	{
+		assert(buffer);
 		assert(m_CurrentCmdBuf);
-		BufferVk& buf = static_cast<BufferVk&>(buffer);
+		auto buf = checked_cast<BufferVk*>(buffer);
 
-		if (buf.getDesc().access != BufferAccess::GpuOnly)
+		if (buf->getDesc().access != BufferAccess::GpuOnly)
 		{
 			LOG_ERROR("this method only works with Buffer that tagged with BufferAccess::GpuOnly");
 			return;
@@ -436,7 +444,7 @@ namespace rhi
 
 			// Round up the write size to a multiple of 4
 			const uint64_t sizeToWrite = (dataSize + 3) & ~uint64_t(3);
-			vkCmdUpdateBuffer(m_CurrentCmdBuf->vkCmdBuf, buf.buffer, offset, sizeToWrite, data);
+			vkCmdUpdateBuffer(m_CurrentCmdBuf->vkCmdBuf, buf->buffer, offset, sizeToWrite, data);
 		}
 		else
 		{
@@ -445,16 +453,17 @@ namespace rhi
 			stageBufferDesc.usage = BufferUsage::None;
 			auto& stageBuffer = m_CurrentCmdBuf->referencedStageBuffer.emplace_back();
 			stageBuffer = std::unique_ptr<BufferVk>(checked_cast<BufferVk*>(m_RenderDevice.createBuffer(stageBufferDesc, data, dataSize)));
-			copyBuffer(*stageBuffer, 0, buf, 0, dataSize);
+			copyBuffer(stageBuffer.get(), 0, buf, 0, dataSize);
 		}
 	}
 
-	void* CommandListVk::mapBuffer(IBuffer& buffer, MapBufferUsage usage)
+	void* CommandListVk::mapBuffer(IBuffer* buffer, MapBufferUsage usage)
 	{
+		assert(buffer);
 		assert(m_CurrentCmdBuf);
-		auto& buf = static_cast<BufferVk&>(buffer);
+		auto buf = checked_cast<BufferVk*>(buffer);
 
-		ASSERT_MSG(buf.getDesc().access != BufferAccess::CpuRead,
+		ASSERT_MSG(buf->getDesc().access != BufferAccess::CpuRead,
 			"Only tagged with BufferAccess::CpuRead buffer can be mapped.");
 
 		if (usage == MapBufferUsage::Read)
@@ -463,20 +472,20 @@ namespace rhi
 		}
 		// do noting, Submission guarantees the host write being complete.
 
-		return buf.allocaionInfo.pMappedData;
+		return buf->allocaionInfo.pMappedData;
 	}
 
-	void CommandListVk::updateTexture(ITexture& texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo)
+	void CommandListVk::updateTexture(ITexture* texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo)
 	{
 		assert(m_CurrentCmdBuf);
-		TextureVk& tex = static_cast<TextureVk&>(texture);
+		auto tex = checked_cast<TextureVk*>(texture);
 
-		TextureCopyInfo copyInfo = getTextureCopyInfo(tex.getDesc().format, updateInfo.dstRegion,
+		TextureCopyInfo copyInfo = getTextureCopyInfo(tex->getDesc().format, updateInfo.dstRegion,
 			(uint32_t)m_RenderDevice.getPhysicalDeviceProperties().limits.optimalBufferCopyRowPitchAlignment);
 
-		ASSERT_MSG(updateInfo.dstRegion.maxX <= tex.getDesc().width << updateInfo.mipLevel &&
-			updateInfo.dstRegion.maxY <= tex.getDesc().height << updateInfo.mipLevel &&
-			updateInfo.dstRegion.maxZ <= tex.getDesc().depth << updateInfo.mipLevel, "dest region is out of bound for this miplevel.");
+		ASSERT_MSG(updateInfo.dstRegion.maxX <= tex->getDesc().width << updateInfo.mipLevel &&
+			updateInfo.dstRegion.maxY <= tex->getDesc().height << updateInfo.mipLevel &&
+			updateInfo.dstRegion.maxZ <= tex->getDesc().depth << updateInfo.mipLevel, "dest region is out of bound for this miplevel.");
 
 		ASSERT_MSG(updateInfo.srcRowPitch < copyInfo.rowBytesCount, "src row pitch is blow the dst region row pitch.");
 		ASSERT_MSG(dataSize < copyInfo.regionBytesCount, "Not enough data was provided to update to the dst region.");
@@ -502,7 +511,7 @@ namespace rhi
 		}
 
 		VkBufferImageCopy bufferCopyRegion = {};
-		bufferCopyRegion.imageSubresource.aspectMask = getVkAspectMask(tex.format);
+		bufferCopyRegion.imageSubresource.aspectMask = getVkAspectMask(tex->format);
 		bufferCopyRegion.imageSubresource.baseArrayLayer = updateInfo.arrayLayer;
 		bufferCopyRegion.imageSubresource.layerCount = 1;
 		bufferCopyRegion.imageSubresource.mipLevel = updateInfo.mipLevel;
@@ -515,14 +524,15 @@ namespace rhi
 		}
 		commitBarriers();
 
-		vkCmdCopyBufferToImage(m_CurrentCmdBuf->vkCmdBuf, stageBuffer->buffer, tex.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferCopyRegion);
+		vkCmdCopyBufferToImage(m_CurrentCmdBuf->vkCmdBuf, stageBuffer->buffer, tex->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferCopyRegion);
 	}
 
-	void CommandListVk::transitionResourceSet(IResourceSet& set, ShaderType dstVisibleStages)
+	void CommandListVk::transitionResourceSet(IResourceSet* set, ShaderType dstVisibleStages)
 	{
-		auto& resourceSet = static_cast<ResourceSetVk&>(set);
+		assert(set);
+		auto resourceSet = checked_cast<ResourceSetVk*>(set);
 
-		for (auto& itemWithVisibleStages : resourceSet.resourcesNeedStateTransition)
+		for (auto& itemWithVisibleStages : resourceSet->resourcesNeedStateTransition)
 		{
 			if ((itemWithVisibleStages.visibleStages & dstVisibleStages) == 0)
 			{
@@ -536,27 +546,27 @@ namespace rhi
 			{
 				assert(itemWithVisibleStages.item.textureView);
 				auto textureView = checked_cast<TextureViewVk*>(itemWithVisibleStages.item.textureView);
-				transitionTextureState(textureView->texture, ResourceState::ShaderResource);
+				transitionTextureState(textureView->getTexture(), ResourceState::ShaderResource);
 				break;
 			}
 			case ShaderResourceType::StorageTexture:
 			{
 				assert(itemWithVisibleStages.item.textureView);
 				auto textureView = checked_cast<TextureViewVk*>(itemWithVisibleStages.item.textureView);
-				transitionTextureState(textureView->texture, ResourceState::UnorderedAccess);
+				transitionTextureState(textureView->getTexture(), ResourceState::UnorderedAccess);
 				break;
 			}
 			case ShaderResourceType::UniformBuffer:
 			{
 				assert(itemWithVisibleStages.item.buffer);
-				auto& buffer = static_cast<BufferVk&>(*itemWithVisibleStages.item.buffer);
+				auto buffer = checked_cast<BufferVk*>(itemWithVisibleStages.item.buffer);
 				transitionBufferState(buffer, ResourceState::ShaderResource);
 				break;
 			}
 			case ShaderResourceType::StorageBuffer:
 			{
 				assert(itemWithVisibleStages.item.buffer);
-				auto& buffer = static_cast<BufferVk&>(*itemWithVisibleStages.item.buffer);
+				auto buffer = checked_cast<BufferVk*>(itemWithVisibleStages.item.buffer);
 				transitionBufferState(buffer, ResourceState::UnorderedAccess);
 				break;
 			}
@@ -573,12 +583,14 @@ namespace rhi
 		if (state.renderTargetCount > 0)
 		{
 			auto rtv = checked_cast<TextureViewVk*>(state.renderTargetViews[0]);
-			renderingInfo.renderArea.extent = { rtv->texture.getDesc().width , rtv->texture.getDesc().height };
+			auto texture = checked_cast<TextureVk*>(rtv->getTexture());
+			renderingInfo.renderArea.extent = { texture->getDesc().width , texture->getDesc().height };
 		}
 		else
 		{
 			auto dsv = checked_cast<TextureViewVk*>(state.depthStencilView);
-			renderingInfo.renderArea.extent = { dsv->texture.getDesc().width , dsv->texture.getDesc().height };
+			auto texture = checked_cast<TextureVk*>(dsv->getTexture());
+			renderingInfo.renderArea.extent = { texture->getDesc().width , texture->getDesc().height };
 		}
 		renderingInfo.layerCount = 1;
 
@@ -630,25 +642,25 @@ namespace rhi
 			for (uint32_t i = 0; i < state.resourceSetCount; ++i)
 			{
 				assert(state.resourceSets[i] != nullptr);
-				transitionResourceSet(*state.resourceSets[i], graphicsStages);
+				transitionResourceSet(state.resourceSets[i], graphicsStages);
 			}
 
 			// vertex buffer
 			for (uint32_t i = 0; i < state.vertexBufferCount; ++i)
 			{
 				assert(state.vertexBuffers[i].buffer != nullptr);
-				auto& buffer = static_cast<BufferVk&>(*state.vertexBuffers[i].buffer);
+				auto buffer = checked_cast<BufferVk*>(state.vertexBuffers[i].buffer);
 				transitionBufferState(buffer, ResourceState::VertexBuffer);
 			}
 
 			// index buffer
 			assert(state.indexBuffer.buffer != nullptr);
-			auto& buffer = static_cast<BufferVk&>(*state.indexBuffer.buffer);
+			auto buffer = checked_cast<BufferVk*>(state.indexBuffer.buffer);
 			transitionBufferState(buffer, ResourceState::IndexBuffer);
 
 			if (state.indirectBuffer)
 			{
-				auto& buffer = static_cast<BufferVk&>(*state.indirectBuffer);
+				auto buffer = checked_cast<BufferVk*>(state.indirectBuffer);
 				transitionBufferState(buffer, ResourceState::IndirectBuffer);
 			}
 		}
@@ -657,13 +669,13 @@ namespace rhi
 		for (uint32_t i = 0; i < state.renderTargetCount; ++i)
 		{
 			assert(state.renderTargetViews[i] != nullptr);
-			auto& renderTargetView = static_cast<TextureViewVk&>(*state.renderTargetViews[i]);
-			transitionTextureState(renderTargetView.texture, ResourceState::RenderTarget);
+			auto rtv = checked_cast<TextureViewVk*>(state.renderTargetViews[i]);
+			transitionTextureState(rtv->getTexture(), ResourceState::RenderTarget);
 		}
 		if (state.depthStencilView)
 		{
-			auto& depthStencilView = static_cast<TextureViewVk&>(*state.depthStencilView);
-			transitionTextureState(depthStencilView.texture, ResourceState::DepthWrite);
+			auto dsv = checked_cast<TextureViewVk*>(state.depthStencilView);
+			transitionTextureState(dsv->getTexture(), ResourceState::DepthWrite);
 		}
 		// Because once the graphics state is set, the render target is always changed. 
 		// and Barrier must not be placed within a render section started with vkCmdBeginRendering
@@ -879,13 +891,13 @@ namespace rhi
 			for (uint32_t i = 0; i < state.resourceSetCount; ++i)
 			{
 				assert(state.resourceSets[i] != nullptr);
-				transitionResourceSet(*state.resourceSets[i], ShaderType::Compute);
+				transitionResourceSet(state.resourceSets[i], ShaderType::Compute);
 			}
 
 			if (state.indirectBuffer)
 			{
 				auto indirectBuffer = checked_cast<BufferVk*>(state.indirectBuffer);
-				transitionBufferState(*indirectBuffer, ResourceState::IndirectBuffer);
+				transitionBufferState(indirectBuffer, ResourceState::IndirectBuffer);
 			}
 		}
 

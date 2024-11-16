@@ -43,15 +43,15 @@ namespace rhi
 
 		void setResourceAutoTransition(bool enable) override;
 		void commitBarriers() override;
-		void transitionTextureState(ITexture& texture, ResourceState newState) override;
-		void transitionBufferState(IBuffer& buffer, ResourceState newState) override;
+		void transitionTextureState(ITexture* texture, ResourceState newState) override;
+		void transitionBufferState(IBuffer* buffer, ResourceState newState) override;
 
-		void clearColorTexture(ITextureView& textureView, const ClearColor& color) override;
-		void clearDepthStencil(ITextureView& textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal) override;
-		void updateBuffer(IBuffer& buffer, const void* data, uint64_t dataSize, uint64_t offset) override;
-		void copyBuffer(IBuffer& srcBuffer, uint64_t srcOffset, IBuffer& dstBuffer, uint64_t dstOffset, uint64_t dataSize) override;
-		void* mapBuffer(IBuffer& buffer, MapBufferUsage usage) override;
-		void updateTexture(ITexture& texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo) override;
+		void clearColorTexture(ITextureView* textureView, const ClearColor& color) override;
+		void clearDepthStencil(ITextureView* textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal) override;
+		void updateBuffer(IBuffer* buffer, const void* data, uint64_t dataSize, uint64_t offset) override;
+		void copyBuffer(IBuffer* srcBuffer, uint64_t srcOffset, IBuffer* dstBuffer, uint64_t dstOffset, uint64_t dataSize) override;
+		void* mapBuffer(IBuffer* buffer, MapBufferUsage usage) override;
+		void updateTexture(ITexture* texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo) override;
 
 		void setPushConstant(ShaderType stages, const void* data) override;
 		void setScissors(const Rect* scissors, uint32_t scissorCount) override;
@@ -68,14 +68,14 @@ namespace rhi
 
 		Object getNativeObject(NativeObjectType type) const override;
 
-		void transitionFromSubmmitedState(ITexture& texture, ResourceState newState);
+		void transitionFromSubmmitedState(ITexture* texture, ResourceState newState);
 		void updateSubmittedState();
 		bool hasSetGraphicPipeline() const { return m_LastGraphicsState.pipeline != nullptr; }
 		CommandBuffer* getCommandBuffer() const { return m_CurrentCmdBuf; }
 	private:
 		CommandListVk() = delete;
-		void transitionResourceSet(IResourceSet& set, ShaderType dstVisibleStages);
-		void setBufferBarrier(BufferVk& buffer, VkPipelineStageFlags2 dstStage, VkAccessFlags2 dstAccess);
+		void transitionResourceSet(IResourceSet* set, ShaderType dstVisibleStages);
+		void setBufferBarrier(BufferVk* buffer, VkPipelineStageFlags2 dstStage, VkAccessFlags2 dstAccess);
 		void endRendering();
 		bool m_EnableAutoTransition = true;
 		bool m_RenderingStarted = false;

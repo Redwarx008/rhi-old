@@ -87,18 +87,18 @@ namespace rhi
 	public:
 		explicit TextureViewVk(const ContextVk& context, TextureVk& texture)
 			:m_Context(context),
-			texture(texture){}
+			m_Texture(texture){}
 		const TextureViewDesc& getDesc() const override { return desc; }
-		ITexture* getTexture() const override { return &texture; }
+		ITexture* getTexture() const override { return &m_Texture; }
 		Object getNativeObject(NativeObjectType type) const override;
 		~TextureViewVk();
 
 		TextureViewDesc desc;
-		TextureVk& texture;
 		VkImageView imageView = VK_NULL_HANDLE;
 	private:
 		TextureViewVk() = default;
 		const ContextVk& m_Context;
+		TextureVk& m_Texture;
 	};
 
 	struct TextureCopyInfo

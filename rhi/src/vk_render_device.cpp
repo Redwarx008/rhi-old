@@ -470,16 +470,17 @@ namespace rhi
 		return sampler;
 	}
 
-	void* RenderDeviceVk::mapBuffer(IBuffer& buffer)
+	void* RenderDeviceVk::mapBuffer(IBuffer* buffer)
 	{
-		BufferVk& buf = static_cast<BufferVk&>(buffer);
-		if (buf.getDesc().access == BufferAccess::GpuOnly)
+		assert(buffer);
+		auto buf = checked_cast<BufferVk*>(buffer);
+		if (buf->getDesc().access == BufferAccess::GpuOnly)
 		{
 			LOG_ERROR("Could not map gpu only buffer");
 			return nullptr;
 		}
 
-		return buf.allocaionInfo.pMappedData;
+		return buf->allocaionInfo.pMappedData;
 	}
 
 	IBuffer* RenderDeviceVk::createBuffer(const BufferDesc& desc, const void* data, size_t dataSize)
@@ -489,7 +490,7 @@ namespace rhi
 		{
 			auto tmpCmdList = std::unique_ptr<CommandListVk>(checked_cast<CommandListVk*>(createCommandList()));
 			tmpCmdList->open();
-			tmpCmdList->updateBuffer(*buffer, data, dataSize, 0);
+			tmpCmdList->updateBuffer(buffer, data, dataSize, 0);
 			tmpCmdList->close();
 			ICommandList* cmdListArr[] = { tmpCmdList.get()};
 			uint64_t submitID = executeCommandLists(cmdListArr, 1);
@@ -571,13 +572,14 @@ namespace rhi
 		return resourceLayoutVk;
 	}
 
-	IResourceSet* RenderDeviceVk::createResourceSet(const IResourceSetLayout& lyout)
+	IResourceSet* RenderDeviceVk::createResourceSet(const IResourceSetLayout* layout)
 	{
-		const auto& setLayout = static_cast<const ResourceSetLayoutVk&>(lyout);
+		assert(layout);
+		const auto setLayout = checked_cast<const ResourceSetLayoutVk*>(layout);
 
 		// count the number of descriptors required per type
 		std::unordered_map<VkDescriptorType, uint32_t> descriptorTypeCountMap;
-		for (auto& layoutItem : setLayout.resourceSetLayoutItems)
+		for (auto& layoutItem : setLayout->resourceSetLayoutItems)
 		{
 			VkDescriptorType type = shaderResourceTypeToVkDescriptorType(layoutItem.type);
 			if (descriptorTypeCountMap.find(type) == descriptorTypeCountMap.end())
@@ -615,7 +617,7 @@ namespace rhi
 		VkDescriptorSetAllocateInfo allocInfo = {};
 		allocInfo.pNext = nullptr;
 		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocInfo.pSetLayouts = &setLayout.descriptorSetLayout;
+		allocInfo.pSetLayouts = &setLayout->descriptorSetLayout;
 		allocInfo.descriptorSetCount = 1;
 		allocInfo.descriptorPool = resourceSet->descriptorPool;
 
@@ -627,17 +629,18 @@ namespace rhi
 			return nullptr;
 		}
 
-		resourceSet->resourceSetLayout = &setLayout;
+		resourceSet->resourceSetLayout = setLayout;
 
 		return resourceSet;
 	}
 
-	void RenderDeviceVk::writeResourceSet(IResourceSet& set, const ResourceSetItem* items, uint32_t itemCount)
+	void RenderDeviceVk::writeResourceSet(IResourceSet* set, const ResourceSetItem* items, uint32_t itemCount)
 	{
+		assert(set);
 		assert(items != nullptr && itemCount != 0);
-		ResourceSetVk& resourceSet = static_cast<ResourceSetVk&>(set);
+		auto resourceSet = checked_cast<ResourceSetVk*>(set);
 
-		const ResourceSetLayoutVk* layout = resourceSet.resourceSetLayout;
+		const ResourceSetLayoutVk* layout = resourceSet->resourceSetLayout;
 
 		std::vector<VkWriteDescriptorSet> descriptorSetWriters;
 
@@ -676,13 +679,13 @@ namespace rhi
 				setWriter.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 				setWriter.pNext = nullptr;
 				setWriter.dstBinding = item.bindingSlot;
-				setWriter.dstSet = resourceSet.descriptorSet;
+				setWriter.dstSet = resourceSet->descriptorSet;
 				setWriter.dstArrayElement = item.arrayItemIndex;
 				setWriter.pImageInfo = &descriptorImageInfo;
 				setWriter.descriptorType = shaderResourceTypeToVkDescriptorType(item.type);
 				setWriter.descriptorCount = 1;
 
-				resourceSet.resourcesNeedStateTransition.emplace_back(ResourceSetItemWithVisibleStages{ item, itemVisibleStages });
+				resourceSet->resourcesNeedStateTransition.emplace_back(ResourceSetItemWithVisibleStages{ item, itemVisibleStages });
 
 				break;
 			}
@@ -699,13 +702,13 @@ namespace rhi
 				setWriter.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 				setWriter.pNext = nullptr;
 				setWriter.dstBinding = item.bindingSlot;
-				setWriter.dstSet = resourceSet.descriptorSet;
+				setWriter.dstSet = resourceSet->descriptorSet;
 				setWriter.dstArrayElement = item.arrayItemIndex;
 				setWriter.pImageInfo = &descriptorImageInfo;
 				setWriter.descriptorType = shaderResourceTypeToVkDescriptorType(item.type);
 				setWriter.descriptorCount = 1;
 
-				resourceSet.resourcesNeedStateTransition.emplace_back(ResourceSetItemWithVisibleStages{ item, itemVisibleStages });
+				resourceSet->resourcesNeedStateTransition.emplace_back(ResourceSetItemWithVisibleStages{ item, itemVisibleStages });
 
 				break;
 			}
@@ -724,13 +727,13 @@ namespace rhi
 				setWriter.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 				setWriter.pNext = nullptr;
 				setWriter.dstBinding = item.bindingSlot;
-				setWriter.dstSet = resourceSet.descriptorSet;
+				setWriter.dstSet = resourceSet->descriptorSet;
 				setWriter.dstArrayElement = item.arrayItemIndex;
 				setWriter.pImageInfo = &descriptorImageInfo;
 				setWriter.descriptorType = shaderResourceTypeToVkDescriptorType(item.type);
 				setWriter.descriptorCount = 1;
 
-				resourceSet.resourcesNeedStateTransition.emplace_back(ResourceSetItemWithVisibleStages{ item, itemVisibleStages });
+				resourceSet->resourcesNeedStateTransition.emplace_back(ResourceSetItemWithVisibleStages{ item, itemVisibleStages });
 
 				break;
 			}
@@ -749,13 +752,13 @@ namespace rhi
 				setWriter.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 				setWriter.pNext = nullptr;
 				setWriter.dstBinding = item.bindingSlot;
-				setWriter.dstSet = resourceSet.descriptorSet;
+				setWriter.dstSet = resourceSet->descriptorSet;
 				setWriter.dstArrayElement = item.arrayItemIndex;
 				setWriter.pBufferInfo = &descriptorBufferInfo;
 				setWriter.descriptorType = shaderResourceTypeToVkDescriptorType(item.type);
 				setWriter.descriptorCount = 1;
 
-				resourceSet.resourcesNeedStateTransition.emplace_back(ResourceSetItemWithVisibleStages{ item, itemVisibleStages });
+				resourceSet->resourcesNeedStateTransition.emplace_back(ResourceSetItemWithVisibleStages{ item, itemVisibleStages });
 
 				break;
 			}
@@ -772,7 +775,7 @@ namespace rhi
 				setWriter.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 				setWriter.pNext = nullptr;
 				setWriter.dstBinding = item.bindingSlot;
-				setWriter.dstSet = resourceSet.descriptorSet;
+				setWriter.dstSet = resourceSet->descriptorSet;
 				setWriter.dstArrayElement = item.arrayItemIndex;
 				setWriter.pImageInfo = &descriptorImageInfo;
 				setWriter.descriptorCount = 1;

@@ -332,7 +332,7 @@ namespace rhi
 		m_RenderDevice->setRenderCompleteSemaphore(semaphore);
 		// to ensure that all commandBuffers on this queue have been executed to completion and transition the colorattchment layout.
 		m_CompleteRenderingCmdList->open();
-		m_CompleteRenderingCmdList->transitionFromSubmmitedState(*m_ColorAttachments[m_SwapChainImageIndex], ResourceState::Present);
+		m_CompleteRenderingCmdList->transitionFromSubmmitedState(m_ColorAttachments[m_SwapChainImageIndex].get(), ResourceState::Present);
 		m_CompleteRenderingCmdList->commitBarriers();
 		m_CompleteRenderingCmdList->close();
 		ICommandList* cmdLists[] = { m_CompleteRenderingCmdList.get() };

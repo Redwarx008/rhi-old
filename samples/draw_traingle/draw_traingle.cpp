@@ -141,11 +141,11 @@ public:
 		ResourceSetLayoutItem layoutItems[] = { ResourceSetLayoutItem::UniformBuffer(ShaderType::Vertex, 0) };
 
 		m_ResourceSetLayout = m_RenderDevice->createResourceSetLayout(layoutItems, 1);
-		m_ResourceSet = m_RenderDevice->createResourceSet(*m_ResourceSetLayout);
+		m_ResourceSet = m_RenderDevice->createResourceSet(m_ResourceSetLayout);
 
 		ResourceSetItem items[] = { ResourceSetItem::UniformBuffer(m_UniformBuffer, 0) };
 
-		m_RenderDevice->writeResourceSet(*m_ResourceSet, items, 1);
+		m_RenderDevice->writeResourceSet(m_ResourceSet, items, 1);
 
 		// create pipeline
 		GraphicsPipelineCreateInfo pipelineCI{};
@@ -216,7 +216,7 @@ public:
 		Rect scissor{ (int)m_windowWidth / 4 * 3, (int)m_windowHeight / 4 * 3 };
 
 		m_CmdList->open();
-		m_CmdList->updateBuffer(*m_UniformBuffer, &shaderData, sizeof(ShaderData), 0);
+		m_CmdList->updateBuffer(m_UniformBuffer, &shaderData, sizeof(ShaderData), 0);
 		m_CmdList->setGraphicsState(m_GraphicState);
 		m_CmdList->setScissors(&scissor, 1);
 		m_CmdList->drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);

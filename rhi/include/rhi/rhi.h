@@ -120,15 +120,15 @@ namespace rhi
 
 		virtual void setResourceAutoTransition(bool enable) = 0;
 		virtual void commitBarriers() = 0;
-		virtual void transitionTextureState(ITexture& texture, ResourceState newState) = 0;
-		virtual void transitionBufferState(IBuffer& buffer, ResourceState newState) = 0;
+		virtual void transitionTextureState(ITexture* texture, ResourceState newState) = 0;
+		virtual void transitionBufferState(IBuffer* buffer, ResourceState newState) = 0;
 
-		virtual void clearColorTexture(ITextureView& textureView, const ClearColor& color) = 0;
-		virtual void clearDepthStencil(ITextureView& textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal) = 0;
-		virtual void updateBuffer(IBuffer& buffer, const void* data, uint64_t dataSize, uint64_t offset) = 0;
-		virtual void copyBuffer(IBuffer& srcBuffer, uint64_t srcOffset, IBuffer& dstBuffer, uint64_t dstOffset, uint64_t dataSize) = 0;
-		virtual void* mapBuffer(IBuffer& buffer, MapBufferUsage usage) = 0;
-		virtual void updateTexture(ITexture& texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo) = 0;
+		virtual void clearColorTexture(ITextureView* textureView, const ClearColor& color) = 0;
+		virtual void clearDepthStencil(ITextureView* textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal) = 0;
+		virtual void updateBuffer(IBuffer* buffer, const void* data, uint64_t dataSize, uint64_t offset) = 0;
+		virtual void copyBuffer(IBuffer* srcBuffer, uint64_t srcOffset, IBuffer* dstBuffer, uint64_t dstOffset, uint64_t dataSize) = 0;
+		virtual void* mapBuffer(IBuffer* buffer, MapBufferUsage usage) = 0;
+		virtual void updateTexture(ITexture* texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo) = 0;
 
 		virtual void setPushConstant(ShaderType stages, const void* data) = 0;
 		virtual void setScissors(const Rect* scissors, uint32_t scissorCount) = 0;
@@ -152,14 +152,14 @@ namespace rhi
 		virtual IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineCreateInfo& pipelineCI) = 0;
 		virtual IComputePipeline* createComputePipeline(const ComputePipelineCreateInfo& pipelineCI) = 0;
 		virtual IResourceSetLayout* createResourceSetLayout(const ResourceSetLayoutItem* items, uint32_t itemCount) = 0;
-		virtual IResourceSet* createResourceSet(const IResourceSetLayout& layout) = 0;
-		virtual void writeResourceSet(IResourceSet& set, const ResourceSetItem* items, uint32_t itemCount) = 0;
+		virtual IResourceSet* createResourceSet(const IResourceSetLayout* layout) = 0;
+		virtual void writeResourceSet(IResourceSet* set, const ResourceSetItem* items, uint32_t itemCount) = 0;
 		virtual ITexture* createTexture(const TextureDesc& desc) = 0;
 		virtual IBuffer* createBuffer(const BufferDesc& desc) = 0;
 		virtual IBuffer* createBuffer(const BufferDesc& desc, const void* data, uint64_t dataSize) = 0;
 		virtual IShader* createShader(const ShaderCreateInfo& shaderCI, const uint32_t* pCode, size_t codeSize) = 0;
 		virtual ISampler* createSampler(const SamplerDesc& desc) = 0;
-		virtual void* mapBuffer(IBuffer& buffer) = 0;
+		virtual void* mapBuffer(IBuffer* buffer) = 0;
 		virtual ICommandList* createCommandList() = 0;
 		virtual uint64_t executeCommandLists(ICommandList** cmdLists, size_t numCmdLists) = 0;
 		virtual void waitForExecution(uint64_t executeID, uint64_t timeout = UINT64_MAX) = 0;
