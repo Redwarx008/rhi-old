@@ -51,7 +51,7 @@ namespace rhi
 	public:
 		virtual ~ITextureView() = default;
 		virtual const TextureViewDesc& getDesc() const = 0;
-		virtual const ITexture* getTexture() const = 0;
+		virtual ITexture* getTexture() const = 0;
 	};
 
 	class ITexture : public IResource
@@ -59,7 +59,7 @@ namespace rhi
 	public:
 		virtual ~ITexture() = default;
 		virtual const TextureDesc& getDesc() const = 0;
-		virtual const ITextureView* getDefaultView() const = 0;
+		virtual ITextureView* getDefaultView() const = 0;
 		virtual ITextureView* createView(TextureViewDesc desc) = 0;
 	};
 
