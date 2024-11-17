@@ -930,6 +930,7 @@ namespace rhi
 		}
 		
 		std::vector<VkPushConstantRange> pushConstantRanges(pipelineCI.pushConstantCount);
+		pipeline->pushConstantInfos.resize(pushConstantRanges.size());
 		ShaderType usedStages = ShaderType::Unknown;
 		uint32_t offset = 0;
 		for (uint32_t i = 0; i < pushConstantRanges.size(); ++i)
@@ -938,7 +939,7 @@ namespace rhi
 			pushConstantRanges[i].stageFlags = shaderTypeToVkShaderStageFlagBits(pipelineCI.pushConstantDescs[i].stage);
 			pushConstantRanges[i].size = pipelineCI.pushConstantDescs[i].size;
 			pushConstantRanges[i].offset = offset;
-			pipeline->pushConstantInfos.push_back({ pipelineCI.pushConstantDescs[i], offset });
+			pipeline->pushConstantInfos[i] = { pipelineCI.pushConstantDescs[i], offset };
 			offset += pushConstantRanges[i].size;
 			usedStages = usedStages | pipelineCI.pushConstantDescs[i].stage;
 		}
