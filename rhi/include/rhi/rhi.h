@@ -151,9 +151,9 @@ namespace rhi
 		virtual void waitIdle() = 0;
 		virtual IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineCreateInfo& pipelineCI) = 0;
 		virtual IComputePipeline* createComputePipeline(const ComputePipelineCreateInfo& pipelineCI) = 0;
-		virtual IResourceSetLayout* createResourceSetLayout(const ResourceSetLayoutItem* items, uint32_t itemCount) = 0;
+		virtual IResourceSetLayout* createResourceSetLayout(const ResourceSetLayoutBinding* bindings, uint32_t bindingCount) = 0;
 		virtual IResourceSet* createResourceSet(const IResourceSetLayout* layout) = 0;
-		virtual void writeResourceSet(IResourceSet* set, const ResourceSetItem* items, uint32_t itemCount) = 0;
+		virtual void writeResourceSet(IResourceSet* set, const ResourceSetBinding* bindings, uint32_t bindingCount) = 0;
 		virtual ITexture* createTexture(const TextureDesc& desc) = 0;
 		virtual IBuffer* createBuffer(const BufferDesc& desc) = 0;
 		virtual IBuffer* createBuffer(const BufferDesc& desc, const void* data, uint64_t dataSize) = 0;

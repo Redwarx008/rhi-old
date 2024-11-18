@@ -565,34 +565,34 @@ namespace rhi
 				continue;
 			}
 
-			switch (itemWithVisibleStages.item.type)
+			switch (itemWithVisibleStages.binding.type)
 			{
 			case ShaderResourceType::TextureWithSampler:
 			case ShaderResourceType::SampledTexture:
 			{
-				assert(itemWithVisibleStages.item.textureView);
-				auto textureView = checked_cast<TextureViewVk*>(itemWithVisibleStages.item.textureView);
+				assert(itemWithVisibleStages.binding.textureView);
+				auto textureView = checked_cast<TextureViewVk*>(itemWithVisibleStages.binding.textureView);
 				transitionTextureState(textureView->getTexture(), ResourceState::ShaderResource);
 				break;
 			}
 			case ShaderResourceType::StorageTexture:
 			{
-				assert(itemWithVisibleStages.item.textureView);
-				auto textureView = checked_cast<TextureViewVk*>(itemWithVisibleStages.item.textureView);
+				assert(itemWithVisibleStages.binding.textureView);
+				auto textureView = checked_cast<TextureViewVk*>(itemWithVisibleStages.binding.textureView);
 				transitionTextureState(textureView->getTexture(), ResourceState::UnorderedAccess);
 				break;
 			}
 			case ShaderResourceType::UniformBuffer:
 			{
-				assert(itemWithVisibleStages.item.buffer);
-				auto buffer = checked_cast<BufferVk*>(itemWithVisibleStages.item.buffer);
+				assert(itemWithVisibleStages.binding.buffer);
+				auto buffer = checked_cast<BufferVk*>(itemWithVisibleStages.binding.buffer);
 				transitionBufferState(buffer, ResourceState::ShaderResource);
 				break;
 			}
 			case ShaderResourceType::StorageBuffer:
 			{
-				assert(itemWithVisibleStages.item.buffer);
-				auto buffer = checked_cast<BufferVk*>(itemWithVisibleStages.item.buffer);
+				assert(itemWithVisibleStages.binding.buffer);
+				auto buffer = checked_cast<BufferVk*>(itemWithVisibleStages.binding.buffer);
 				transitionBufferState(buffer, ResourceState::UnorderedAccess);
 				break;
 			}
@@ -675,9 +675,9 @@ namespace rhi
 			auto resourceSet = checked_cast<ResourceSetVk*>(state.resourceSets[i]);
 			for (auto& itemWithVisibleStages : resourceSet->resourcesNeedStateTransition)
 			{
-				if (itemWithVisibleStages.item.buffer)
+				if (itemWithVisibleStages.binding.buffer)
 				{
-					auto buffer = checked_cast<BufferVk*>(itemWithVisibleStages.item.buffer);
+					auto buffer = checked_cast<BufferVk*>(itemWithVisibleStages.binding.buffer);
 					if (buffer->desc.access != BufferAccess::GpuOnly)
 					{
 						m_CurrentCmdBuf->referencedHostVisibleBuffer.push_back(buffer);
@@ -965,9 +965,9 @@ namespace rhi
 			auto resourceSet = checked_cast<ResourceSetVk*>(state.resourceSets[i]);
 			for (auto& itemWithVisibleStages : resourceSet->resourcesNeedStateTransition)
 			{
-				if (itemWithVisibleStages.item.buffer)
+				if (itemWithVisibleStages.binding.buffer)
 				{
-					auto buffer = checked_cast<BufferVk*>(itemWithVisibleStages.item.buffer);
+					auto buffer = checked_cast<BufferVk*>(itemWithVisibleStages.binding.buffer);
 					if (buffer->desc.access != BufferAccess::GpuOnly)
 					{
 						m_CurrentCmdBuf->referencedHostVisibleBuffer.push_back(buffer);

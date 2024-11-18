@@ -421,69 +421,75 @@ namespace rhi
 
 	// resource set 
 
-	struct ResourceSetLayoutItem
+	struct ResourceSetLayoutBinding
 	{
 		ShaderType visibleStages = ShaderType::Unknown;
 		ShaderResourceType type = ShaderResourceType::Unknown;
 		uint32_t bindingSlot = 0;
-		uint32_t arrayItemCount = 1;
+		uint32_t arrayElementCount = 1;
 
-		static ResourceSetLayoutItem SampledTexture(ShaderType stage, const uint32_t bindingSlot)
+		static ResourceSetLayoutBinding SampledTexture(ShaderType stage, uint32_t bindingSlot, uint32_t arrayElementCount = 1)
 		{
-			ResourceSetLayoutItem res{};
-			res.visibleStages = stage;
-			res.type = ShaderResourceType::SampledTexture;
-			res.bindingSlot = bindingSlot;
-			return res;
+			ResourceSetLayoutBinding binding{};
+			binding.visibleStages = stage;
+			binding.type = ShaderResourceType::SampledTexture;
+			binding.bindingSlot = bindingSlot;
+			binding.arrayElementCount = arrayElementCount;
+			return binding;
 		}
-		static ResourceSetLayoutItem StorageTexture(ShaderType stage, const uint32_t bindingSlot)
+		static ResourceSetLayoutBinding StorageTexture(ShaderType stage, uint32_t bindingSlot, uint32_t arrayElementCount = 1)
 		{
-			ResourceSetLayoutItem res{};
-			res.visibleStages = stage;
-			res.type = ShaderResourceType::StorageTexture;
-			res.bindingSlot = bindingSlot;
-			return res;
+			ResourceSetLayoutBinding binding{};
+			binding.visibleStages = stage;
+			binding.type = ShaderResourceType::StorageTexture;
+			binding.bindingSlot = bindingSlot;
+			binding.arrayElementCount = arrayElementCount;
+			return binding;
 		}
-		static ResourceSetLayoutItem UniformBuffer(ShaderType stage, const uint32_t bindingSlot)
+		static ResourceSetLayoutBinding UniformBuffer(ShaderType stage, uint32_t bindingSlot, uint32_t arrayElementCount = 1)
 		{
-			ResourceSetLayoutItem res{};
-			res.visibleStages = stage;
-			res.type = ShaderResourceType::UniformBuffer;
-			res.bindingSlot = bindingSlot;
-			return res;
+			ResourceSetLayoutBinding binding{};
+			binding.visibleStages = stage;
+			binding.type = ShaderResourceType::UniformBuffer;
+			binding.bindingSlot = bindingSlot;
+			binding.arrayElementCount = arrayElementCount;
+			return binding;
 		}
-		static ResourceSetLayoutItem StorageBuffer(ShaderType stage, const uint32_t bindingSlot)
+		static ResourceSetLayoutBinding StorageBuffer(ShaderType stage, uint32_t bindingSlot, uint32_t arrayElementCount = 1)
 		{
-			ResourceSetLayoutItem res{};
-			res.visibleStages = stage;
-			res.type = ShaderResourceType::StorageBuffer;
-			res.bindingSlot = bindingSlot;
-			return res;
+			ResourceSetLayoutBinding binding{};
+			binding.visibleStages = stage;
+			binding.type = ShaderResourceType::StorageBuffer;
+			binding.bindingSlot = bindingSlot;
+			binding.arrayElementCount = arrayElementCount;
+			return binding;
 		}
-		static ResourceSetLayoutItem Sampler(ShaderType stage, const uint32_t bindingSlot)
+		static ResourceSetLayoutBinding Sampler(ShaderType stage, uint32_t bindingSlot, uint32_t arrayElementCount = 1)
 		{
-			ResourceSetLayoutItem res{};
-			res.visibleStages = stage;
-			res.type = ShaderResourceType::Sampler;
-			res.bindingSlot = bindingSlot;
-			return res;
+			ResourceSetLayoutBinding binding{};
+			binding.visibleStages = stage;
+			binding.type = ShaderResourceType::Sampler;
+			binding.bindingSlot = bindingSlot;
+			binding.arrayElementCount = arrayElementCount;
+			return binding;
 		}
-		static ResourceSetLayoutItem TextureWithSampler(ShaderType stage, const uint32_t bindingSlot)
+		static ResourceSetLayoutBinding TextureWithSampler(ShaderType stage, uint32_t bindingSlot, uint32_t arrayElementCount = 1)
 		{
-			ResourceSetLayoutItem res{};
-			res.visibleStages = stage;
-			res.type = ShaderResourceType::TextureWithSampler;
-			res.bindingSlot = bindingSlot;
-			return res;
+			ResourceSetLayoutBinding binding{};
+			binding.visibleStages = stage;
+			binding.type = ShaderResourceType::TextureWithSampler;
+			binding.bindingSlot = bindingSlot;
+			binding.arrayElementCount = arrayElementCount;
+			return binding;
 		}
 	};
 
-	struct ResourceSetItem
+	struct ResourceSetBinding
 	{
 		ShaderResourceType type = ShaderResourceType::Unknown;
 
 		uint32_t bindingSlot = 0;
-		uint32_t arrayItemIndex = 0;
+		uint32_t arrayElementIndex = 0;
 
 		ITextureView* textureView = nullptr;
 		ISampler* sampler = nullptr;
@@ -493,63 +499,72 @@ namespace rhi
 		uint32_t bufferOffset = 0;
 		uint32_t bufferRange = 0;  // if range is 0, use the range from offset to the end of the buffer.
 
-		static ResourceSetItem SampledTexture(ITextureView* textureView, uint32_t bindingSlot)
+		static ResourceSetBinding SampledTexture(ITextureView* textureView, uint32_t bindingSlot, uint32_t arrayElementIndex = 0)
 		{
-			ResourceSetItem item{};
-			item.type = ShaderResourceType::SampledTexture;
-			item.bindingSlot = bindingSlot;
-			item.textureView = textureView;
-			return item;
+			ResourceSetBinding binding{};
+			binding.type = ShaderResourceType::SampledTexture;
+			binding.bindingSlot = bindingSlot;
+			binding.textureView = textureView;
+			binding.arrayElementIndex = arrayElementIndex;
+			return binding;
 		}
 
-		static ResourceSetItem StorageTexture(ITextureView* textureView, uint32_t bindingSlot)
+		static ResourceSetBinding StorageTexture(ITextureView* textureView, uint32_t bindingSlot, uint32_t arrayElementIndex = 0)
 		{
-			ResourceSetItem item{};
-			item.type = ShaderResourceType::StorageTexture;
-			item.bindingSlot = bindingSlot;
-			item.textureView = textureView;
-			return item;
+			ResourceSetBinding binding{};
+			binding.type = ShaderResourceType::StorageTexture;
+			binding.bindingSlot = bindingSlot;
+			binding.textureView = textureView;
+			binding.arrayElementIndex = arrayElementIndex;
+			return binding;
 		}
 
-		static ResourceSetItem UniformBuffer(IBuffer* buffer, uint32_t bindingSlot, uint32_t offset = 0, uint32_t range = 0)
+		static ResourceSetBinding UniformBuffer(IBuffer* buffer, uint32_t bindingSlot, uint32_t arrayElementIndex = 0, 
+			uint32_t offset = 0, uint32_t range = 0)
 		{
-			ResourceSetItem item{};
-			item.type = ShaderResourceType::UniformBuffer;
-			item.bindingSlot = bindingSlot;
-			item.buffer = buffer;
-			item.bufferOffset = offset;
-			item.bufferRange = range;
-			return item;
+			ResourceSetBinding binding{};
+			binding.type = ShaderResourceType::UniformBuffer;
+			binding.bindingSlot = bindingSlot;
+			binding.buffer = buffer;
+			binding.bufferOffset = offset;
+			binding.bufferRange = range;
+			binding.arrayElementIndex = arrayElementIndex;
+			return binding;
 		}
 
-		static ResourceSetItem StorageBuffer(IBuffer* buffer, uint32_t bindingSlot, uint32_t offset = 0, uint32_t range = 0)
+		static ResourceSetBinding StorageBuffer(IBuffer* buffer, uint32_t bindingSlot, uint32_t arrayElementIndex = 0, 
+			uint32_t offset = 0, uint32_t range = 0)
 		{
-			ResourceSetItem item{};
-			item.type = ShaderResourceType::StorageBuffer;
-			item.bindingSlot = bindingSlot;
-			item.buffer = buffer;
-			item.bufferOffset = offset;
-			item.bufferRange = range;
-			return item;
+			ResourceSetBinding binding{};
+			binding.type = ShaderResourceType::StorageBuffer;
+			binding.bindingSlot = bindingSlot;
+			binding.buffer = buffer;
+			binding.bufferOffset = offset;
+			binding.bufferRange = range;
+			binding.arrayElementIndex = arrayElementIndex;
+			return binding;
 		}
 
-		static ResourceSetItem Sampler(ISampler* sampler, uint32_t bindingSlot)
+		static ResourceSetBinding Sampler(ISampler* sampler, uint32_t bindingSlot, uint32_t arrayElementIndex = 0)
 		{
-			ResourceSetItem item{};
-			item.type = ShaderResourceType::StorageBuffer;
-			item.bindingSlot = bindingSlot;
-			item.sampler = sampler;
-			return item;
+			ResourceSetBinding binding{};
+			binding.type = ShaderResourceType::StorageBuffer;
+			binding.bindingSlot = bindingSlot;
+			binding.sampler = sampler;
+			binding.arrayElementIndex = arrayElementIndex;
+			return binding;
 		}
 
-		static ResourceSetItem TextureWithSampler(ITextureView* textureView, ISampler* sampler, uint32_t bindingSlot)
+		static ResourceSetBinding TextureWithSampler(ITextureView* textureView, ISampler* sampler, uint32_t bindingSlot, 
+			uint32_t arrayElementIndex = 0)
 		{
-			ResourceSetItem item{};
-			item.type = ShaderResourceType::TextureWithSampler;
-			item.bindingSlot = bindingSlot;
-			item.textureView = textureView;
-			item.sampler = sampler;
-			return item;
+			ResourceSetBinding binding{};
+			binding.type = ShaderResourceType::TextureWithSampler;
+			binding.bindingSlot = bindingSlot;
+			binding.textureView = textureView;
+			binding.sampler = sampler;
+			binding.arrayElementIndex = arrayElementIndex;
+			return binding;
 		}
 	};
 

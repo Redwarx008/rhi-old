@@ -183,14 +183,14 @@ namespace rhi
 		~ResourceSetLayoutVk();
 		Object getNativeObject(NativeObjectType type) const override;
 		VkDescriptorSetLayout descriptorSetLayout = nullptr;
-		std::vector<ResourceSetLayoutItem> resourceSetLayoutItems;
+		std::vector<ResourceSetLayoutBinding> resourceSetLayoutBindings;
 	private:
 		const ContextVk& m_Context;
 	};
 
-	struct ResourceSetItemWithVisibleStages
+	struct ResourceSetBindngWithVisibleStages
 	{
-		ResourceSetItem item;
+		ResourceSetBinding binding;
 		ShaderType visibleStages;
 	};
 
@@ -204,7 +204,7 @@ namespace rhi
 		VkDescriptorPool descriptorPool = nullptr;
 		VkDescriptorSet descriptorSet = nullptr;
 		const ResourceSetLayoutVk* resourceSetLayout = nullptr;
-		std::vector<ResourceSetItemWithVisibleStages> resourcesNeedStateTransition;
+		std::vector<ResourceSetBindngWithVisibleStages> resourcesNeedStateTransition;
 	private:
 		const ContextVk& m_Context;
 	};

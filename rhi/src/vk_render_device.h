@@ -41,9 +41,9 @@ namespace rhi
 		ICommandList* createCommandList() override;
 		uint64_t executeCommandLists(ICommandList** cmdLists, size_t numCmdLists) override;
 		void waitForExecution(uint64_t executeID, uint64_t timeout = UINT64_MAX) override;
-		IResourceSetLayout* createResourceSetLayout(const ResourceSetLayoutItem* items, uint32_t itemCount) override;
+		IResourceSetLayout* createResourceSetLayout(const ResourceSetLayoutBinding* bindings, uint32_t bindingCount) override;
 		IResourceSet* createResourceSet(const IResourceSetLayout* layout) override;
-		void writeResourceSet(IResourceSet* set, const ResourceSetItem* items, uint32_t itemCount) override;
+		void writeResourceSet(IResourceSet* set, const ResourceSetBinding* bindings, uint32_t bindingCount) override;
 		IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineCreateInfo& pipelineCI) override;
 		IComputePipeline* createComputePipeline(const ComputePipelineCreateInfo& pipelineCI) override;
 	private:
