@@ -13,10 +13,27 @@ namespace rhi
 	CommandBuffer::~CommandBuffer()
 	{
 		vkDestroyCommandPool(m_Context.device, vkCmdPool, nullptr);
-		if (!referencedStageBuffer.empty())
+		if (!referencedInternalStageBuffer.empty())
 		{
-			referencedStageBuffer.clear();
+			referencedInternalStageBuffer.clear();
 		}
+	}
+
+	void CommandBuffer::updateLastUsedExecuteID(uint64_t excuteID)
+	{
+		for (auto buffer : referencedHostVisibleBuffer)
+		{
+			buffer->lastUsedExecuteID = excuteID;
+		}
+	}
+
+	void CommandBuffer::resetLastUsedExecuteID()
+	{
+		for (auto buffer : referencedHostVisibleBuffer)
+		{
+			buffer->lastUsedExecuteID = 0;
+		}
+		referencedHostVisibleBuffer.clear();
 	}
 
 	CommandListVk::~CommandListVk()
@@ -404,6 +421,15 @@ namespace rhi
 		assert(srcOffset + dataSize <= srcBuf->getDesc().size);
 		assert(dstOffset + dataSize <= dstBuf->getDesc().size);
 
+		if (srcBuf->desc.access != BufferAccess::GpuOnly)
+		{
+			m_CurrentCmdBuf->referencedHostVisibleBuffer.push_back(srcBuf);
+		}
+		if (dstBuf->desc.access != BufferAccess::GpuOnly)
+		{
+			m_CurrentCmdBuf->referencedHostVisibleBuffer.push_back(dstBuf);
+		}
+
 		if (m_EnableAutoTransition)
 		{
 			transitionBufferState(srcBuffer, ResourceState::CopySource);
@@ -451,7 +477,7 @@ namespace rhi
 			BufferDesc stageBufferDesc;
 			stageBufferDesc.access = BufferAccess::CpuWrite;
 			stageBufferDesc.usage = BufferUsage::None;
-			auto& stageBuffer = m_CurrentCmdBuf->referencedStageBuffer.emplace_back();
+			auto& stageBuffer = m_CurrentCmdBuf->referencedInternalStageBuffer.emplace_back();
 			stageBuffer = std::unique_ptr<BufferVk>(checked_cast<BufferVk*>(m_RenderDevice.createBuffer(stageBufferDesc, data, dataSize)));
 			copyBuffer(stageBuffer.get(), 0, buf, 0, dataSize);
 		}
@@ -493,7 +519,7 @@ namespace rhi
 		BufferDesc stageBufferDesc;
 		stageBufferDesc.access = BufferAccess::CpuWrite;
 		stageBufferDesc.usage = BufferUsage::None;
-		auto& stageBuffer = m_CurrentCmdBuf->referencedStageBuffer.emplace_back();
+		auto& stageBuffer = m_CurrentCmdBuf->referencedInternalStageBuffer.emplace_back();
 		stageBuffer = std::unique_ptr<BufferVk>(checked_cast<BufferVk*>(m_RenderDevice.createBuffer(stageBufferDesc, data, copyInfo.regionBytesCount)));
 
 		uint32_t regionDepth = updateInfo.dstRegion.getDepth();
@@ -633,35 +659,76 @@ namespace rhi
 			pipelineTypeChanged = true;
 		}
 
-		if (m_EnableAutoTransition)
-		{
-			constexpr ShaderType graphicsStages = ShaderType::Vertex | ShaderType::Fragment |
-				ShaderType::Geometry | ShaderType::TessellationControl | ShaderType::TessellationEvaluation;
+		constexpr ShaderType graphicsStages = ShaderType::Vertex | ShaderType::Fragment |
+			ShaderType::Geometry | ShaderType::TessellationControl | ShaderType::TessellationEvaluation;
 
-			// resource set
-			for (uint32_t i = 0; i < state.resourceSetCount; ++i)
+		// resource set
+		for (uint32_t i = 0; i < state.resourceSetCount; ++i)
+		{
+			assert(state.resourceSets[i] != nullptr);
+			if (m_EnableAutoTransition)
 			{
-				assert(state.resourceSets[i] != nullptr);
 				transitionResourceSet(state.resourceSets[i], graphicsStages);
 			}
 
-			// vertex buffer
-			for (uint32_t i = 0; i < state.vertexBufferCount; ++i)
+			// reference host visible buffer
+			auto resourceSet = checked_cast<ResourceSetVk*>(state.resourceSets[i]);
+			for (auto& itemWithVisibleStages : resourceSet->resourcesNeedStateTransition)
 			{
-				assert(state.vertexBuffers[i].buffer != nullptr);
-				auto buffer = checked_cast<BufferVk*>(state.vertexBuffers[i].buffer);
+				if (itemWithVisibleStages.item.buffer)
+				{
+					auto buffer = checked_cast<BufferVk*>(itemWithVisibleStages.item.buffer);
+					if (buffer->desc.access != BufferAccess::GpuOnly)
+					{
+						m_CurrentCmdBuf->referencedHostVisibleBuffer.push_back(buffer);
+					}
+				}
+			}
+		}
+
+		// vertex buffer
+		for (uint32_t i = 0; i < state.vertexBufferCount; ++i)
+		{
+			assert(state.vertexBuffers[i].buffer != nullptr);
+			auto buffer = checked_cast<BufferVk*>(state.vertexBuffers[i].buffer);
+			if (m_EnableAutoTransition)
+			{
 				transitionBufferState(buffer, ResourceState::VertexBuffer);
 			}
 
-			// index buffer
+			if (buffer->desc.access != BufferAccess::GpuOnly)
+			{
+				m_CurrentCmdBuf->referencedHostVisibleBuffer.push_back(buffer);
+			}
+		}
+
+		// index buffer
+		if (state.indexBuffer.buffer)
+		{
 			assert(state.indexBuffer.buffer != nullptr);
 			auto buffer = checked_cast<BufferVk*>(state.indexBuffer.buffer);
-			transitionBufferState(buffer, ResourceState::IndexBuffer);
-
-			if (state.indirectBuffer)
+			if (m_EnableAutoTransition)
 			{
-				auto buffer = checked_cast<BufferVk*>(state.indirectBuffer);
+				transitionBufferState(buffer, ResourceState::IndexBuffer);
+			}
+
+			if (buffer->desc.access != BufferAccess::GpuOnly)
+			{
+				m_CurrentCmdBuf->referencedHostVisibleBuffer.push_back(buffer);
+			}
+		}
+
+		if (state.indirectBuffer)
+		{
+			auto buffer = checked_cast<BufferVk*>(state.indirectBuffer);
+			if (m_EnableAutoTransition)
+			{
 				transitionBufferState(buffer, ResourceState::IndirectBuffer);
+			}
+
+			if (buffer->desc.access != BufferAccess::GpuOnly)
+			{
+				m_CurrentCmdBuf->referencedHostVisibleBuffer.push_back(buffer);
 			}
 		}
 
@@ -886,18 +953,40 @@ namespace rhi
 
 		auto pipeline = checked_cast<ComputePipelineVk*>(state.pipeline);
 
-		if (m_EnableAutoTransition)
+		for (uint32_t i = 0; i < state.resourceSetCount; ++i)
 		{
-			for (uint32_t i = 0; i < state.resourceSetCount; ++i)
+			assert(state.resourceSets[i] != nullptr);
+			if (m_EnableAutoTransition)
 			{
-				assert(state.resourceSets[i] != nullptr);
 				transitionResourceSet(state.resourceSets[i], ShaderType::Compute);
 			}
 
-			if (state.indirectBuffer)
+			// reference host visible buffer
+			auto resourceSet = checked_cast<ResourceSetVk*>(state.resourceSets[i]);
+			for (auto& itemWithVisibleStages : resourceSet->resourcesNeedStateTransition)
 			{
-				auto indirectBuffer = checked_cast<BufferVk*>(state.indirectBuffer);
+				if (itemWithVisibleStages.item.buffer)
+				{
+					auto buffer = checked_cast<BufferVk*>(itemWithVisibleStages.item.buffer);
+					if (buffer->desc.access != BufferAccess::GpuOnly)
+					{
+						m_CurrentCmdBuf->referencedHostVisibleBuffer.push_back(buffer);
+					}
+				}
+			}
+		}
+
+		if (state.indirectBuffer)
+		{
+			auto indirectBuffer = checked_cast<BufferVk*>(state.indirectBuffer);
+			if (m_EnableAutoTransition)
+			{
 				transitionBufferState(indirectBuffer, ResourceState::IndirectBuffer);
+			}
+
+			if (indirectBuffer->desc.access != BufferAccess::GpuOnly)
+			{
+				m_CurrentCmdBuf->referencedHostVisibleBuffer.push_back(indirectBuffer);
 			}
 		}
 

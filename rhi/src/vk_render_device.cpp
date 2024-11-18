@@ -480,6 +480,11 @@ namespace rhi
 			return nullptr;
 		}
 
+		if (buf->lastUsedExecuteID != 0)
+		{
+			waitForExecution(buf->lastUsedExecuteID);
+		}
+
 		return buf->allocaionInfo.pMappedData;
 	}
 
@@ -1165,7 +1170,7 @@ namespace rhi
 		uint32_t offset = 0;
 		for (uint32_t i = 0; i < pushConstantRanges.size(); ++i)
 		{
-			ASSERT_MSG(pipelineCI.pushConstantDescs[i].size & 3 == 0, "pushConstant size must be a multiple of 4.");
+			ASSERT_MSG((pipelineCI.pushConstantDescs[i].size & 3) == 0, "pushConstant size must be a multiple of 4.");
 			pushConstantRanges[i].stageFlags = shaderTypeToVkShaderStageFlagBits(pipelineCI.pushConstantDescs[i].stage);
 			pushConstantRanges[i].size = pipelineCI.pushConstantDescs[i].size;
 			pushConstantRanges[i].offset = offset;
@@ -1263,6 +1268,7 @@ namespace rhi
 			hasGraphicPipeline = cmdList->hasSetGraphicPipeline();
 
 			CommandBuffer* cmdBuffer = cmdList->getCommandBuffer();
+			cmdBuffer->updateLastUsedExecuteID(lastSubmittedID);
 			cmdBuffer->submitID = lastSubmittedID;
 			m_CommandBufferInFlight.push_back(cmdBuffer);
 
@@ -1385,8 +1391,9 @@ namespace rhi
 		{
 			if (commandBuffer->submitID <= lastFinishedID)
 			{
-				commandBuffer->referencedStageBuffer.clear();
+				commandBuffer->referencedInternalStageBuffer.clear();
 				commandBuffer->submitID = 0;
+				commandBuffer->resetLastUsedExecuteID();
 				m_CommandBufferPool.push_back(commandBuffer);
 			}
 			else

@@ -144,6 +144,7 @@ namespace rhi
 		~BufferVk();
 
 		//ResourceState submittedState = ResourceState::Undefined;
+		uint64_t lastUsedExecuteID = 0; // for host visible buffer
 		BufferDesc desc;
 		VkBuffer buffer = nullptr;
 		VmaAllocationInfo allocaionInfo{};
