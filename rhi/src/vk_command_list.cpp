@@ -910,6 +910,7 @@ namespace rhi
 			VkRenderingInfo renderingInfo{};
 			fillVkRenderingInfo(m_LastGraphicsState, renderingInfo, colorAttachments, depthAttachment);
 			vkCmdBeginRendering(m_CurrentCmdBuf->vkCmdBuf, &renderingInfo);
+			m_RenderingStarted = true;
 		}
 
 		vkCmdDraw(m_CurrentCmdBuf->vkCmdBuf, vertexCount, instanceCount, firstVertex, firstInstance);
@@ -924,7 +925,9 @@ namespace rhi
 			VkRenderingAttachmentInfo depthAttachment{};
 
 			VkRenderingInfo renderingInfo{};
+			fillVkRenderingInfo(m_LastGraphicsState, renderingInfo, colorAttachments, depthAttachment);
 			vkCmdBeginRendering(m_CurrentCmdBuf->vkCmdBuf, &renderingInfo);
+			m_RenderingStarted = true;
 		}
 
 		vkCmdDrawIndexed(m_CurrentCmdBuf->vkCmdBuf, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
@@ -939,7 +942,9 @@ namespace rhi
 			VkRenderingAttachmentInfo depthAttachment{};
 
 			VkRenderingInfo renderingInfo{};
+			fillVkRenderingInfo(m_LastGraphicsState, renderingInfo, colorAttachments, depthAttachment);
 			vkCmdBeginRendering(m_CurrentCmdBuf->vkCmdBuf, &renderingInfo);
+			m_RenderingStarted = true;
 		}
 		auto indiectBuffer = checked_cast<BufferVk*>(m_LastGraphicsState.indirectBuffer);
 		assert(indiectBuffer != nullptr);
@@ -955,7 +960,9 @@ namespace rhi
 			VkRenderingAttachmentInfo depthAttachment{};
 
 			VkRenderingInfo renderingInfo{};
+			fillVkRenderingInfo(m_LastGraphicsState, renderingInfo, colorAttachments, depthAttachment);
 			vkCmdBeginRendering(m_CurrentCmdBuf->vkCmdBuf, &renderingInfo);
+			m_RenderingStarted = true;
 		}
 		auto indiectBuffer = checked_cast<BufferVk*>(m_LastGraphicsState.indirectBuffer);
 		assert(indiectBuffer != nullptr);
