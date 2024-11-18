@@ -48,6 +48,7 @@ namespace rhi
 		void commitBarriers() override;
 		void transitionTextureState(ITexture* texture, ResourceState newState) override;
 		void transitionBufferState(IBuffer* buffer, ResourceState newState) override;
+		void transitionResourceSet(IResourceSet* resourceSet) override;
 
 		void clearColorTexture(ITextureView* textureView, const ClearColor& color) override;
 		void clearDepthStencil(ITextureView* textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal) override;

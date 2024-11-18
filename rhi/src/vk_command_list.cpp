@@ -602,6 +602,29 @@ namespace rhi
 		}
 	}
 
+	void CommandListVk::transitionResourceSet(IResourceSet* resourceSet)
+	{
+		assert(resourceSet);
+
+		switch (m_LastPipelineType)
+		{
+		case rhi::CommandListVk::PipelineType::Graphics:
+		{
+			constexpr ShaderType graphicsStages = ShaderType::Vertex | ShaderType::Fragment |
+				ShaderType::Geometry | ShaderType::TessellationControl | ShaderType::TessellationEvaluation;
+			transitionResourceSet(resourceSet, graphicsStages);
+			break;
+		}
+		case rhi::CommandListVk::PipelineType::Compute:
+			transitionResourceSet(resourceSet, ShaderType::Compute);
+			break;
+		case rhi::CommandListVk::PipelineType::Unknown:
+		default:
+			LOG_ERROR("Must set pipelineState before transition resourceSet.");
+			break;
+		}
+	}
+
 	static inline void fillVkRenderingInfo(const GraphicsState& state, VkRenderingInfo& renderingInfo,
 		std::array<VkRenderingAttachmentInfo, g_MaxColorAttachments>& colorAttachments, 
 		VkRenderingAttachmentInfo& depthStencilAttachment)
@@ -653,11 +676,6 @@ namespace rhi
 	void CommandListVk::setGraphicsState(const GraphicsState& state)
 	{
 		assert(m_CurrentCmdBuf);
-		bool pipelineTypeChanged = false;
-		if (m_LastPipelineType != PipelineType::Graphics)
-		{
-			pipelineTypeChanged = true;
-		}
 
 		constexpr ShaderType graphicsStages = ShaderType::Vertex | ShaderType::Fragment |
 			ShaderType::Geometry | ShaderType::TessellationControl | ShaderType::TessellationEvaluation;
@@ -784,7 +802,7 @@ namespace rhi
 		// set viewports and scissors 
 		ASSERT_MSG(state.viewportCount == checked_cast<GraphicsPipelineVk*>(state.pipeline)->getDesc().viewportCount,
 			"The number of viewports provided does not match the number specified when the pipeline was created.");
-		if (pipelineTypeChanged || arraysAreDifferent(state.viewports, state.viewportCount,
+		if (arraysAreDifferent(state.viewports, state.viewportCount,
 			m_LastGraphicsState.viewports, m_LastGraphicsState.viewportCount))
 		{
 			VkViewport viewports[g_MaxViewPorts]{};
@@ -809,7 +827,7 @@ namespace rhi
 		assert(state.pipeline != nullptr);
 		GraphicsPipelineVk* pipeline = checked_cast<GraphicsPipelineVk*>(state.pipeline);
 
-		if (pipelineTypeChanged || arraysAreDifferent(state.resourceSets, state.resourceSetCount,
+		if (arraysAreDifferent(state.resourceSets, state.resourceSetCount,
 			m_LastGraphicsState.resourceSets, m_LastGraphicsState.resourceSetCount))
 		{
 			VkDescriptorSet descriptorSets[g_MaxBoundDescriptorSets]{};
@@ -818,11 +836,11 @@ namespace rhi
 				assert(state.resourceSets[i] != nullptr);
 				auto resourceSet = checked_cast<ResourceSetVk*>(state.resourceSets[i]);
 				descriptorSets[i] = resourceSet->descriptorSet;
-			}
+			} 
 			vkCmdBindDescriptorSets(m_CurrentCmdBuf->vkCmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipelineLayout, 0, state.resourceSetCount, descriptorSets, 0, nullptr);
 		}
 
-		if (pipelineTypeChanged || state.pipeline != m_LastGraphicsState.pipeline)
+		if (state.pipeline != m_LastGraphicsState.pipeline)
 		{
 			vkCmdBindPipeline(m_CurrentCmdBuf->vkCmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
 		}
@@ -851,7 +869,7 @@ namespace rhi
 	void CommandListVk::setPushConstant(ShaderType stages, const void* data)
 	{
 		assert(m_CurrentCmdBuf);
-		ASSERT_MSG(m_LastGraphicsState.pipeline || m_LastComputeState.pipeline, "set PipelineState before push constant");
+		ASSERT_MSG(m_LastGraphicsState.pipeline || m_LastComputeState.pipeline, "Must set PipelineState before push constant.");
 
 		if (m_LastGraphicsState.pipeline)
 		{
@@ -949,8 +967,6 @@ namespace rhi
 		assert(m_CurrentCmdBuf);
 		endRendering();
 
-		bool pipelineChanged = m_LastPipelineType != PipelineType::Compute;
-
 		auto pipeline = checked_cast<ComputePipelineVk*>(state.pipeline);
 
 		for (uint32_t i = 0; i < state.resourceSetCount; ++i)
@@ -992,12 +1008,12 @@ namespace rhi
 
 		commitBarriers();
 
-		if (pipelineChanged || state.pipeline != m_LastComputeState.pipeline)
+		if (state.pipeline != m_LastComputeState.pipeline)
 		{
 			vkCmdBindPipeline(m_CurrentCmdBuf->vkCmdBuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->pipeline);
 		}
 
-		if (pipelineChanged || arraysAreDifferent(state.resourceSets, state.resourceSetCount,
+		if (arraysAreDifferent(state.resourceSets, state.resourceSetCount,
 			m_LastComputeState.resourceSets, m_LastComputeState.resourceSetCount))
 		{
 			VkDescriptorSet descriptorSets[g_MaxBoundDescriptorSets]{};

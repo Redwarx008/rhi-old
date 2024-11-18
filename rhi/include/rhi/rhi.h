@@ -122,6 +122,7 @@ namespace rhi
 		virtual void commitBarriers() = 0;
 		virtual void transitionTextureState(ITexture* texture, ResourceState newState) = 0;
 		virtual void transitionBufferState(IBuffer* buffer, ResourceState newState) = 0;
+		virtual void transitionResourceSet(IResourceSet* resourceSet) = 0;
 
 		virtual void clearColorTexture(ITextureView* textureView, const ClearColor& color) = 0;
 		virtual void clearDepthStencil(ITextureView* textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal) = 0;
