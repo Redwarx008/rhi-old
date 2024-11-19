@@ -60,6 +60,7 @@ namespace rhi
 
 
 		instanceExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+		instanceExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 
 		std::vector<const char*> supportedInstanceExtensions;
 		// Get extensions supported by the instance and store for later use
@@ -74,6 +75,15 @@ namespace rhi
 				{
 					supportedInstanceExtensions.push_back(extension.extensionName);
 				}
+			}
+		}
+
+		for (auto extensionName : instanceExtensions)
+		{
+			if (std::find(supportedInstanceExtensions.begin(), supportedInstanceExtensions.end(), extensionName) == supportedInstanceExtensions.end())
+			{
+				LOG_ERROR(extensionName, "is not supported.");
+				return false;
 			}
 		}
 
@@ -198,6 +208,32 @@ namespace rhi
 		std::vector<const char*> deviceExtensions;
 
 		deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+		deviceExtensions.push_back(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
+
+		// Get list of supported extensions
+		std::vector<const char*> supportedExtensions;
+		uint32_t extCount = 0;
+		vkEnumerateDeviceExtensionProperties(context.physicalDevice, nullptr, &extCount, nullptr);
+		if (extCount > 0)
+		{
+			std::vector<VkExtensionProperties> extensions(extCount);
+			if (vkEnumerateDeviceExtensionProperties(context.physicalDevice, nullptr, &extCount, &extensions.front()) == VK_SUCCESS)
+			{
+				for (auto& ext : extensions)
+				{
+					supportedExtensions.push_back(ext.extensionName);
+				}
+			}
+		}
+
+		for (auto extension : deviceExtensions)
+		{
+			if (std::find(supportedExtensions.begin(), supportedExtensions.end(), extension) == supportedExtensions.end())
+			{
+				LOG_ERROR(extension, "is not supported.");
+				return false;
+			}
+		}
 
 		VkPhysicalDeviceFeatures deviceFeatures{};
 		deviceFeatures.textureCompressionBC = true;
