@@ -920,9 +920,6 @@ namespace rhi
 		uint32_t viewportCount = 0;
 		Viewport viewports[g_MaxViewPorts];
 
-		IResourceSet* resourceSets[g_MaxBoundDescriptorSets]{};
-		uint32_t resourceSetCount = 0;
-
 		VertexBufferBinding vertexBuffers[g_MaxVertexInputBindings]{};
 		uint32_t vertexBufferCount = 0;
 

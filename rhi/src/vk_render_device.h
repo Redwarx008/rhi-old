@@ -17,7 +17,6 @@ namespace rhi
 		~RenderDeviceVk();
 		// Internal methods
 		static RenderDeviceVk* create(const RenderDeviceCreateInfo& desc);
-		const VkPhysicalDeviceProperties& getPhysicalDeviceProperties() const { return m_PhysicalDeviceProperties; }
 		CommandBuffer* getOrCreateCommandBuffer();
 		void setSwapChainImageAvailableSeamaphore(const VkSemaphore& semaphore);
 		void setRenderCompleteSemaphore(const VkSemaphore& semaphore);
@@ -26,8 +25,9 @@ namespace rhi
 
 		ContextVk context{};
 		VkQueue queue{ VK_NULL_HANDLE };
+		VkPhysicalDeviceProperties physicalDeviceProperties{};
 		uint32_t queueFamilyIndex = UINT32_MAX;
-
+		uint32_t maxPushDescriptors = 0;
 		uint64_t lastSubmittedID = 0;
 
 		// Interface implementation
@@ -42,8 +42,8 @@ namespace rhi
 		uint64_t executeCommandLists(ICommandList** cmdLists, size_t numCmdLists) override;
 		void waitForExecution(uint64_t executeID, uint64_t timeout = UINT64_MAX) override;
 		IResourceSetLayout* createResourceSetLayout(const ResourceSetLayoutBinding* bindings, uint32_t bindingCount) override;
-		IResourceSet* createResourceSet(const IResourceSetLayout* layout) override;
-		void writeResourceSet(IResourceSet* set, const ResourceSetBinding* bindings, uint32_t bindingCount) override;
+		IResourceSet* createResourceSet(const IResourceSetLayout* layout, const ResourceSetBinding* bindings, uint32_t bindingCount) override;
+		void updateResourceSet(IResourceSet* set, const ResourceSetBinding* bindings, uint32_t bindingCount) override;
 		IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineCreateInfo& pipelineCI) override;
 		IComputePipeline* createComputePipeline(const ComputePipelineCreateInfo& pipelineCI) override;
 	private:
@@ -58,7 +58,6 @@ namespace rhi
 		VmaAllocator m_Allocator{VK_NULL_HANDLE};
 
 		VkDebugUtilsMessengerEXT m_DebugUtilsMessenger{ VK_NULL_HANDLE };
-		VkPhysicalDeviceProperties m_PhysicalDeviceProperties{};
 
 		VkSemaphore m_SwapChainImgAvailableSemaphore{ VK_NULL_HANDLE };
 

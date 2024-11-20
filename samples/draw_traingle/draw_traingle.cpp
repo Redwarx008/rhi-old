@@ -140,12 +140,10 @@ public:
 		// create resouce set and layout
 		ResourceSetLayoutBinding layoutBindings[] = { ResourceSetLayoutBinding::UniformBuffer(ShaderType::Vertex, 0) };
 
-		m_ResourceSetLayout = m_RenderDevice->createResourceSetLayout(layoutBindings, 1);
-		m_ResourceSet = m_RenderDevice->createResourceSet(m_ResourceSetLayout);
-
 		ResourceSetBinding bindings[] = { ResourceSetBinding::UniformBuffer(m_UniformBuffer, 0) };
 
-		m_RenderDevice->writeResourceSet(m_ResourceSet, bindings, 1);
+		m_ResourceSetLayout = m_RenderDevice->createResourceSetLayout(layoutBindings, 1);
+		m_ResourceSet = m_RenderDevice->createResourceSet(m_ResourceSetLayout, bindings, 1);
 
 		// create pipeline
 		GraphicsPipelineCreateInfo pipelineCI{};
@@ -175,8 +173,6 @@ public:
 		camera.setPerspective(60.0f, (float)m_windowWidth / (float)m_windowHeight, 1.0f, 256.0f);
 
 		m_GraphicState.pipeline = m_Pipeline;
-		m_GraphicState.resourceSetCount = 1;
-		m_GraphicState.resourceSets[0] = m_ResourceSet;
 		m_GraphicState.renderTargetCount = 1;
 		m_GraphicState.indexBuffer = IndexBufferBinding().setBuffer(m_IndexBuffer).setFormat(Format::R32_UINT).setOffset(0);
 		m_GraphicState.vertexBufferCount = 1;
@@ -218,6 +214,7 @@ public:
 		m_CmdList->open();
 		m_CmdList->updateBuffer(m_UniformBuffer, &shaderData, sizeof(ShaderData), 0);
 		m_CmdList->setGraphicsState(m_GraphicState);
+		m_CmdList->commitResourceSet(m_ResourceSet);
 		m_CmdList->setScissors(&scissor, 1);
 		m_CmdList->drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 		m_CmdList->close();

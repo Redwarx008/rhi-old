@@ -38,9 +38,7 @@ namespace rhi
 	{
 	public:
 		~CommandListVk();
-		explicit CommandListVk(RenderDeviceVk& renderDevice)
-			:m_RenderDevice(renderDevice)
-		{}
+		explicit CommandListVk(RenderDeviceVk& renderDevice);
 		void open() override;
 		void close() override;
 
@@ -56,6 +54,8 @@ namespace rhi
 		void copyBuffer(IBuffer* srcBuffer, uint64_t srcOffset, IBuffer* dstBuffer, uint64_t dstOffset, uint64_t dataSize) override;
 		void* mapBuffer(IBuffer* buffer, MapBufferUsage usage) override;
 		void updateTexture(ITexture* texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo) override;
+
+		void commitResourceSet(IResourceSet* resourceSet, uint32_t dstSet = 0) override;
 
 		void setPushConstant(ShaderType stages, const void* data) override;
 		void setScissors(const Rect* scissors, uint32_t scissorCount) override;
@@ -81,8 +81,10 @@ namespace rhi
 		void transitionResourceSet(IResourceSet* set, ShaderType dstVisibleStages);
 		void setBufferBarrier(BufferVk* buffer, VkPipelineStageFlags2 dstStage, VkAccessFlags2 dstAccess);
 		void endRendering();
+
 		bool m_EnableAutoTransition = true;
 		bool m_RenderingStarted = false;
+
 		enum class PipelineType
 		{
 			Unknown,
@@ -117,5 +119,8 @@ namespace rhi
 		CommandBuffer* m_CurrentCmdBuf = nullptr;
 
 		RenderDeviceVk& m_RenderDevice;
+
+		// todo: delete it, if vulkan 1.4 is released.
+		PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR = nullptr;
 	};
 }

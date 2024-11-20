@@ -131,6 +131,8 @@ namespace rhi
 		virtual void* mapBuffer(IBuffer* buffer, MapBufferUsage usage) = 0;
 		virtual void updateTexture(ITexture* texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo) = 0;
 
+		virtual void commitResourceSet(IResourceSet* resourceSet, uint32_t dstSet = 0) = 0;
+
 		virtual void setPushConstant(ShaderType stages, const void* data) = 0;
 		virtual void setScissors(const Rect* scissors, uint32_t scissorCount) = 0;
 		virtual void setGraphicsState(const GraphicsState& state) = 0;
@@ -153,8 +155,8 @@ namespace rhi
 		virtual IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineCreateInfo& pipelineCI) = 0;
 		virtual IComputePipeline* createComputePipeline(const ComputePipelineCreateInfo& pipelineCI) = 0;
 		virtual IResourceSetLayout* createResourceSetLayout(const ResourceSetLayoutBinding* bindings, uint32_t bindingCount) = 0;
-		virtual IResourceSet* createResourceSet(const IResourceSetLayout* layout) = 0;
-		virtual void writeResourceSet(IResourceSet* set, const ResourceSetBinding* bindings, uint32_t bindingCount) = 0;
+		virtual IResourceSet* createResourceSet(const IResourceSetLayout* layout, const ResourceSetBinding* bindings, uint32_t bindingCount) = 0;
+		virtual void updateResourceSet(IResourceSet* set, const ResourceSetBinding* bindings, uint32_t bindingCount) = 0;
 		virtual ITexture* createTexture(const TextureDesc& desc) = 0;
 		virtual IBuffer* createBuffer(const BufferDesc& desc) = 0;
 		virtual IBuffer* createBuffer(const BufferDesc& desc, const void* data, uint64_t dataSize) = 0;

@@ -199,11 +199,13 @@ namespace rhi
 	public:
 		explicit ResourceSetVk(const ContextVk& context)
 			:m_Context(context) {}
-		~ResourceSetVk();
+		~ResourceSetVk() = default;
 		Object getNativeObject(NativeObjectType type) const override;
-		VkDescriptorPool descriptorPool = nullptr;
-		VkDescriptorSet descriptorSet = nullptr;
 		const ResourceSetLayoutVk* resourceSetLayout = nullptr;
+
+		std::vector<VkWriteDescriptorSet> writeDescriptorSets;
+		std::vector<VkDescriptorImageInfo> descriptorImageInfos;
+		std::vector<VkDescriptorBufferInfo> descriptorBufferInfos;
 		std::vector<ResourceSetBindngWithVisibleStages> resourcesNeedStateTransition;
 	private:
 		const ContextVk& m_Context;

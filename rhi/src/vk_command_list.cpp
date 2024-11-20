@@ -36,6 +36,13 @@ namespace rhi
 		referencedHostVisibleBuffer.clear();
 	}
 
+	CommandListVk::CommandListVk(RenderDeviceVk& renderDevice)
+		:m_RenderDevice(renderDevice)
+	{
+		// to do: delete it, if vulkan 1.4 is released.
+		vkCmdPushDescriptorSetKHR = (PFN_vkCmdPushDescriptorSetKHR)vkGetDeviceProcAddr(m_RenderDevice.context.device, "vkCmdPushDescriptorSetKHR");
+	}
+
 	CommandListVk::~CommandListVk()
 	{
 
@@ -507,7 +514,7 @@ namespace rhi
 		auto tex = checked_cast<TextureVk*>(texture);
 
 		TextureCopyInfo copyInfo = getTextureCopyInfo(tex->getDesc().format, updateInfo.dstRegion,
-			(uint32_t)m_RenderDevice.getPhysicalDeviceProperties().limits.optimalBufferCopyRowPitchAlignment);
+			(uint32_t)m_RenderDevice.physicalDeviceProperties.limits.optimalBufferCopyRowPitchAlignment);
 
 		ASSERT_MSG(updateInfo.dstRegion.maxX <= tex->getDesc().width << updateInfo.mipLevel &&
 			updateInfo.dstRegion.maxY <= tex->getDesc().height << updateInfo.mipLevel &&
@@ -625,6 +632,50 @@ namespace rhi
 		}
 	}
 
+	void CommandListVk::commitResourceSet(IResourceSet* resourceSet, uint32_t dstSet)
+	{
+		assert(resourceSet);
+
+		auto set = checked_cast<ResourceSetVk*>(resourceSet);
+
+		switch (m_LastPipelineType)
+		{
+		case rhi::CommandListVk::PipelineType::Graphics:
+		{
+			if (m_EnableAutoTransition)
+			{
+				constexpr ShaderType graphicsStages = ShaderType::Vertex | ShaderType::Fragment |
+					ShaderType::Geometry | ShaderType::TessellationControl | ShaderType::TessellationEvaluation;
+				transitionResourceSet(resourceSet, graphicsStages);
+			}
+
+			auto pipeline = checked_cast<GraphicsPipelineVk*>(m_LastGraphicsState.pipeline);
+
+			vkCmdPushDescriptorSetKHR(m_CurrentCmdBuf->vkCmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipelineLayout, dstSet, set->writeDescriptorSets.size(), set->writeDescriptorSets.data());
+
+			break;
+		}
+		case rhi::CommandListVk::PipelineType::Compute:
+		{
+			if (m_EnableAutoTransition)
+			{
+				transitionResourceSet(resourceSet, ShaderType::Compute);
+			}
+
+			auto pipeline = checked_cast<ComputePipelineVk*>(m_LastComputeState.pipeline);
+
+			vkCmdPushDescriptorSetKHR(m_CurrentCmdBuf->vkCmdBuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->pipelineLayout, dstSet, set->writeDescriptorSets.size(), set->writeDescriptorSets.data());
+
+			break;
+		}
+		default:
+			LOG_ERROR("Must set pipelineState before transition resourceSet.");
+			break;
+		}
+
+		commitBarriers();
+	}
+
 	static inline void fillVkRenderingInfo(const GraphicsState& state, VkRenderingInfo& renderingInfo,
 		std::array<VkRenderingAttachmentInfo, g_MaxColorAttachments>& colorAttachments, 
 		VkRenderingAttachmentInfo& depthStencilAttachment)
@@ -676,33 +727,6 @@ namespace rhi
 	void CommandListVk::setGraphicsState(const GraphicsState& state)
 	{
 		assert(m_CurrentCmdBuf);
-
-		constexpr ShaderType graphicsStages = ShaderType::Vertex | ShaderType::Fragment |
-			ShaderType::Geometry | ShaderType::TessellationControl | ShaderType::TessellationEvaluation;
-
-		// resource set
-		for (uint32_t i = 0; i < state.resourceSetCount; ++i)
-		{
-			assert(state.resourceSets[i] != nullptr);
-			if (m_EnableAutoTransition)
-			{
-				transitionResourceSet(state.resourceSets[i], graphicsStages);
-			}
-
-			// reference host visible buffer
-			auto resourceSet = checked_cast<ResourceSetVk*>(state.resourceSets[i]);
-			for (auto& itemWithVisibleStages : resourceSet->resourcesNeedStateTransition)
-			{
-				if (itemWithVisibleStages.binding.buffer)
-				{
-					auto buffer = checked_cast<BufferVk*>(itemWithVisibleStages.binding.buffer);
-					if (buffer->desc.access != BufferAccess::GpuOnly)
-					{
-						m_CurrentCmdBuf->referencedHostVisibleBuffer.push_back(buffer);
-					}
-				}
-			}
-		}
 
 		// vertex buffer
 		for (uint32_t i = 0; i < state.vertexBufferCount; ++i)
@@ -770,13 +794,6 @@ namespace rhi
 		std::array<VkRenderingAttachmentInfo, g_MaxColorAttachments> colorAttachments{};
 		VkRenderingAttachmentInfo depthAttachment{};
 
-		VkRenderingInfo renderingInfo{};
-		fillVkRenderingInfo(state, renderingInfo, colorAttachments, depthAttachment);
-
-		// Start a dynamic rendering section
-		vkCmdBeginRendering(m_CurrentCmdBuf->vkCmdBuf, &renderingInfo);
-		m_RenderingStarted = true;
-
 		if (arraysAreDifferent(state.vertexBuffers, state.vertexBufferCount,
 			m_LastGraphicsState.vertexBuffers, m_LastGraphicsState.vertexBufferCount))
 		{
@@ -826,19 +843,6 @@ namespace rhi
 
 		assert(state.pipeline != nullptr);
 		GraphicsPipelineVk* pipeline = checked_cast<GraphicsPipelineVk*>(state.pipeline);
-
-		if (arraysAreDifferent(state.resourceSets, state.resourceSetCount,
-			m_LastGraphicsState.resourceSets, m_LastGraphicsState.resourceSetCount))
-		{
-			VkDescriptorSet descriptorSets[g_MaxBoundDescriptorSets]{};
-			for (uint32_t i = 0; i < state.resourceSetCount; ++i)
-			{
-				assert(state.resourceSets[i] != nullptr);
-				auto resourceSet = checked_cast<ResourceSetVk*>(state.resourceSets[i]);
-				descriptorSets[i] = resourceSet->descriptorSet;
-			} 
-			vkCmdBindDescriptorSets(m_CurrentCmdBuf->vkCmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipelineLayout, 0, state.resourceSetCount, descriptorSets, 0, nullptr);
-		}
 
 		if (state.pipeline != m_LastGraphicsState.pipeline)
 		{
@@ -1018,19 +1022,6 @@ namespace rhi
 		if (state.pipeline != m_LastComputeState.pipeline)
 		{
 			vkCmdBindPipeline(m_CurrentCmdBuf->vkCmdBuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->pipeline);
-		}
-
-		if (arraysAreDifferent(state.resourceSets, state.resourceSetCount,
-			m_LastComputeState.resourceSets, m_LastComputeState.resourceSetCount))
-		{
-			VkDescriptorSet descriptorSets[g_MaxBoundDescriptorSets]{};
-			for (uint32_t i = 0; i < state.resourceSetCount; ++i)
-			{
-				assert(state.resourceSets[i] != nullptr);
-				auto resourceSet = checked_cast<ResourceSetVk*>(state.resourceSets[i]);
-				descriptorSets[i] = resourceSet->descriptorSet;
-			}
-			vkCmdBindDescriptorSets(m_CurrentCmdBuf->vkCmdBuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->pipelineLayout, 0, state.resourceSetCount, descriptorSets, 0, nullptr);
 		}
 
 		m_LastPipelineType = PipelineType::Compute;
