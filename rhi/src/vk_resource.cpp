@@ -663,21 +663,8 @@ namespace rhi
 
 	Object ResourceSetVk::getNativeObject(NativeObjectType type) const
 	{
-		switch (type)
-		{
-		case NativeObjectType::VK_DescriptorSet:
-			return static_cast<Object>(descriptorSet);
-		case NativeObjectType::VK_DescriptorPool:
-			return static_cast<Object>(descriptorPool);
-		default:
-			return nullptr;
-		}
-	}
-
-	ResourceSetVk::~ResourceSetVk()
-	{
-		assert(descriptorPool != VK_NULL_HANDLE);
-		vkDestroyDescriptorPool(m_Context.device, descriptorPool, nullptr);
+		// now we use push descriptor, no longer exists VkDescriptorSet.
+		return nullptr;
 	}
 
 	Object ResourceSetLayoutVk::getNativeObject(NativeObjectType type) const

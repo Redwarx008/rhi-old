@@ -5,6 +5,7 @@
 #include "vk_pipeline.h"
 #include "vk_resource.h"
 
+#include <string>
 #include <sstream>
 #include <memory>
 #include <unordered_map>
@@ -60,8 +61,9 @@ namespace rhi
 
 
 		instanceExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+		instanceExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 
-		std::vector<const char*> supportedInstanceExtensions;
+		std::vector<std::string> supportedInstanceExtensions;
 		// Get extensions supported by the instance and store for later use
 		uint32_t extCount = 0;
 		vkEnumerateInstanceExtensionProperties(nullptr, &extCount, nullptr);
@@ -74,6 +76,15 @@ namespace rhi
 				{
 					supportedInstanceExtensions.push_back(extension.extensionName);
 				}
+			}
+		}
+
+		for (auto extensionName : instanceExtensions)
+		{
+			if (std::find(supportedInstanceExtensions.begin(), supportedInstanceExtensions.end(), extensionName) == supportedInstanceExtensions.end())
+			{
+				LOG_ERROR(extensionName, " is not supported.");
+				return false;
 			}
 		}
 
@@ -159,7 +170,7 @@ namespace rhi
 			if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
 			{
 				context.physicalDevice = physicalDevice;
-				m_PhysicalDeviceProperties = deviceProperties;
+				physicalDeviceProperties = deviceProperties;
 				return true;
 			}
 		}
@@ -198,6 +209,32 @@ namespace rhi
 		std::vector<const char*> deviceExtensions;
 
 		deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+		deviceExtensions.push_back(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
+
+		// Get list of supported extensions
+		std::vector<std::string> supportedExtensions;
+		uint32_t extCount = 0;
+		vkEnumerateDeviceExtensionProperties(context.physicalDevice, nullptr, &extCount, nullptr);
+		if (extCount > 0)
+		{
+			std::vector<VkExtensionProperties> extensions(extCount);
+			if (vkEnumerateDeviceExtensionProperties(context.physicalDevice, nullptr, &extCount, &extensions.front()) == VK_SUCCESS)
+			{
+				for (auto& ext : extensions)
+				{
+					supportedExtensions.push_back(ext.extensionName);
+				}
+			}
+		}
+
+		for (auto extension : deviceExtensions)
+		{
+			if (std::find(supportedExtensions.begin(), supportedExtensions.end(), extension) == supportedExtensions.end())
+			{
+				LOG_ERROR(extension, "is not supported.");
+				return false;
+			}
+		}
 
 		VkPhysicalDeviceFeatures deviceFeatures{};
 		deviceFeatures.textureCompressionBC = true;
@@ -284,6 +321,22 @@ namespace rhi
 			delete renderDevice;
 			return nullptr;
 		}
+
+		// Get device push descriptor properties (to display them)
+		PFN_vkGetPhysicalDeviceProperties2KHR vkGetPhysicalDeviceProperties2KHR = reinterpret_cast<PFN_vkGetPhysicalDeviceProperties2KHR>(vkGetInstanceProcAddr(renderDevice->context.instace, "vkGetPhysicalDeviceProperties2KHR"));
+		if (!vkGetPhysicalDeviceProperties2KHR) {
+			LOG_ERROR("Could not get a valid function pointer for vkGetPhysicalDeviceProperties2KHR");
+			delete renderDevice;
+			return nullptr;
+		}
+
+		VkPhysicalDeviceProperties2KHR deviceProps2{};
+		VkPhysicalDevicePushDescriptorPropertiesKHR pushDescriptorProps{};
+		pushDescriptorProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR;
+		deviceProps2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
+		deviceProps2.pNext = &pushDescriptorProps;
+		vkGetPhysicalDeviceProperties2KHR(renderDevice->context.physicalDevice, &deviceProps2);
+		renderDevice->maxPushDescriptors = pushDescriptorProps.maxPushDescriptors;
 
 		VmaAllocatorCreateInfo allocatorCreateInfo = {};
 		allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
@@ -497,7 +550,7 @@ namespace rhi
 			tmpCmdList->open();
 			tmpCmdList->updateBuffer(buffer, data, dataSize, 0);
 			tmpCmdList->close();
-			ICommandList* cmdListArr[] = { tmpCmdList.get()};
+			ICommandList* cmdListArr[] = { tmpCmdList.get() };
 			uint64_t submitID = executeCommandLists(cmdListArr, 1);
 			waitForExecution(submitID, UINT64_MAX);
 		}
@@ -543,6 +596,8 @@ namespace rhi
 	IResourceSetLayout* RenderDeviceVk::createResourceSetLayout(const ResourceSetLayoutBinding* bindings, uint32_t bindingCount)
 	{
 		assert(bindings != nullptr && bindingCount != 0);
+		ASSERT_MSG(bindingCount <= maxPushDescriptors, "A set can have a maximum of 32 descriptors.");
+
 		auto resourceLayoutVk = new ResourceSetLayoutVk(context);
 
 		std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBindings{ bindingCount };
@@ -562,6 +617,7 @@ namespace rhi
 
 		VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCI{};
 		descriptorSetLayoutCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		descriptorSetLayoutCI.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
 		descriptorSetLayoutCI.bindingCount = static_cast<uint32_t>(descriptorSetLayoutBindings.size());
 		descriptorSetLayoutCI.pBindings = descriptorSetLayoutBindings.data();
 		descriptorSetLayoutCI.pNext = nullptr;
@@ -577,89 +633,162 @@ namespace rhi
 		return resourceLayoutVk;
 	}
 
-	IResourceSet* RenderDeviceVk::createResourceSet(const IResourceSetLayout* layout)
+	static void writeDescriptor(
+		std::vector<VkWriteDescriptorSet>& writeDescriptorSets,
+		std::vector<VkDescriptorImageInfo>& descriptorImageInfos,
+		std::vector<VkDescriptorBufferInfo>& descriptorBufferInfos,
+		const ResourceSetBinding& binding)
+	{
+		auto& setWriter = writeDescriptorSets.emplace_back();
+
+		switch (binding.type)
+		{
+		case ShaderResourceType::SampledTexture:
+		{
+			assert(binding.textureView != nullptr);
+			auto textureView = checked_cast<TextureViewVk*>(binding.textureView);
+
+			auto& descriptorImageInfo = descriptorImageInfos.emplace_back();
+			descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			descriptorImageInfo.imageView = textureView->imageView;
+			descriptorImageInfo.sampler = nullptr;
+
+			setWriter.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			setWriter.pNext = nullptr;
+			setWriter.dstBinding = binding.bindingSlot;
+			setWriter.dstSet = 0;
+			setWriter.dstArrayElement = binding.arrayElementIndex;
+			setWriter.pImageInfo = &descriptorImageInfo;
+			setWriter.descriptorType = shaderResourceTypeToVkDescriptorType(binding.type);
+			setWriter.descriptorCount = 1;
+
+			break;
+		}
+		case ShaderResourceType::StorageTexture:
+		{
+			assert(binding.textureView != nullptr);
+			auto textureView = checked_cast<TextureViewVk*>(binding.textureView);
+
+			auto& descriptorImageInfo = descriptorImageInfos.emplace_back();
+			descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+			descriptorImageInfo.imageView = textureView->imageView;
+			descriptorImageInfo.sampler = nullptr;
+
+			setWriter.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			setWriter.pNext = nullptr;
+			setWriter.dstBinding = binding.bindingSlot;
+			setWriter.dstSet = 0;
+			setWriter.dstArrayElement = binding.arrayElementIndex;
+			setWriter.pImageInfo = &descriptorImageInfo;
+			setWriter.descriptorType = shaderResourceTypeToVkDescriptorType(binding.type);
+			setWriter.descriptorCount = 1;
+
+			break;
+		}
+		case ShaderResourceType::TextureWithSampler:
+		{
+			assert(binding.textureView != nullptr);
+			assert(binding.sampler != nullptr);
+			auto textureView = checked_cast<TextureViewVk*>(binding.textureView);
+
+			auto& descriptorImageInfo = descriptorImageInfos.emplace_back();
+			descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			descriptorImageInfo.imageView = textureView->imageView;
+			descriptorImageInfo.sampler = checked_cast<SamplerVk*>(binding.sampler)->sampler;
+
+			setWriter.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			setWriter.pNext = nullptr;
+			setWriter.dstBinding = binding.bindingSlot;
+			setWriter.dstSet = 0;
+			setWriter.dstArrayElement = binding.arrayElementIndex;
+			setWriter.pImageInfo = &descriptorImageInfo;
+			setWriter.descriptorType = shaderResourceTypeToVkDescriptorType(binding.type);
+			setWriter.descriptorCount = 1;
+
+			break;
+		}
+		case ShaderResourceType::StorageBuffer:
+		case ShaderResourceType::UniformBuffer:
+		{
+			assert(binding.buffer != nullptr);
+			auto buffer = checked_cast<BufferVk*>(binding.buffer);
+
+			auto& descriptorBufferInfo = descriptorBufferInfos.emplace_back();
+			descriptorBufferInfo.buffer = buffer->buffer;
+			descriptorBufferInfo.offset = binding.bufferOffset;
+			descriptorBufferInfo.range = binding.bufferRange == 0 ? VK_WHOLE_SIZE : binding.bufferRange;
+
+			setWriter.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			setWriter.pNext = nullptr;
+			setWriter.dstBinding = binding.bindingSlot;
+			setWriter.dstSet = 0;
+			setWriter.dstArrayElement = binding.arrayElementIndex;
+			setWriter.pBufferInfo = &descriptorBufferInfo;
+			setWriter.descriptorType = shaderResourceTypeToVkDescriptorType(binding.type);
+			setWriter.descriptorCount = 1;
+
+			break;
+		}
+		case ShaderResourceType::Sampler:
+		{
+			assert(binding.sampler != nullptr);
+
+			auto sampler = checked_cast<SamplerVk*>(binding.sampler);
+
+			auto& descriptorImageInfo = descriptorImageInfos.emplace_back();
+			descriptorImageInfo.sampler = sampler->sampler;
+			descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			descriptorImageInfo.imageView = nullptr;
+
+			setWriter.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			setWriter.pNext = nullptr;
+			setWriter.dstBinding = binding.bindingSlot;
+			setWriter.dstSet = 0;
+			setWriter.dstArrayElement = binding.arrayElementIndex;
+			setWriter.pImageInfo = &descriptorImageInfo;
+			setWriter.descriptorCount = 1;
+
+			break;
+		}
+		case ShaderResourceType::UniformTexelBuffer:
+		case ShaderResourceType::StorageTexelBuffer:
+		{
+			assert(!"not yet implemented");
+			break;
+		}
+		default:
+			assert(!"invalid ShaderResourceType");
+			break;
+		}
+	}
+
+	IResourceSet* RenderDeviceVk::createResourceSet(const IResourceSetLayout* layout, const ResourceSetBinding* bindings, uint32_t bindingCount)
 	{
 		assert(layout);
 		const auto setLayout = checked_cast<const ResourceSetLayoutVk*>(layout);
 
-		// count the number of descriptors required per type
-		std::unordered_map<VkDescriptorType, uint32_t> descriptorTypeCountMap;
-		for (auto& layoutBinding : setLayout->resourceSetLayoutBindings)
-		{
-			VkDescriptorType type = shaderResourceTypeToVkDescriptorType(layoutBinding.type);
-			if (descriptorTypeCountMap.find(type) == descriptorTypeCountMap.end())
-			{
-				descriptorTypeCountMap[type] = 0;
-			}
-			descriptorTypeCountMap[type] += layoutBinding.arrayElementCount;
-		}
-
-		std::vector<VkDescriptorPoolSize> descriptorPoolSizes;
-		for (auto& iter : descriptorTypeCountMap)
-		{
-			if (iter.second > 0)
-			{
-				VkDescriptorPoolSize poolSize{};
-				poolSize.type = iter.first;
-				poolSize.descriptorCount = iter.second;
-				descriptorPoolSizes.push_back(poolSize);
-			}
-		}
-
 		auto resourceSet = new ResourceSetVk(context);
-
-
-		VkDescriptorPoolCreateInfo poolCI{};
-		poolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolCI.maxSets = 1;
-		poolCI.poolSizeCount = static_cast<uint32_t>(descriptorPoolSizes.size());
-		poolCI.pPoolSizes = descriptorPoolSizes.data();
-
-		VkResult err = vkCreateDescriptorPool(context.device, &poolCI, nullptr, &resourceSet->descriptorPool);
-		CHECK_VK_RESULT(err, "Could not create descriptorPool.");
-
-		VkDescriptorSetAllocateInfo allocInfo = {};
-		allocInfo.pNext = nullptr;
-		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocInfo.pSetLayouts = &setLayout->descriptorSetLayout;
-		allocInfo.descriptorSetCount = 1;
-		allocInfo.descriptorPool = resourceSet->descriptorPool;
-
-		err = vkAllocateDescriptorSets(context.device, &allocInfo, &resourceSet->descriptorSet);
-		CHECK_VK_RESULT(err, "Could not create descriptorSet.");
-		if (err != VK_SUCCESS)
-		{
-			delete resourceSet;
-			return nullptr;
-		}
-
 		resourceSet->resourceSetLayout = setLayout;
-
-		return resourceSet;
-	}
-
-	void RenderDeviceVk::writeResourceSet(IResourceSet* set, const ResourceSetBinding* bindings, uint32_t bindingCount)
-	{
-		assert(set);
-		assert(bindings != nullptr && bindingCount != 0);
-		auto resourceSet = checked_cast<ResourceSetVk*>(set);
-
-		const ResourceSetLayoutVk* layout = resourceSet->resourceSetLayout;
-
-		std::vector<VkWriteDescriptorSet> descriptorSetWriters;
+		resourceSet->writeDescriptorSets.reserve(maxPushDescriptors);
+		resourceSet->descriptorBufferInfos.reserve(maxPushDescriptors);
+		resourceSet->descriptorImageInfos.reserve(maxPushDescriptors);
 
 		for (uint32_t i = 0; i < bindingCount; ++i)
 		{
 			const ResourceSetBinding& binding = bindings[i];
+
+			ShaderType bindingVisibleStages;
 
 			auto checkValidBinding = [&](const ResourceSetLayoutBinding& layoutBinding)->bool
 				{
 					return layoutBinding.bindingSlot == binding.bindingSlot && layoutBinding.type == binding.type;
 				};
 
-			ShaderType bindingVisibleStages;
-
-			if (auto it = std::find_if(std::begin(layout->resourceSetLayoutBindings), std::end(layout->resourceSetLayoutBindings), checkValidBinding); it != std::end(layout->resourceSetLayoutBindings))
+			if (auto it = std::find_if(
+				std::begin(setLayout->resourceSetLayoutBindings),
+				std::end(setLayout->resourceSetLayoutBindings),
+				checkValidBinding);
+				it != std::end(setLayout->resourceSetLayoutBindings))
 			{
 				bindingVisibleStages = it->visibleStages;
 			}
@@ -668,137 +797,106 @@ namespace rhi
 				assert(!"Invalid ResourceSetBinding, make sure the bindingSlot and resourceType match those in the ResourceSetLayout.");
 			}
 
-			switch (binding.type)
-			{
-			case ShaderResourceType::SampledTexture:
-			{
-				assert(binding.textureView != nullptr);
-				auto textureView = checked_cast<TextureViewVk*>(binding.textureView);
+			resourceSet->resourcesNeedStateTransition.emplace_back(ResourceSetBindngWithVisibleStages{ binding, bindingVisibleStages });
 
-				VkDescriptorImageInfo descriptorImageInfo{};
-				descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				descriptorImageInfo.imageView = textureView->imageView;
-
-				auto& setWriter = descriptorSetWriters.emplace_back();
-				setWriter.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				setWriter.pNext = nullptr;
-				setWriter.dstBinding = binding.bindingSlot;
-				setWriter.dstSet = resourceSet->descriptorSet;
-				setWriter.dstArrayElement = binding.arrayElementIndex;
-				setWriter.pImageInfo = &descriptorImageInfo;
-				setWriter.descriptorType = shaderResourceTypeToVkDescriptorType(binding.type);
-				setWriter.descriptorCount = 1;
-
-				resourceSet->resourcesNeedStateTransition.emplace_back(ResourceSetBindngWithVisibleStages{ binding, bindingVisibleStages });
-
-				break;
-			}
-			case ShaderResourceType::StorageTexture:
-			{
-				assert(binding.textureView != nullptr);
-				auto textureView = checked_cast<TextureViewVk*>(binding.textureView);
-
-				VkDescriptorImageInfo descriptorImageInfo{};
-				descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-				descriptorImageInfo.imageView = textureView->imageView;
-
-				auto& setWriter = descriptorSetWriters.emplace_back();
-				setWriter.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				setWriter.pNext = nullptr;
-				setWriter.dstBinding = binding.bindingSlot;
-				setWriter.dstSet = resourceSet->descriptorSet;
-				setWriter.dstArrayElement = binding.arrayElementIndex;
-				setWriter.pImageInfo = &descriptorImageInfo;
-				setWriter.descriptorType = shaderResourceTypeToVkDescriptorType(binding.type);
-				setWriter.descriptorCount = 1;
-
-				resourceSet->resourcesNeedStateTransition.emplace_back(ResourceSetBindngWithVisibleStages{ binding, bindingVisibleStages });
-
-				break;
-			}
-			case ShaderResourceType::TextureWithSampler:
-			{
-				assert(binding.textureView != nullptr);
-				assert(binding.sampler != nullptr);
-				auto textureView = checked_cast<TextureViewVk*>(binding.textureView);
-
-				VkDescriptorImageInfo descriptorImageInfo{};
-				descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				descriptorImageInfo.imageView = textureView->imageView;
-				descriptorImageInfo.sampler = checked_cast<SamplerVk*>(binding.sampler)->sampler;
-
-				auto& setWriter = descriptorSetWriters.emplace_back();
-				setWriter.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				setWriter.pNext = nullptr;
-				setWriter.dstBinding = binding.bindingSlot;
-				setWriter.dstSet = resourceSet->descriptorSet;
-				setWriter.dstArrayElement = binding.arrayElementIndex;
-				setWriter.pImageInfo = &descriptorImageInfo;
-				setWriter.descriptorType = shaderResourceTypeToVkDescriptorType(binding.type);
-				setWriter.descriptorCount = 1;
-
-				resourceSet->resourcesNeedStateTransition.emplace_back(ResourceSetBindngWithVisibleStages{ binding, bindingVisibleStages });
-
-				break;
-			}
-			case ShaderResourceType::StorageBuffer:
-			case ShaderResourceType::UniformBuffer:
-			{
-				assert(binding.buffer != nullptr);
-				auto buffer = checked_cast<BufferVk*>(binding.buffer);
-
-				VkDescriptorBufferInfo descriptorBufferInfo{};
-				descriptorBufferInfo.buffer = buffer->buffer;
-				descriptorBufferInfo.offset = binding.bufferOffset;
-				descriptorBufferInfo.range = binding.bufferRange == 0 ? VK_WHOLE_SIZE : binding.bufferRange;
-
-				auto& setWriter = descriptorSetWriters.emplace_back();
-				setWriter.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				setWriter.pNext = nullptr;
-				setWriter.dstBinding = binding.bindingSlot;
-				setWriter.dstSet = resourceSet->descriptorSet;
-				setWriter.dstArrayElement = binding.arrayElementIndex;
-				setWriter.pBufferInfo = &descriptorBufferInfo;
-				setWriter.descriptorType = shaderResourceTypeToVkDescriptorType(binding.type);
-				setWriter.descriptorCount = 1;
-
-				resourceSet->resourcesNeedStateTransition.emplace_back(ResourceSetBindngWithVisibleStages{ binding, bindingVisibleStages });
-
-				break;
-			}
-			case ShaderResourceType::Sampler:
-			{
-				assert(binding.sampler != nullptr);
-
-				auto sampler = checked_cast<SamplerVk*>(binding.sampler);
-
-				VkDescriptorImageInfo descriptorImageInfo{};
-				descriptorImageInfo.sampler = sampler->sampler;
-
-				auto& setWriter = descriptorSetWriters.emplace_back();
-				setWriter.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				setWriter.pNext = nullptr;
-				setWriter.dstBinding = binding.bindingSlot;
-				setWriter.dstSet = resourceSet->descriptorSet;
-				setWriter.dstArrayElement = binding.arrayElementIndex;
-				setWriter.pImageInfo = &descriptorImageInfo;
-				setWriter.descriptorCount = 1;
-
-				break;
-			}
-			case ShaderResourceType::UniformTexelBuffer:
-			case ShaderResourceType::StorageTexelBuffer:
-			{
-				assert(!"not yet implemented");
-				break;
-			}
-			default:
-				assert(!"invalid ShaderResourceType");
-				break;
-			}
+			writeDescriptor(resourceSet->writeDescriptorSets, resourceSet->descriptorImageInfos, resourceSet->descriptorBufferInfos, binding);
 		}
 
-		vkUpdateDescriptorSets(context.device, (uint32_t)descriptorSetWriters.size(), descriptorSetWriters.data(), 0, nullptr);
+		return resourceSet;
+	}
+
+	void RenderDeviceVk::updateResourceSet(IResourceSet* set, const ResourceSetBinding* bindings, uint32_t bindingCount)
+	{
+		assert(set);
+		assert(bindings != nullptr && bindingCount != 0);
+		auto resourceSet = checked_cast<ResourceSetVk*>(set);
+
+		const ResourceSetLayoutVk* layout = resourceSet->resourceSetLayout;
+
+		for (uint32_t i = 0; i < bindingCount; ++i)
+		{
+			const ResourceSetBinding& binding = bindings[i];
+
+			auto checkValidBinding = [&](const VkWriteDescriptorSet& setWriter)->bool
+				{
+					return setWriter.dstBinding == binding.bindingSlot && setWriter.dstArrayElement == binding.arrayElementIndex;
+				};
+
+			if (auto it = std::find_if(
+				std::begin(resourceSet->writeDescriptorSets),
+				std::end(resourceSet->writeDescriptorSets),
+				checkValidBinding);
+				it != std::end(resourceSet->writeDescriptorSets))
+			{
+				auto& setWriter = *it;
+				// if exists, only update resource pointer
+				ASSERT_MSG(shaderResourceTypeToVkDescriptorType(binding.type) == setWriter.descriptorType,
+					"Invalid ResourceSetBinding, resourceType mismatch.");
+				switch (binding.type)
+				{
+				case ShaderResourceType::SampledTexture:
+				case ShaderResourceType::StorageTexture:
+				{
+
+					auto descriptorImageInfo = const_cast<VkDescriptorImageInfo*>(setWriter.pImageInfo);
+					descriptorImageInfo->imageView = checked_cast<TextureViewVk*>(binding.textureView)->imageView;
+					break;
+				}
+				case ShaderResourceType::TextureWithSampler:
+				{
+					auto descriptorImageInfo = const_cast<VkDescriptorImageInfo*>(setWriter.pImageInfo);
+					descriptorImageInfo->imageView = checked_cast<TextureViewVk*>(binding.textureView)->imageView;
+					descriptorImageInfo->sampler = checked_cast<SamplerVk*>(binding.sampler)->sampler;
+					break;
+				}
+				case ShaderResourceType::StorageBuffer:
+				case ShaderResourceType::UniformBuffer:
+				{
+					auto descriptorBufferInfo = const_cast<VkDescriptorBufferInfo*>(setWriter.pBufferInfo);
+					descriptorBufferInfo->buffer = checked_cast<BufferVk*>(binding.buffer)->buffer;
+					descriptorBufferInfo->offset = binding.bufferOffset;
+					descriptorBufferInfo->range = binding.bufferRange == 0 ? VK_WHOLE_SIZE : binding.bufferRange;
+					break;
+				}
+				case ShaderResourceType::Sampler:
+				{
+					auto descriptorImageInfo = const_cast<VkDescriptorImageInfo*>(setWriter.pImageInfo);
+					descriptorImageInfo->sampler = checked_cast<SamplerVk*>(binding.sampler)->sampler;
+					break;
+				}
+				default:
+					break; //nothing to do
+				}
+
+			}
+			else
+			{
+				ShaderType bindingVisibleStages;
+
+				auto checkValidBinding = [&](const ResourceSetLayoutBinding& layoutBinding)->bool
+					{
+						return layoutBinding.bindingSlot == binding.bindingSlot && layoutBinding.type == binding.type;
+					};
+
+				if (auto it = std::find_if(
+					std::begin(layout->resourceSetLayoutBindings),
+					std::end(layout->resourceSetLayoutBindings),
+					checkValidBinding);
+					it != std::end(layout->resourceSetLayoutBindings))
+				{
+					bindingVisibleStages = it->visibleStages;
+				}
+				else
+				{
+					assert(!"Invalid ResourceSetBinding, make sure the bindingSlot and resourceType match those in the ResourceSetLayout.");
+				}
+
+				resourceSet->resourcesNeedStateTransition.emplace_back(ResourceSetBindngWithVisibleStages{ binding, bindingVisibleStages });
+
+				writeDescriptor(resourceSet->writeDescriptorSets, resourceSet->descriptorImageInfos, resourceSet->descriptorBufferInfos, binding);
+			}
+
+		}
 	}
 
 	static void resolveVertexInputOffsetAndStride(VertexInputAttribute* attributes, uint32_t attributeCount)
@@ -932,7 +1030,7 @@ namespace rhi
 			auto resourceSetLayout = checked_cast<ResourceSetLayoutVk*>(pipelineCI.resourceSetLayouts[i]);
 			descriptorSetLayouts[i] = resourceSetLayout->descriptorSetLayout;
 		}
-		
+
 		std::vector<VkPushConstantRange> pushConstantRanges(pipelineCI.pushConstantCount);
 		pipeline->pushConstantInfos.resize(pushConstantRanges.size());
 		ShaderType usedStages = ShaderType::Unknown;
@@ -1300,7 +1398,7 @@ namespace rhi
 			signalSemaphoreSubmitInfos[1].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 			submitInfo.signalSemaphoreInfoCount = 2;
 		}
-	
+
 		submitInfo.pSignalSemaphoreInfos = signalSemaphoreSubmitInfos;
 		submitInfo.commandBufferInfoCount = static_cast<uint32_t>(m_CmdBufSubmitInfos.size());
 		submitInfo.pCommandBufferInfos = m_CmdBufSubmitInfos.data();
@@ -1318,7 +1416,7 @@ namespace rhi
 
 	void RenderDeviceVk::waitForExecution(uint64_t executeID, uint64_t timeout)
 	{
-		uint64_t lastFinishedID; 
+		uint64_t lastFinishedID;
 		VkResult err = vkGetSemaphoreCounterValue(context.device, m_TrackingSubmittedSemaphore, &lastFinishedID);
 		CHECK_VK_RESULT(err);
 

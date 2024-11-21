@@ -2,12 +2,12 @@
 
 add_library(glm INTERFACE)
 
-#add_library(stb_image INTERFACE)
+add_library(stb_image INTERFACE)
 
 
 # glm  header only libs so we only need the include path
 target_include_directories(glm INTERFACE glm)
-#target_include_directories(stb_image INTERFACE stb_image)
+target_include_directories(stb_image INTERFACE stb_image)
 
 option(GLFW_BUILD_EXAMPLES "" OFF)
 option(GLFW_BUILD_TESTS "" OFF)

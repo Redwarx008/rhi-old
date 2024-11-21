@@ -15,4 +15,4 @@ add_subdirectory(samples/third_party)
 
 include(ShaderCompile.cmake)
 add_subdirectory(samples/draw_traingle)
-
+add_subdirectory(samples/terrain)
