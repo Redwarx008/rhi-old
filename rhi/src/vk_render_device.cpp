@@ -254,6 +254,8 @@ namespace rhi
 		VkPhysicalDeviceVulkan12Features feature12{};
 		feature12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
 		feature12.timelineSemaphore = true;
+		feature12.uniformBufferStandardLayout = true;
+		feature12.scalarBlockLayout = true;
 		feature12.pNext = &feature13;
 
 		VkDeviceCreateInfo deviceCreateInfo{};
