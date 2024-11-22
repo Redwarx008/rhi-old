@@ -417,6 +417,22 @@ namespace rhi
 		}
 	}
 
+	void CommandListVk::clearBuffer(IBuffer* buffer, uint32_t value)
+	{
+		assert(buffer);
+		assert(m_CurrentCmdBuf);
+
+		auto buf = checked_cast<BufferVk*>(buffer);
+
+		if (m_EnableAutoTransition)
+		{
+			transitionBufferState(buffer, ResourceState::CopyDest);
+		}
+		commitBarriers();
+
+		vkCmdFillBuffer(m_CurrentCmdBuf->vkCmdBuf, buf->buffer, 0, VK_WHOLE_SIZE, value);
+	}
+
 	void CommandListVk::copyBuffer(IBuffer* srcBuffer, uint64_t srcOffset, IBuffer* dstBuffer, uint64_t dstOffset, uint64_t dataSize)
 	{
 		assert(srcBuffer && dstBuffer);

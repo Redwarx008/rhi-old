@@ -50,6 +50,7 @@ namespace rhi
 
 		void clearColorTexture(ITextureView* textureView, const ClearColor& color) override;
 		void clearDepthStencil(ITextureView* textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal) override;
+		void clearBuffer(IBuffer* buffer, uint32_t value) override;
 		void updateBuffer(IBuffer* buffer, const void* data, uint64_t dataSize, uint64_t offset) override;
 		void copyBuffer(IBuffer* srcBuffer, uint64_t srcOffset, IBuffer* dstBuffer, uint64_t dstOffset, uint64_t dataSize) override;
 		void* mapBuffer(IBuffer* buffer, MapBufferUsage usage) override;
