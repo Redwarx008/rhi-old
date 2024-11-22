@@ -112,13 +112,12 @@ private:
 		rhi::IResourceSetLayout* resourceSetLayout;
 		rhi::IResourceSet* resourceSet;
 
+		rhi::IBuffer* topNodeList;
 		rhi::IBuffer* nodeListA;
 		rhi::IBuffer* nodeListB;
 		rhi::IBuffer* finalNodeList;
 
 		rhi::IBuffer* ChunkedLodParametersBuffer;
-
-		std::vector<glm::uvec2> topNodeListData;
 	}m_SelectNodesPass;
 
 
@@ -131,7 +130,6 @@ private:
 
 		rhi::IBuffer* m_VertexBuffer;
 		rhi::IBuffer* m_IndexBuffer;
-		rhi::IBuffer* m_IndirectBuffer;
 
 	}m_GraphicPass;
 
@@ -140,8 +138,8 @@ private:
 	rhi::ISampler* m_LinearSampler;
 	rhi::ITexture* m_MinMaxHeightErrorMap; // R for min height, G for max height, B for GeometricError
 	rhi::IBuffer* m_TerrainParamsBuffer;
-
-	std::array<rhi::IBuffer*, 2> m_SceneDataBuffers;
+	rhi::IBuffer* m_IndirectBuffer;
+	rhi::IBuffer* m_SceneDataBuffer;
 	uint32_t m_FrameInFlight = 0;
 };
 

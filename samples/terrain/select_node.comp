@@ -1,4 +1,5 @@
 #version 450
+#extension GL_EXT_scalar_block_layout : enable
 
 layout(binding = 0) uniform sampler2D lowerMinMaxErrorMapMip;
 
@@ -20,7 +21,7 @@ layout(binding = 3, std430) buffer FinalNodeList
 	uvec3 data[];
 } finalNodeList;
 
-layout(binding = 4, std140) uniform SceneData
+layout(binding = 4, std430) uniform SceneData
 {
 	mat4 projectionMatrix;
 	mat4 modelMatrix;
@@ -75,9 +76,21 @@ bool isAABBOutSidePlane(vec4 plane, vec3 boundsMin, vec3 boundsMax)
 	
  }
 
+
+ void traverseQuadTree(uint nodeX, uint nodeY)
+ {
+
+	ivec2 nodeIndex = consumeNodeList.data[]
+ }
+
 void main()
 {
-	
+	ivec2 mapSize = textureSize(lowerMinMaxErrorMapMip, int(lodLevel));
+	if (gl_GlobalInvocationID.x >= mapSize.x || gl_GlobalInvocationID.y >= mapSize.y)
+	{
+		return;
+	}
+
 }
 
 

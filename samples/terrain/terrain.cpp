@@ -96,7 +96,8 @@ void Terrain::initPipeline()
 				ResourceSetLayoutBinding::StorageBuffer(ShaderType::Compute, 1), // consumeNodeList
 				ResourceSetLayoutBinding::StorageBuffer(ShaderType::Compute, 2), // appendNodeList
 				ResourceSetLayoutBinding::StorageBuffer(ShaderType::Compute, 3), // finalNodeList 
-				ResourceSetLayoutBinding::UniformBuffer(ShaderType::Compute, 4) // sceneData
+				ResourceSetLayoutBinding::UniformBuffer(ShaderType::Compute, 4), // sceneData
+				ResourceSetLayoutBinding::StorageBuffer(ShaderType::Compute, 5) // indirect args buffer
 			};
 
 			ResourceSetBinding bindings[] =
@@ -105,7 +106,8 @@ void Terrain::initPipeline()
 				ResourceSetBinding::StorageBuffer(m_SelectNodesPass.nodeListA, 1),
 				ResourceSetBinding::StorageBuffer(m_SelectNodesPass.nodeListB, 2),
 				ResourceSetBinding::StorageBuffer(m_SelectNodesPass.finalNodeList, 3),
-				//ResourceSetItem::UniformBuffer(m_SceneDataBuffers[m_FrameInFlight], 7) // scene data will write in runtime
+				ResourceSetBinding::UniformBuffer(m_SceneDataBuffer, 4),
+				ResourceSetBinding::StorageBuffer(m_IndirectBuffer, 5)
 			};
 
 			m_SelectNodesPass.resourceSetLayout = m_RenderDevice->createResourceSetLayout(layoutBindings, sizeof(layoutBindings) / sizeof(ResourceSetLayoutBinding));
@@ -152,7 +154,7 @@ void Terrain::initPipeline()
 			{
 				ResourceSetBinding::TextureWithSampler(m_Heightmap->getDefaultView(), m_LinearSampler, 0),
 				ResourceSetBinding::StorageBuffer(m_SelectNodesPass.finalNodeList, 1),
-				//ResourceSetItem::UniformBuffer(m_SceneDataBuffers[m_FrameInFlight], 2, 0, offsetof(SceneData, frustumPlanes))
+				ResourceSetBinding::UniformBuffer(m_SceneDataBuffer, 2, 0, offsetof(SceneData, frustumPlanes))
 			};
 
 			m_GraphicPass.resourceSetLayout = m_RenderDevice->createResourceSetLayout(layoutBindings, sizeof(layoutBindings) / sizeof(ResourceSetLayoutBinding));
@@ -299,25 +301,11 @@ void Terrain::prepareData()
 	{
 		uint32_t maxNodePerSelect = m_MinMaxHeightErrorMap->getDesc().width * m_MinMaxHeightErrorMap->getDesc().height;
 		BufferDesc desc{};
-		desc.size = sizeof(uint32_t) + sizeof(glm::uvec2) * maxNodePerSelect; // counter + [nodeX, nodeY]
 		desc.access = BufferAccess::GpuOnly;
 		desc.usage = BufferUsage::StorageBuffer;
 
-		m_SelectNodesPass.nodeListA = m_RenderDevice->createBuffer(desc);
-		m_SelectNodesPass.nodeListB = m_RenderDevice->createBuffer(desc);
 		desc.size = sizeof(uint32_t) + sizeof(glm::vec4) * maxNodePerSelect; // counter + [nodeX, nodeY, LodLevel, morphValue]
-		m_SelectNodesPass.finalNodeList = m_RenderDevice->createBuffer(desc);
-
-		//init topLevel data
-
-		for (int y = 0; y < m_TopNodeCountY; ++y)
-		{
-			for (int x = 0; x < m_TopNodeCountX; ++x)
-			{
-				m_SelectNodesPass.topNodeListData.push_back(glm::uvec2(x, y));
-			}
-		}
-		
+		m_SelectNodesPass.selectedNodeList = m_RenderDevice->createBuffer(desc);
 	}
 
 	// create indirct buffer
@@ -327,40 +315,44 @@ void Terrain::prepareData()
 		desc.access = BufferAccess::GpuOnly;
 		desc.usage = BufferUsage::StorageBuffer;
 
-		m_GraphicPass.m_IndirectBuffer = m_RenderDevice->createBuffer(desc);
+		m_IndirectBuffer = m_RenderDevice->createBuffer(desc);
 	}
 
 	// create scene data buffers
-	for (uint32_t i = 0; i < 2; ++i)
 	{
 		BufferDesc desc{};
 		desc.size = sizeof(SceneData);
-		desc.access = BufferAccess::CpuWrite;
+		desc.access = BufferAccess::GpuOnly;
 		desc.usage = BufferUsage::UniformBuffer;
-		m_SceneDataBuffers[i] = m_RenderDevice->createBuffer(desc);
+		m_SceneDataBuffer = m_RenderDevice->createBuffer(desc);
 	}
+
 
 }
 
 void Terrain::draw()
 {
 	m_CommandList->open();
+	// update scene data.
+	m_CommandList->updateBuffer(m_SceneDataBuffer, &m_SceneData, sizeof(SceneData), 0);
+
+	m_CommandList->clearBuffer(m_SelectNodesPass.selectedNodeList, 0);
 	// Traversing the quadtree hierarchically
-	IBuffer* consumeNodeList = m_SelectNodesPass.nodeListA;
-	IBuffer* appendNodeList = m_SelectNodesPass.nodeListB;
-	m_CommandList->updateBuffer(consumeNodeList, m_SelectNodesPass.topNodeListData.data(), m_SelectNodesPass.topNodeListData.size(), 0);
 
 	ComputeState computeState{};
 	computeState.pipeline = m_SelectNodesPass.pipeline;
 	m_CommandList->setComputeState(computeState);
 
-	for (int i = m_NodeLevelCount - 1; i >= 0; --i)
+	for (int i = 0; i < m_NodeLevelCount; ++i)
 	{
-		ResourceSetBinding bindings[] =
-		{
-			ResourceSetBinding::StorageBuffer(consumeNodeList, 1),
-			ResourceSetBinding::StorageBuffer(appendNodeList, 2)
-		};
-		m_RenderDevice->updateResourceSet(m_SelectNodesPass.resourceSet, )
+		uint32_t lodLevel = m_NodeLevelCount - i - 1;
+
+		m_CommandList->commitResourceSet(m_SelectNodesPass.resourceSet);
+		m_CommandList->setPushConstant(ShaderType::Compute, &lodLevel);
+		m_CommandList->dispatch(
+			(uint32_t)std::ceilf((m_TopNodeCountX << i) / 8.0),
+			(uint32_t)std::ceilf((m_TopNodeCountY << i) / 8.0),
+			1
+			);
 	}
 }
