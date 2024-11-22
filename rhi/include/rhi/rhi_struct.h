@@ -925,7 +925,7 @@ namespace rhi
 
 		IndexBufferBinding indexBuffer;
 
-		IBuffer* indirectBuffer = nullptr;
+		IBuffer* indirectArgsBuffer = nullptr;
 		// clear all rendertaget
 		bool clearRenderTarget = false;
 		bool clearDepthStencil = false;
@@ -935,10 +935,7 @@ namespace rhi
 	{
 		IComputePipeline* pipeline = nullptr;
 
-		IBuffer* indirectBuffer = nullptr;
-
-		IResourceSet* resourceSets[g_MaxBoundDescriptorSets]{};
-		uint32_t resourceSetCount = 0;
+		IBuffer* indirectArgsBuffer = nullptr;
 	};
 
 	// command list

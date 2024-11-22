@@ -533,11 +533,6 @@ namespace rhi
 			return nullptr;
 		}
 
-		if (buf->lastUsedExecuteID != 0)
-		{
-			waitForExecution(buf->lastUsedExecuteID);
-		}
-
 		return buf->allocaionInfo.pMappedData;
 	}
 
@@ -1365,7 +1360,6 @@ namespace rhi
 			hasGraphicPipeline = cmdList->hasSetGraphicPipeline();
 
 			CommandBuffer* cmdBuffer = cmdList->getCommandBuffer();
-			cmdBuffer->updateLastUsedExecuteID(lastSubmittedID);
 			cmdBuffer->submitID = lastSubmittedID;
 			m_CommandBufferInFlight.push_back(cmdBuffer);
 
@@ -1490,7 +1484,6 @@ namespace rhi
 			{
 				commandBuffer->referencedInternalStageBuffer.clear();
 				commandBuffer->submitID = 0;
-				commandBuffer->resetLastUsedExecuteID();
 				m_CommandBufferPool.push_back(commandBuffer);
 			}
 			else

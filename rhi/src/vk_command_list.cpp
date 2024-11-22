@@ -19,23 +19,6 @@ namespace rhi
 		}
 	}
 
-	void CommandBuffer::updateLastUsedExecuteID(uint64_t excuteID)
-	{
-		for (auto buffer : referencedHostVisibleBuffer)
-		{
-			buffer->lastUsedExecuteID = excuteID;
-		}
-	}
-
-	void CommandBuffer::resetLastUsedExecuteID()
-	{
-		for (auto buffer : referencedHostVisibleBuffer)
-		{
-			buffer->lastUsedExecuteID = 0;
-		}
-		referencedHostVisibleBuffer.clear();
-	}
-
 	CommandListVk::CommandListVk(RenderDeviceVk& renderDevice)
 		:m_RenderDevice(renderDevice)
 	{
@@ -444,15 +427,6 @@ namespace rhi
 		assert(srcOffset + dataSize <= srcBuf->getDesc().size);
 		assert(dstOffset + dataSize <= dstBuf->getDesc().size);
 
-		if (srcBuf->desc.access != BufferAccess::GpuOnly)
-		{
-			m_CurrentCmdBuf->referencedHostVisibleBuffer.push_back(srcBuf);
-		}
-		if (dstBuf->desc.access != BufferAccess::GpuOnly)
-		{
-			m_CurrentCmdBuf->referencedHostVisibleBuffer.push_back(dstBuf);
-		}
-
 		if (m_EnableAutoTransition)
 		{
 			transitionBufferState(srcBuffer, ResourceState::CopySource);
@@ -654,6 +628,8 @@ namespace rhi
 
 		auto set = checked_cast<ResourceSetVk*>(resourceSet);
 
+		// reference host visible buffer
+
 		switch (m_LastPipelineType)
 		{
 		case rhi::CommandListVk::PipelineType::Graphics:
@@ -753,11 +729,6 @@ namespace rhi
 			{
 				transitionBufferState(buffer, ResourceState::VertexBuffer);
 			}
-
-			if (buffer->desc.access != BufferAccess::GpuOnly)
-			{
-				m_CurrentCmdBuf->referencedHostVisibleBuffer.push_back(buffer);
-			}
 		}
 
 		// index buffer
@@ -769,24 +740,14 @@ namespace rhi
 			{
 				transitionBufferState(buffer, ResourceState::IndexBuffer);
 			}
-
-			if (buffer->desc.access != BufferAccess::GpuOnly)
-			{
-				m_CurrentCmdBuf->referencedHostVisibleBuffer.push_back(buffer);
-			}
 		}
 
-		if (state.indirectBuffer)
+		if (state.indirectArgsBuffer)
 		{
-			auto buffer = checked_cast<BufferVk*>(state.indirectBuffer);
+			auto buffer = checked_cast<BufferVk*>(state.indirectArgsBuffer);
 			if (m_EnableAutoTransition)
 			{
 				transitionBufferState(buffer, ResourceState::IndirectBuffer);
-			}
-
-			if (buffer->desc.access != BufferAccess::GpuOnly)
-			{
-				m_CurrentCmdBuf->referencedHostVisibleBuffer.push_back(buffer);
 			}
 		}
 
@@ -966,7 +927,7 @@ namespace rhi
 			vkCmdBeginRendering(m_CurrentCmdBuf->vkCmdBuf, &renderingInfo);
 			m_RenderingStarted = true;
 		}
-		auto indiectBuffer = checked_cast<BufferVk*>(m_LastGraphicsState.indirectBuffer);
+		auto indiectBuffer = checked_cast<BufferVk*>(m_LastGraphicsState.indirectArgsBuffer);
 		assert(indiectBuffer != nullptr);
 		vkCmdDrawIndirect(m_CurrentCmdBuf->vkCmdBuf, indiectBuffer->buffer, offset, drawCount, sizeof(DrawIndirectCommand));
 	}
@@ -984,7 +945,7 @@ namespace rhi
 			vkCmdBeginRendering(m_CurrentCmdBuf->vkCmdBuf, &renderingInfo);
 			m_RenderingStarted = true;
 		}
-		auto indiectBuffer = checked_cast<BufferVk*>(m_LastGraphicsState.indirectBuffer);
+		auto indiectBuffer = checked_cast<BufferVk*>(m_LastGraphicsState.indirectArgsBuffer);
 		assert(indiectBuffer != nullptr);
 		vkCmdDrawIndexedIndirect(m_CurrentCmdBuf->vkCmdBuf, indiectBuffer->buffer, offset, drawCount, sizeof(DrawIndexedIndirectCommand));
 	}
@@ -996,40 +957,12 @@ namespace rhi
 
 		auto pipeline = checked_cast<ComputePipelineVk*>(state.pipeline);
 
-		for (uint32_t i = 0; i < state.resourceSetCount; ++i)
+		if (state.indirectArgsBuffer)
 		{
-			assert(state.resourceSets[i] != nullptr);
-			if (m_EnableAutoTransition)
-			{
-				transitionResourceSet(state.resourceSets[i], ShaderType::Compute);
-			}
-
-			// reference host visible buffer
-			auto resourceSet = checked_cast<ResourceSetVk*>(state.resourceSets[i]);
-			for (auto& itemWithVisibleStages : resourceSet->resourcesNeedStateTransition)
-			{
-				if (itemWithVisibleStages.binding.buffer)
-				{
-					auto buffer = checked_cast<BufferVk*>(itemWithVisibleStages.binding.buffer);
-					if (buffer->desc.access != BufferAccess::GpuOnly)
-					{
-						m_CurrentCmdBuf->referencedHostVisibleBuffer.push_back(buffer);
-					}
-				}
-			}
-		}
-
-		if (state.indirectBuffer)
-		{
-			auto indirectBuffer = checked_cast<BufferVk*>(state.indirectBuffer);
+			auto indirectBuffer = checked_cast<BufferVk*>(state.indirectArgsBuffer);
 			if (m_EnableAutoTransition)
 			{
 				transitionBufferState(indirectBuffer, ResourceState::IndirectBuffer);
-			}
-
-			if (indirectBuffer->desc.access != BufferAccess::GpuOnly)
-			{
-				m_CurrentCmdBuf->referencedHostVisibleBuffer.push_back(indirectBuffer);
 			}
 		}
 
@@ -1055,7 +988,7 @@ namespace rhi
 	{
 		assert(m_CurrentCmdBuf);
 
-		auto indiectBuffer = checked_cast<BufferVk*>(m_LastComputeState.indirectBuffer);
+		auto indiectBuffer = checked_cast<BufferVk*>(m_LastComputeState.indirectArgsBuffer);
 		assert(indiectBuffer != nullptr);
 		vkCmdDispatchIndirect(m_CurrentCmdBuf->vkCmdBuf, indiectBuffer->buffer, offset);
 	}

@@ -22,13 +22,10 @@ namespace rhi
 			:m_Context(context)
 		{}
 		~CommandBuffer();
-		void updateLastUsedExecuteID(uint64_t excuteID);
-		void resetLastUsedExecuteID();
 		VkCommandBuffer vkCmdBuf{ VK_NULL_HANDLE };
 		VkCommandPool vkCmdPool{ VK_NULL_HANDLE };
 
 		std::vector<std::unique_ptr<BufferVk>> referencedInternalStageBuffer;
-		std::vector<BufferVk*> referencedHostVisibleBuffer;
 		uint64_t submitID = 0;
 	private:
 		const ContextVk& m_Context;
