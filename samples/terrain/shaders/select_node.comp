@@ -1,0 +1,184 @@
+#version 450
+#extension GL_EXT_scalar_block_layout : enable
+
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(binding = 0) uniform sampler2D minMaxErrorMap;
+
+layout(binding = 1, std430) buffer ConsumeNodeList 
+{
+	uint count;
+	uvec2 data[];
+} consumeNodeList;
+
+layout(binding = 2, std430) buffer AppendNodeList 
+{
+	uint count;
+	uvec2 data[];
+} appendNodeList;
+
+layout(binding = 3, std430) buffer FinalNodeList 
+{
+	uint count;
+	vec4 data[];
+} finalNodeList;
+
+layout(binding = 4, std430) uniform SceneData
+{
+	mat4 projectionMatrix;
+	mat4 modelMatrix;
+	mat4 viewMatrix;
+	vec4 cameraPos;
+	vec4 frustumPlanes[6];
+};
+
+layout(binding = 5, std430) uniform TerrainParams
+{
+	uint baseChunkSize;
+	ivec2 heightmapSize;
+};
+
+struct DrawIndexedIndirectCommand
+{
+	uint indexCount;
+	uint instanceCount;
+	uint firstIndex;
+	uint vertexOffset;
+	uint firstInstance;
+};
+
+// Same layout as VkDrawIndexedIndirectCommand
+layout (binding = 6, std430) writeonly buffer DrawIndexedIndirectCommandBuffer
+{
+	DrawIndexedIndirectCommand drawIndirectCommand;
+};
+
+layout (binding = 7, std430) writeonly buffer DispatchIndirectCommandBuffer
+{
+	uint x;
+	uint y;
+	uint z;
+} dispatchIndirectBuffer;
+
+layout (push_constant) uniform ChunkedLodParams
+{
+	int lodLevel;
+	float kFactor;
+	float tolerableError;
+};
+
+bool isPointOutSidePlane(vec4 plane, vec3 point)
+{
+	return dot(plane.xyz, point) + plane.w < 0;
+}
+
+bool isAABBOutSidePlane(vec4 plane, vec3 boundsMin, vec3 boundsMax)
+{
+	return isPointOutSidePlane(plane, boundsMin) &&
+		isPointOutSidePlane(plane, boundsMax) &&
+		isPointOutSidePlane(plane,vec3(boundsMin.x,boundsMin.y,boundsMax.z)) &&
+		isPointOutSidePlane(plane,vec3(boundsMin.x,boundsMax.y,boundsMin.z)) &&
+		isPointOutSidePlane(plane,vec3(boundsMin.x,boundsMax.y,boundsMax.z)) &&
+		isPointOutSidePlane(plane,vec3(boundsMax.x,boundsMin.y,boundsMax.z)) &&
+		isPointOutSidePlane(plane,vec3(boundsMax.x,boundsMax.y,boundsMin.z)) &&
+		isPointOutSidePlane(plane,vec3(boundsMax.x,boundsMin.y,boundsMin.z));
+}
+
+// return true if AABB is out of frustum
+ bool checkAABB(vec3 boundsMin, vec3 boundsMax)
+ {
+	for (uint i = 0; i < 6; ++i)
+	{
+		if (isAABBOutSidePlane(frustumPlanes[i], boundsMin, boundsMax))
+		{
+			return false;
+		}
+	}
+	return true;
+	
+ }
+
+ float minDistanceFromPointToAabb(vec3 boundsMin, vec3 boundsMax, vec3 point)
+ {
+	        float distSquare = 0.0;
+
+            if (point.x < boundsMin.x)
+            {
+                float d = point.x - boundsMin.x;
+                distSquare += d * d;
+            }
+            else if (point.x > boundsMax.x)
+            {
+                float d = point.x - boundsMax.x;
+                distSquare += d * d;
+            }
+            if (point.z < boundsMin.z)
+            {
+                float d = point.z - boundsMin.z;
+                distSquare += d * d;
+            }
+            else if (point.z > boundsMax.z)
+            {
+                float d = point.z - boundsMax.z;
+                distSquare += d * d;
+            }
+            if (point.y < boundsMin.y)
+            {
+                float d = point.y - boundsMin.y;
+                distSquare += d * d;
+            }
+            else if (point.y > boundsMax.y)
+            {
+                float d = point.y - boundsMax.y;
+                distSquare += d * d;
+            }
+            return sqrt(distSquare);
+ }
+
+void main()
+{
+	uint index = atomicAdd(consumeNodeList.count, -1);
+	uvec2 nodeXY = consumeNodeList.data[index];
+	uint chunkSize = baseChunkSize << lodLevel;
+	uvec2 xy = nodeXY * chunkSize;
+	if (xy.x > heightmapSize.x || xy.y > heightmapSize.y)
+	{
+		return;
+	}
+	vec3 minMaxError = texelFetch(minMaxErrorMap, ivec2(nodeXY), lodLevel).xyz;
+	vec3 boundsMin = vec3(xy.x, minMaxError.x, xy.y);
+	vec3 boundsMax = vec3(xy.x, minMaxError.y, xy.y);
+	if (checkAABB(boundsMin, boundsMax))
+	{
+		return;
+	}
+
+	float distance = minDistanceFromPointToAabb(boundsMin, boundsMax, cameraPos.xyz);
+	float maxScreenSpaceError = minMaxError.z / distance * kFactor;
+	if (lodLevel == 0 || maxScreenSpaceError <= tolerableError)
+	{
+		uint index = atomicAdd(finalNodeList.count, 1);
+		float morphValue = 2 * maxScreenSpaceError / tolerableError - 1;
+		finalNodeList.data[index] = vec4(vec2(nodeXY), float(lodLevel), morphValue);
+		// set draw indirect buffer 
+		atomicAdd(drawIndirectCommand.indexCount, baseChunkSize * baseChunkSize * 6);
+		atomicAdd(drawIndirectCommand.instanceCount, 1);
+	}
+	else
+	{
+		uint index = atomicAdd(appendNodeList.count, 1);
+		appendNodeList.data[index] = nodeXY * 2;
+		index = atomicAdd(appendNodeList.count, 1);
+		appendNodeList.data[index] = nodeXY * 2 + uvec2(1, 0);
+		index = atomicAdd(appendNodeList.count, 1);
+		appendNodeList.data[index] = nodeXY * 2 + uvec2(0, 1);
+		index = atomicAdd(appendNodeList.count, 1);
+		appendNodeList.data[index] = nodeXY * 2 + uvec2(1, 1);
+		// set dispatch indirect buffer
+		atomicAdd(dispatchIndirectBuffer.x, 2);
+		atomicAdd(dispatchIndirectBuffer.y, 2);
+	}
+}
+
+
+

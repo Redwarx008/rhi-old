@@ -6,6 +6,7 @@
 #include "app_base.h"
 #include "frustum.h"
 #include "camera.hpp"
+#include "utils.h"
 #include <array>
 #include <vector>
 
@@ -77,6 +78,7 @@ private:
 	{
 		float heightScale = 51.0;
 		uint32_t baseChunkSize = 16;
+		glm::uvec2 heightmapSize;
 	}m_TerrainParams;
 
 	Camera m_Camera;
@@ -101,6 +103,7 @@ private:
 
 	struct ChunkedLodParams
 	{
+		int currentLodLevel;
 		float kFactor;
 		float tolerableError;
 	}m_ChunkedLodParams;
@@ -117,6 +120,7 @@ private:
 		rhi::IBuffer* nodeListB;
 		rhi::IBuffer* finalNodeList;
 
+		rhi::IBuffer* topLodDispatchIndirectBuffer;
 		rhi::IBuffer* ChunkedLodParametersBuffer;
 	}m_SelectNodesPass;
 
@@ -128,8 +132,7 @@ private:
 		rhi::IResourceSetLayout* resourceSetLayout;
 		rhi::IResourceSet* resourceSet;
 
-		rhi::IBuffer* m_VertexBuffer;
-		rhi::IBuffer* m_IndexBuffer;
+		Mesh planeMesh;
 
 	}m_GraphicPass;
 
@@ -138,7 +141,8 @@ private:
 	rhi::ISampler* m_LinearSampler;
 	rhi::ITexture* m_MinMaxHeightErrorMap; // R for min height, G for max height, B for GeometricError
 	rhi::IBuffer* m_TerrainParamsBuffer;
-	rhi::IBuffer* m_IndirectBuffer;
+	rhi::IBuffer* m_DrawIndirectBuffer;
+	rhi::IBuffer* m_DispatchIndirectBuffer;
 	rhi::IBuffer* m_SceneDataBuffer;
 	uint32_t m_FrameInFlight = 0;
 };

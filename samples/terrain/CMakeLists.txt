@@ -4,7 +4,7 @@ set(project terrain)
 set(folder "Samples/Terrain")
 
 
-add_executable(${project}  "main.cpp"  "terrain.h" "app_base.h" "app_base.cpp" "terrain.cpp" "frustum.h")
+add_executable(${project}  "main.cpp"  "terrain.h" "app_base.h" "app_base.cpp" "terrain.cpp" "frustum.h" "utils.h")
 
 
 target_link_libraries(${project} rhi glfw glm stb_image) 
