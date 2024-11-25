@@ -34,6 +34,7 @@ layout(binding = 4, std430) uniform SceneData
 
 layout(binding = 5, std430) uniform TerrainParams
 {
+	float heightScale;
 	uint baseChunkSize;
 	ivec2 heightmapSize;
 };

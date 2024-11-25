@@ -1,7 +1,6 @@
 #pragma once
 #include <rhi/rhi.h>
 
-#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include "app_base.h"
 #include "frustum.h"
@@ -29,7 +28,7 @@ inline rhi::ITexture* loadHeightmap(rhi::IRenderDevice* rd, const char* filename
 	rhi::TextureDesc desc{};
 	desc.width = texWidth;
 	desc.height = texHeight;
-	desc.format = rhi::Format::R16_UINT;
+	desc.format = rhi::Format::R16_UNORM;
 	desc.dimension = rhi::TextureDimension::Texture2D;
 	desc.usage = rhi::TextureUsage::ShaderResource;
 	tex = rd->createTexture(desc);
@@ -38,11 +37,13 @@ inline rhi::ITexture* loadHeightmap(rhi::IRenderDevice* rd, const char* filename
 		return nullptr;
 	}
 	auto cmdList = rd->createCommandList();
+	cmdList->open();
 	rhi::TextureUpdateInfo updateInfo{};
 	updateInfo.srcRowPitch = texWidth * sizeof(uint16_t);
 	updateInfo.srcDepthPitch = texWidth * texHeight * sizeof(uint16_t);
-	updateInfo.dstRegion = { 0, 0, desc.width, desc.height };
+	updateInfo.dstRegion = { 0, desc.width, 0, desc.height };
 	cmdList->updateTexture(tex, pixels, imageSize, updateInfo);
+	cmdList->close();
 	uint64_t excuteID = rd->executeCommandLists(&cmdList, 1);
 	rd->waitForExecution(excuteID);
 	delete cmdList;
@@ -58,6 +59,7 @@ public:
 	void init() override;
 protected:
 	void draw() override;
+	void update() override {};
 private:
 	void buildMinMaxErrorMap(rhi::ICommandList* cmdList);
 	void prepareData();

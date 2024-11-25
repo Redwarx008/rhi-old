@@ -1,6 +1,3 @@
-
-
-
 #include <GLFW/glfw3.h>
 #define GLFW_EXPOSE_NATIVE_WIN32 1
 #include <GLFW/glfw3native.h>
@@ -10,10 +7,12 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "frustum.h"
 
-
+#include "terrain.h"
 
 int main()
 {
-	glm::mat4 model{};
-	model = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+	Terrain terrain;
+	terrain.create(1024, 720);
+	terrain.init();
+	terrain.run();
 }

@@ -4,6 +4,9 @@
 #include <algorithm>
 #include <vector>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 using namespace rhi;
 
 static std::vector<uint32_t> loadShaderData(const char* filePath)
@@ -51,7 +54,7 @@ void Terrain::initPipeline()
 			ResourceSetLayoutBinding layoutBindings[] =
 			{
 				ResourceSetLayoutBinding::TextureWithSampler(ShaderType::Compute, 0), //heightmap
-				ResourceSetLayoutBinding::SampledTexture(ShaderType::Compute, 1), //lower minMaxErrorMap mip
+				ResourceSetLayoutBinding::StorageTexture(ShaderType::Compute, 1), //lower minMaxErrorMap mip
 				ResourceSetLayoutBinding::StorageTexture(ShaderType::Compute, 2), //current minMaxErrorMap mip
 				ResourceSetLayoutBinding::UniformBuffer(ShaderType::Compute, 3) // current Lod
 			};
@@ -62,7 +65,7 @@ void Terrain::initPipeline()
 				ResourceSetBinding::UniformBuffer(m_TerrainParamsBuffer, 3) // we will write minMaxErrorMapMips in runtime
 			};
 
-			m_BuildMinMaxMapErrorMapPass.resourceSetLayout = m_RenderDevice->createResourceSetLayout(layoutBindings, 2);
+			m_BuildMinMaxMapErrorMapPass.resourceSetLayout = m_RenderDevice->createResourceSetLayout(layoutBindings, sizeof(layoutBindings) / sizeof(ResourceSetLayoutBinding));
 			m_BuildMinMaxMapErrorMapPass.resourceSet = m_RenderDevice->createResourceSet(m_BuildMinMaxMapErrorMapPass.resourceSetLayout, bindings, 2);
 		
 		}
@@ -83,7 +86,7 @@ void Terrain::initPipeline()
 
 	// traverse quad tree and select node pipeline
 	{
-		auto computeShaderData = loadShaderData("node_select.comp.spv");
+		auto computeShaderData = loadShaderData("select_node.comp.spv");
 		ShaderCreateInfo shaderCI{};
 		shaderCI.entry = "main";
 		shaderCI.type = ShaderType::Compute;
@@ -110,7 +113,7 @@ void Terrain::initPipeline()
 				ResourceSetBinding::StorageBuffer(m_SelectNodesPass.nodeListB, 2),
 				ResourceSetBinding::StorageBuffer(m_SelectNodesPass.finalNodeList, 3),
 				ResourceSetBinding::UniformBuffer(m_SceneDataBuffer, 4),
-				ResourceSetBinding::UniformBuffer(m_TerrainParamsBuffer, 5, 0, offsetof(TerrainParams, baseChunkSize)),
+				ResourceSetBinding::UniformBuffer(m_TerrainParamsBuffer, 5),
 				ResourceSetBinding::StorageBuffer(m_DrawIndirectBuffer, 6),
 				ResourceSetBinding::StorageBuffer(m_DispatchIndirectBuffer, 7)
 			};
@@ -141,8 +144,8 @@ void Terrain::initPipeline()
 		shaderCI.type = ShaderType::Vertex;
 		IShader* vertexShader = m_RenderDevice->createShader(shaderCI, shaderData.data(), shaderData.size() * sizeof(uint32_t));
 
-		shaderData = loadShaderData("terrain.vert.spv");
-		ShaderCreateInfo shaderCI{};
+		shaderData = loadShaderData("terrain.frag.spv");
+
 		shaderCI.entry = "main";
 		shaderCI.type = ShaderType::Fragment;
 		IShader* fragmentShader = m_RenderDevice->createShader(shaderCI, shaderData.data(), shaderData.size() * sizeof(uint32_t));
@@ -160,7 +163,7 @@ void Terrain::initPipeline()
 			{
 				ResourceSetBinding::TextureWithSampler(m_Heightmap->getDefaultView(), m_LinearSampler, 0),
 				ResourceSetBinding::StorageBuffer(m_SelectNodesPass.finalNodeList, 1),
-				ResourceSetBinding::UniformBuffer(m_SceneDataBuffer, 2, 0, offsetof(SceneData, frustumPlanes)),
+				ResourceSetBinding::UniformBuffer(m_SceneDataBuffer, 2),
 				ResourceSetBinding::UniformBuffer(m_TerrainParamsBuffer, 3)
 			};
 
@@ -205,7 +208,7 @@ void Terrain::buildMinMaxErrorMap(ICommandList* cmdList)
 
 	for (uint32_t lodLevel = 0; lodLevel < m_NodeLevelCount; ++lodLevel)
 	{
-		ITextureView* currentMip = m_BuildMinMaxMapErrorMapPass.minMaxErrorMapMipViews[0];
+		ITextureView* currentMip = m_BuildMinMaxMapErrorMapPass.minMaxErrorMapMipViews[lodLevel];
 		ITextureView* lowerMip;
 		if (lodLevel == 0)
 		{
@@ -218,7 +221,7 @@ void Terrain::buildMinMaxErrorMap(ICommandList* cmdList)
 
 		ResourceSetBinding bindings[] =
 		{
-			ResourceSetBinding::SampledTexture(lowerMip, 1),
+			ResourceSetBinding::StorageTexture(lowerMip, 1),
 			ResourceSetBinding::StorageTexture(currentMip, 2)
 		};
 		cmdList->setComputeState(compState);
@@ -241,6 +244,7 @@ void Terrain::prepareData()
 		m_TerrainParams.heightmapSize = glm::uvec2(m_RasterSizeX, m_RasterSizeZ);
 		{
 			SamplerDesc desc{};
+			desc.maxAnisotropy = 0;
 			m_LinearSampler = m_RenderDevice->createSampler(desc);
 		}
 
@@ -364,6 +368,8 @@ void Terrain::prepareData()
 void Terrain::draw()
 {
 	m_CommandList->open();
+	buildMinMaxErrorMap(m_CommandList);
+
 	// update scene data.
 	m_CommandList->updateBuffer(m_SceneDataBuffer, &m_SceneData, sizeof(SceneData), 0);
 
@@ -404,7 +410,7 @@ void Terrain::draw()
 	// graphic pass
 	GraphicsState graphicsState{};
 	graphicsState.pipeline = m_GraphicPass.pipeline;
-	graphicsState.viewports[0] = { m_WindowWidth, m_WindowHeight };
+	graphicsState.viewports[0] = { (float)m_WindowWidth, (float)m_WindowHeight };
 	graphicsState.viewportCount = 1;
 	graphicsState.renderTargetViews[0] = m_SwapChain->getCurrentRenderTargetView();
 	graphicsState.renderTargetCount = 1;
@@ -416,4 +422,6 @@ void Terrain::draw()
 	m_CommandList->setGraphicsState(graphicsState);
 	m_CommandList->commitResourceSet(m_GraphicPass.resourceSet);
 	m_CommandList->drawIndexedIndirect(0, 1);
+	m_CommandList->close();
+	m_RenderDevice->executeCommandLists(&m_CommandList, 1);
 }
