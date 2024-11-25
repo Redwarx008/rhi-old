@@ -48,6 +48,8 @@ namespace rhi
 
 	void CommandListVk::close()
 	{
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
+
 		endRendering();
 		commitBarriers();
 		vkEndCommandBuffer(m_CurrentCmdBuf->vkCmdBuf);
@@ -267,6 +269,7 @@ namespace rhi
 	void CommandListVk::setBufferBarrier(BufferVk* buffer, VkPipelineStageFlags2 dstStage, VkAccessFlags2 dstAccess)
 	{
 		assert(buffer);
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
 		VkBufferMemoryBarrier2 barrier{ VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 };
 		barrier.pNext = nullptr;
@@ -290,7 +293,8 @@ namespace rhi
 	void CommandListVk::clearColorTexture(ITextureView* textureView, const ClearColor& color)
 	{
 		assert(textureView);
-		assert(m_CurrentCmdBuf);
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
+
 		auto tv = checked_cast<TextureViewVk*>(textureView);
 		auto texture = checked_cast<TextureVk*>(tv->getTexture());
 		VkClearColorValue clearValue = convertVkClearColor(color, texture->desc.format);
@@ -342,7 +346,8 @@ namespace rhi
 	void CommandListVk::clearDepthStencil(ITextureView* textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal)
 	{
 		assert(textureView);
-		assert(m_CurrentCmdBuf);
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
+
 		auto tv = checked_cast<TextureViewVk*>(textureView);
 		auto texture = checked_cast<TextureVk*>(tv->getTexture());
 
@@ -403,7 +408,7 @@ namespace rhi
 	void CommandListVk::clearBuffer(IBuffer* buffer, uint32_t value)
 	{
 		assert(buffer);
-		assert(m_CurrentCmdBuf);
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
 		auto buf = checked_cast<BufferVk*>(buffer);
 
@@ -419,7 +424,7 @@ namespace rhi
 	void CommandListVk::copyBuffer(IBuffer* srcBuffer, uint64_t srcOffset, IBuffer* dstBuffer, uint64_t dstOffset, uint64_t dataSize)
 	{
 		assert(srcBuffer && dstBuffer);
-		assert(m_CurrentCmdBuf);
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
 		auto srcBuf = checked_cast<BufferVk*>(srcBuffer);
 		auto dstBuf = checked_cast<BufferVk*>(dstBuffer);
@@ -444,7 +449,8 @@ namespace rhi
 	void CommandListVk::updateBuffer(IBuffer* buffer, const void* data, uint64_t dataSize, uint64_t offset)
 	{
 		assert(buffer);
-		assert(m_CurrentCmdBuf);
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
+
 		auto buf = checked_cast<BufferVk*>(buffer);
 
 		if (buf->getDesc().access != BufferAccess::GpuOnly)
@@ -474,6 +480,7 @@ namespace rhi
 			BufferDesc stageBufferDesc;
 			stageBufferDesc.access = BufferAccess::CpuWrite;
 			stageBufferDesc.usage = BufferUsage::None;
+			stageBufferDesc.size = dataSize;
 			auto& stageBuffer = m_CurrentCmdBuf->referencedInternalStageBuffer.emplace_back();
 			stageBuffer = std::unique_ptr<BufferVk>(checked_cast<BufferVk*>(m_RenderDevice.createBuffer(stageBufferDesc, data, dataSize)));
 			copyBuffer(stageBuffer.get(), 0, buf, 0, dataSize);
@@ -483,7 +490,8 @@ namespace rhi
 	void* CommandListVk::mapBuffer(IBuffer* buffer, MapBufferUsage usage)
 	{
 		assert(buffer);
-		assert(m_CurrentCmdBuf);
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
+
 		auto buf = checked_cast<BufferVk*>(buffer);
 
 		ASSERT_MSG(buf->getDesc().access != BufferAccess::CpuRead,
@@ -500,7 +508,9 @@ namespace rhi
 
 	void CommandListVk::updateTexture(ITexture* texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo)
 	{
-		assert(m_CurrentCmdBuf);
+		assert(texture);
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
+
 		auto tex = checked_cast<TextureVk*>(texture);
 
 		TextureCopyInfo copyInfo = getTextureCopyInfo(tex->getDesc().format, updateInfo.dstRegion,
@@ -510,12 +520,13 @@ namespace rhi
 			updateInfo.dstRegion.maxY <= tex->getDesc().height << updateInfo.mipLevel &&
 			updateInfo.dstRegion.maxZ <= tex->getDesc().depth << updateInfo.mipLevel, "dest region is out of bound for this miplevel.");
 
-		ASSERT_MSG(updateInfo.srcRowPitch < copyInfo.rowBytesCount, "src row pitch is blow the dst region row pitch.");
-		ASSERT_MSG(dataSize < copyInfo.regionBytesCount, "Not enough data was provided to update to the dst region.");
+		ASSERT_MSG(updateInfo.srcRowPitch <= copyInfo.rowBytesCount, "src row pitch is blow the dst region row pitch.");
+		ASSERT_MSG(dataSize >= copyInfo.regionBytesCount, "Not enough data was provided to update to the dst region.");
 
 		BufferDesc stageBufferDesc;
 		stageBufferDesc.access = BufferAccess::CpuWrite;
 		stageBufferDesc.usage = BufferUsage::None;
+		stageBufferDesc.size = copyInfo.regionBytesCount;
 		auto& stageBuffer = m_CurrentCmdBuf->referencedInternalStageBuffer.emplace_back();
 		stageBuffer = std::unique_ptr<BufferVk>(checked_cast<BufferVk*>(m_RenderDevice.createBuffer(stageBufferDesc, data, copyInfo.regionBytesCount)));
 
@@ -625,6 +636,7 @@ namespace rhi
 	void CommandListVk::commitResourceSet(IResourceSet* resourceSet, uint32_t dstSet)
 	{
 		assert(resourceSet);
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
 		auto set = checked_cast<ResourceSetVk*>(resourceSet);
 
@@ -718,7 +730,7 @@ namespace rhi
 
 	void CommandListVk::setGraphicsState(const GraphicsState& state)
 	{
-		assert(m_CurrentCmdBuf);
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
 		// vertex buffer
 		for (uint32_t i = 0; i < state.vertexBufferCount; ++i)
@@ -832,7 +844,7 @@ namespace rhi
 
 	void CommandListVk::setScissors(const Rect* scissors, uint32_t scissorCount)
 	{
-		assert(m_CurrentCmdBuf);
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 		ASSERT_MSG(m_LastGraphicsState.pipeline, "set GraphicsState before set scissors");
 		ASSERT_MSG(scissorCount == checked_cast<GraphicsPipelineVk*>(m_LastGraphicsState.pipeline)->getDesc().viewportCount,
 			"The number of scissors must be the same as the number of viewports.");
@@ -849,7 +861,7 @@ namespace rhi
 
 	void CommandListVk::setPushConstant(ShaderType stages, const void* data)
 	{
-		assert(m_CurrentCmdBuf);
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 		ASSERT_MSG(m_LastGraphicsState.pipeline || m_LastComputeState.pipeline, "Must set PipelineState before push constant.");
 
 		if (m_LastGraphicsState.pipeline)
@@ -882,7 +894,8 @@ namespace rhi
 
 	void CommandListVk::draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
 	{
-		assert(m_CurrentCmdBuf);
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
+
 		if (!m_RenderingStarted)
 		{
 			std::array<VkRenderingAttachmentInfo, g_MaxColorAttachments> colorAttachments{};
@@ -899,7 +912,8 @@ namespace rhi
 
 	void CommandListVk::drawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance)
 	{
-		assert(m_CurrentCmdBuf);
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
+
 		if (!m_RenderingStarted)
 		{
 			std::array<VkRenderingAttachmentInfo, g_MaxColorAttachments> colorAttachments{};
@@ -916,7 +930,8 @@ namespace rhi
 
 	void CommandListVk::drawIndirect(uint64_t offset, uint32_t drawCount)
 	{
-		assert(m_CurrentCmdBuf);
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
+
 		if (!m_RenderingStarted)
 		{
 			std::array<VkRenderingAttachmentInfo, g_MaxColorAttachments> colorAttachments{};
@@ -934,7 +949,8 @@ namespace rhi
 
 	void CommandListVk::drawIndexedIndirect(uint64_t offset, uint32_t drawCount)
 	{
-		assert(m_CurrentCmdBuf);
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
+
 		if (!m_RenderingStarted)
 		{
 			std::array<VkRenderingAttachmentInfo, g_MaxColorAttachments> colorAttachments{};
@@ -952,7 +968,8 @@ namespace rhi
 
 	void CommandListVk::setComputeState(const ComputeState& state)
 	{
-		assert(m_CurrentCmdBuf);
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
+
 		endRendering();
 
 		auto pipeline = checked_cast<ComputePipelineVk*>(state.pipeline);
@@ -979,14 +996,14 @@ namespace rhi
 
 	void CommandListVk::dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
 	{
-		assert(m_CurrentCmdBuf);
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
 		vkCmdDispatch(m_CurrentCmdBuf->vkCmdBuf, groupCountX, groupCountY, groupCountZ);
 	}
 
 	void CommandListVk::dispatchIndirect(uint64_t offset)
 	{
-		assert(m_CurrentCmdBuf);
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
 		auto indiectBuffer = checked_cast<BufferVk*>(m_LastComputeState.indirectArgsBuffer);
 		assert(indiectBuffer != nullptr);

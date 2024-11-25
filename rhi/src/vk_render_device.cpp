@@ -456,7 +456,7 @@ namespace rhi
 		}
 		if ((desc.usage & BufferUsage::StorageBuffer) != 0)
 		{
-			bufferCI.usage |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+			bufferCI.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 		}
 		if ((desc.usage & BufferUsage::UniformTexelBuffer) != 0)
 		{
@@ -1261,14 +1261,18 @@ namespace rhi
 		}
 
 		std::vector<VkPushConstantRange> pushConstantRanges(pipelineCI.pushConstantCount);
+		pipeline->pushConstantInfos.resize(pushConstantRanges.size());
+		ShaderType usedStages = ShaderType::Unknown;
 		uint32_t offset = 0;
 		for (uint32_t i = 0; i < pushConstantRanges.size(); ++i)
 		{
-			ASSERT_MSG((pipelineCI.pushConstantDescs[i].size & 3) == 0, "pushConstant size must be a multiple of 4.");
+			ASSERT_MSG((pipelineCI.pushConstantDescs[i].stage & usedStages) == 0, "Each pipeline stage can only have one pushConstants."); // to simplify the design
 			pushConstantRanges[i].stageFlags = shaderTypeToVkShaderStageFlagBits(pipelineCI.pushConstantDescs[i].stage);
 			pushConstantRanges[i].size = pipelineCI.pushConstantDescs[i].size;
 			pushConstantRanges[i].offset = offset;
+			pipeline->pushConstantInfos[i] = { pipelineCI.pushConstantDescs[i], offset };
 			offset += pushConstantRanges[i].size;
+			usedStages = usedStages | pipelineCI.pushConstantDescs[i].stage;
 		}
 
 		VkPipelineLayoutCreateInfo pipelineLayoutCI{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
