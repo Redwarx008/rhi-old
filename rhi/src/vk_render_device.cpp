@@ -176,6 +176,7 @@ namespace rhi
 		}
 
 		context.physicalDevice = physicalDevices[0];
+		vkGetPhysicalDeviceProperties(context.physicalDevice, &physicalDeviceProperties);
 		return true;
 	}
 
