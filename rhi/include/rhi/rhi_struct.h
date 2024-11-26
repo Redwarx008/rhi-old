@@ -999,6 +999,14 @@ namespace rhi
 	};
 	ENUM_CLASS_FLAG_OPERATORS(ClearDepthStencilFlag);
 
+	struct Color
+	{
+		float r = 0.0f;
+		float g = 0.0f;
+		float b = 0.0f;
+		float a = 0.0f;
+	};
+
 	// render device
 
 	enum class MessageSeverity : uint8_t
@@ -1016,7 +1024,7 @@ namespace rhi
 	struct RenderDeviceCreateInfo
 	{
 		DebugMessageCallbackFunc messageCallback;
-		bool enableValidationLayer;
+		bool enableDebugRuntime;
 		// enable instance features
 		bool enableMultiViewport;
 		bool enableSampleRateShading;

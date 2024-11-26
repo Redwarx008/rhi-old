@@ -55,7 +55,7 @@ namespace rhi
 		return VK_FALSE;
 	}
 
-	bool RenderDeviceVk::createInstance(bool enableValidationLayer)
+	bool RenderDeviceVk::createInstance(bool enableDebugRuntime)
 	{
 		std::vector<const char*> instanceExtensions = { VK_KHR_SURFACE_EXTENSION_NAME };
 
@@ -97,7 +97,7 @@ namespace rhi
 		instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 		instanceCreateInfo.pApplicationInfo = &appInfo;
 
-		if (enableValidationLayer) {
+		if (enableDebugRuntime) {
 			VkDebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCI{};
 			debugUtilsMessengerCI.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
 			debugUtilsMessengerCI.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
@@ -291,15 +291,17 @@ namespace rhi
 	RenderDeviceVk* RenderDeviceVk::create(const RenderDeviceCreateInfo& createInfo)
 	{
 		auto renderDevice = new RenderDeviceVk();
+		renderDevice->createInfo = createInfo;
+
 		g_DebugMessageCallback = createInfo.messageCallback;
 
-		if (!renderDevice->createInstance(createInfo.enableValidationLayer))
+		if (!renderDevice->createInstance(createInfo.enableDebugRuntime))
 		{
 			delete renderDevice;
 			return nullptr;
 		}
 
-		if (createInfo.enableValidationLayer)
+		if (createInfo.enableDebugRuntime)
 		{
 			auto vkCreateDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(renderDevice->context.instace, "vkCreateDebugUtilsMessengerEXT"));
 

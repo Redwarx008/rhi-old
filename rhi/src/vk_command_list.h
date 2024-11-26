@@ -68,6 +68,9 @@ namespace rhi
 		void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) override;
 		void dispatchIndirect(IBuffer* argsBuffer, uint64_t offset) override;
 
+		void beginDebugLabel(const char* labelName, Color color = Color()) override;
+		void endDebugLabel() override;
+
 		Object getNativeObject(NativeObjectType type) const override;
 
 		void transitionFromSubmmitedState(ITexture* texture, ResourceState newState);
@@ -79,7 +82,7 @@ namespace rhi
 		void transitionResourceSet(IResourceSet* set, ShaderType dstVisibleStages);
 		void setBufferBarrier(BufferVk* buffer, VkPipelineStageFlags2 dstStage, VkAccessFlags2 dstAccess);
 		void endRendering();
-
+		
 		bool m_EnableAutoTransition = true;
 		bool m_RenderingStarted = false;
 
@@ -120,5 +123,8 @@ namespace rhi
 
 		// todo: delete it, if vulkan 1.4 is released.
 		PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR = nullptr;
+
+		PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT = nullptr;
+		PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabelEXT = nullptr;
 	};
 }

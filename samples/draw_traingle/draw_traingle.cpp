@@ -93,7 +93,7 @@ public:
 
 
 		RenderDeviceCreateInfo rdCI{};
-		rdCI.enableValidationLayer = true;
+		rdCI.enableDebugRuntime = true;
 		
 		m_RenderDevice = std::unique_ptr<IRenderDevice>(createRenderDevice(rdCI));
 

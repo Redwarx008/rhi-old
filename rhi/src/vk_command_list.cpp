@@ -24,6 +24,12 @@ namespace rhi
 	{
 		// to do: delete it, if vulkan 1.4 is released.
 		vkCmdPushDescriptorSetKHR = (PFN_vkCmdPushDescriptorSetKHR)vkGetDeviceProcAddr(m_RenderDevice.context.device, "vkCmdPushDescriptorSetKHR");
+
+		if (renderDevice.createInfo.enableDebugRuntime)
+		{
+			this->vkCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetDeviceProcAddr(m_RenderDevice.context.device, "vkCmdBeginDebugUtilsLabelEXT");
+			this->vkCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetDeviceProcAddr(m_RenderDevice.context.device, "vkCmdEndDebugUtilsLabelEXT");
+		}
 	}
 
 	CommandListVk::~CommandListVk()
@@ -1008,6 +1014,32 @@ namespace rhi
 		commitBarriers();
 
 		vkCmdDispatchIndirect(m_CurrentCmdBuf->vkCmdBuf, indirectBuffer->buffer, offset);
+	}
+
+	void CommandListVk::beginDebugLabel(const char* labelName, Color color)
+	{
+		assert(labelName);
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
+
+		VkDebugUtilsLabelEXT debugUtilsLabel{};
+		debugUtilsLabel.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+		debugUtilsLabel.pLabelName = labelName;
+		memcpy(debugUtilsLabel.color, &color, sizeof(debugUtilsLabel.color));
+
+		if (this->vkCmdBeginDebugUtilsLabelEXT)
+		{
+			this->vkCmdBeginDebugUtilsLabelEXT(m_CurrentCmdBuf->vkCmdBuf, &debugUtilsLabel);
+		}
+	}
+
+	void CommandListVk::endDebugLabel()
+	{
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
+
+		if (this->vkCmdEndDebugUtilsLabelEXT)
+		{
+			this->vkCmdEndDebugUtilsLabelEXT(m_CurrentCmdBuf->vkCmdBuf);
+		}
 	}
 
 	Object CommandListVk::getNativeObject(NativeObjectType type) const

@@ -146,6 +146,9 @@ namespace rhi
 		virtual void setComputeState(const ComputeState& state) = 0;
 		virtual void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) = 0;
 		virtual void dispatchIndirect(IBuffer* argsBuffer, uint64_t offset) = 0;
+
+		virtual void beginDebugLabel(const char* labelName, Color color = Color()) = 0;
+		virtual void endDebugLabel() = 0;
 	};
 
 	class IRenderDevice

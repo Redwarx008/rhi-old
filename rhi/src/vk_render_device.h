@@ -23,6 +23,7 @@ namespace rhi
 		TextureVk* createTextureWithExistImage(const TextureDesc& desc, VkImage image);
 		void recycleCommandBuffers();
 
+		RenderDeviceCreateInfo createInfo;
 		ContextVk context{};
 		VkQueue queue{ VK_NULL_HANDLE };
 		VkPhysicalDeviceProperties physicalDeviceProperties{};
@@ -48,7 +49,7 @@ namespace rhi
 		IComputePipeline* createComputePipeline(const ComputePipelineCreateInfo& pipelineCI) override;
 	private:
 		RenderDeviceVk() = default;
-		bool createInstance(bool enableValidationLayer);
+		bool createInstance(bool enableDebugRuntime);
 		bool pickPhysicalDevice();
 		bool createDevice(const RenderDeviceCreateInfo& desc);
 		void destroyDebugUtilsMessenger();
