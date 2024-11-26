@@ -121,9 +121,9 @@ void createFromLowerMinMaxErrorMap(uint chunkX, uint chunkY)
 
     float minHeight = 999.0;
     float maxHeight = -1.0;
-    for (uint x = lowerChunkX; x < 2; ++x)
+    for (uint x = lowerChunkX; x < lowerChunkX + 2; ++x)
     {
-        for (uint y = lowerChunkY; y < 2; ++y)
+        for (uint y = lowerChunkY; y < lowerChunkY + 2; ++y)
         {
             vec2 minMax = imageLoad(lowerMinMaxErrorMapMip, ivec2(x, y)).xy;
             minHeight = min(minHeight, minMax.x);

@@ -53,17 +53,30 @@ inline rhi::ITexture* loadHeightmap(rhi::IRenderDevice* rd, const char* filename
 	return tex;
 }
 
-class Terrain : public AppBase
+class Terrain final : public AppBase
 {
 public:
 	void init() override;
+	~Terrain();
 protected:
 	void draw() override;
 	void update() override {};
 private:
+	void KeyEvent(Key key, KeyState state) override;
+	void MouseEvent(float posX, float posY) override;
+
 	void buildMinMaxErrorMap(rhi::ICommandList* cmdList);
 	void prepareData();
 	void initPipeline();
+
+	struct {
+		struct {
+			bool left = false;
+			bool right = false;
+			bool middle = false;
+		} buttons;
+		glm::vec2 position;
+	} mouseState;
 
 	rhi::ICommandList* m_CommandList;
 
@@ -87,8 +100,8 @@ private:
 	Frustum m_Frustum;
 	float m_Fov;
 
-	uint32_t m_RasterSizeX;
-	uint32_t m_RasterSizeZ;
+	uint32_t m_RasterSizeX = 0;
+	uint32_t m_RasterSizeZ = 0;
 	uint32_t m_NodeLevelCount;
 	uint32_t m_BaseNodeSize = 16;
 	uint32_t m_TopNodeCountX;
@@ -122,8 +135,11 @@ private:
 		rhi::IBuffer* nodeListB;
 		rhi::IBuffer* finalNodeList;
 
-		rhi::IBuffer* topLodDispatchIndirectBuffer;
 		rhi::IBuffer* ChunkedLodParametersBuffer;
+
+		rhi::IBuffer* topLodDispatchArgs;
+		rhi::IBuffer* currentDispatchArgs;
+		rhi::IBuffer* nextDispatchArgs;
 	}m_SelectNodesPass;
 
 
@@ -144,7 +160,6 @@ private:
 	rhi::ITexture* m_MinMaxHeightErrorMap; // R for min height, G for max height, B for GeometricError
 	rhi::IBuffer* m_TerrainParamsBuffer;
 	rhi::IBuffer* m_DrawIndirectBuffer;
-	rhi::IBuffer* m_DispatchIndirectBuffer;
 	rhi::IBuffer* m_SceneDataBuffer;
 	uint32_t m_FrameInFlight = 0;
 };

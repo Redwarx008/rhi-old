@@ -1,5 +1,6 @@
 #include "app_base.h"
 #include <iostream>
+#include <chrono>
 
 
 using namespace rhi;
@@ -30,9 +31,12 @@ void AppBase::create(uint32_t width, uint32_t height)
 	}
 
 	glfwSetWindowUserPointer(m_Window, this);
+	glfwSetKeyCallback(m_Window, &GLFW_KeyCallback);
+	glfwSetMouseButtonCallback(m_Window, &GLFW_MouseButtonCallback);
+	glfwSetCursorPosCallback(m_Window, &GLFW_CursorPosCallback);
 
 	RenderDeviceCreateInfo rdCI{};
-	rdCI.enableValidationLayer = true;
+	rdCI.enableDebugRuntime = true;
 	m_RenderDevice = createRenderDevice(rdCI);
 
 	SwapChainCreateInfo spCI{};
@@ -46,6 +50,7 @@ void AppBase::create(uint32_t width, uint32_t height)
 
 void AppBase::run()
 {
+	auto tStart = std::chrono::high_resolution_clock::now();
 	while (!glfwWindowShouldClose(m_Window))
 	{
 		glfwPollEvents();
@@ -59,4 +64,29 @@ void AppBase::run()
 		draw();
 		m_SwapChain->present();
 	}
+	auto tEnd = std::chrono::high_resolution_clock::now();
+	auto tDiff = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
+	float dt = (float)tDiff / 1000.0f;
+	m_Camera.update(frameTimer);
+}
+
+void AppBase::GLFW_KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	auto* pSelf = static_cast<AppBase*>(glfwGetWindowUserPointer(window));
+	pSelf->KeyEvent(static_cast<Key>(key), static_cast<KeyState>(action));
+}
+
+void AppBase::GLFW_MouseButtonCallback(GLFWwindow* wnd, int button, int state, int)
+{
+	auto* pSelf = static_cast<AppBase*>(glfwGetWindowUserPointer(wnd));
+	pSelf->KeyEvent(static_cast<Key>(button), static_cast<KeyState>(state));
+}
+
+void AppBase::GLFW_CursorPosCallback(GLFWwindow* wnd, double xpos, double ypos)
+{
+	float xscale = 1;
+	float yscale = 1;
+	glfwGetWindowContentScale(wnd, &xscale, &yscale);
+	auto* pSelf = static_cast<AppBase*>(glfwGetWindowUserPointer(wnd));
+	pSelf->MouseEvent(static_cast<float>(xpos * xscale), static_cast<float>(ypos * yscale));
 }

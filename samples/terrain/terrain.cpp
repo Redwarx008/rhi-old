@@ -115,7 +115,7 @@ void Terrain::initPipeline()
 				ResourceSetBinding::UniformBuffer(m_SceneDataBuffer, 4),
 				ResourceSetBinding::UniformBuffer(m_TerrainParamsBuffer, 5),
 				ResourceSetBinding::StorageBuffer(m_DrawIndirectBuffer, 6),
-				ResourceSetBinding::StorageBuffer(m_DispatchIndirectBuffer, 7)
+				ResourceSetBinding::StorageBuffer(m_SelectNodesPass.nextDispatchArgs, 7)
 			};
 
 			m_SelectNodesPass.resourceSetLayout = m_RenderDevice->createResourceSetLayout(layoutBindings, sizeof(layoutBindings) / sizeof(ResourceSetLayoutBinding));
@@ -206,6 +206,11 @@ void Terrain::buildMinMaxErrorMap(ICommandList* cmdList)
 	ComputeState compState{};
 	compState.pipeline = m_BuildMinMaxMapErrorMapPass.pipeline;
 
+	cmdList->beginDebugLabel("buildMinMaxErrorMap pass", { 0.0, 1.0, 0.0, 1.0 });
+
+	uint32_t width = m_MinMaxHeightErrorMap->getDesc().width;
+	uint32_t height = m_MinMaxHeightErrorMap->getDesc().height;
+
 	for (uint32_t lodLevel = 0; lodLevel < m_NodeLevelCount; ++lodLevel)
 	{
 		ITextureView* currentMip = m_BuildMinMaxMapErrorMapPass.minMaxErrorMapMipViews[lodLevel];
@@ -229,10 +234,11 @@ void Terrain::buildMinMaxErrorMap(ICommandList* cmdList)
 		cmdList->commitResourceSet(m_BuildMinMaxMapErrorMapPass.resourceSet);
 		cmdList->setPushConstant(ShaderType::Compute, &lodLevel);
 		cmdList->dispatch(
-			std::ceilf(currentMip->getTexture()->getDesc().width / 8.0),
-			std::ceilf(currentMip->getTexture()->getDesc().height / 8.0),
+			std::ceilf((width >> lodLevel) / 8.0),
+			std::ceilf((height >> lodLevel) / 8.0),
 			1);
 	}
+	cmdList->endDebugLabel();
 }
 
 void Terrain::prepareData()
@@ -346,9 +352,10 @@ void Terrain::prepareData()
 		m_DrawIndirectBuffer = m_RenderDevice->createBuffer(desc);
 
 		desc.size = sizeof(DispatchIndirectCommand);
-		m_DispatchIndirectBuffer = m_RenderDevice->createBuffer(desc);
+		m_SelectNodesPass.currentDispatchArgs = m_RenderDevice->createBuffer(desc);
+		m_SelectNodesPass.nextDispatchArgs = m_RenderDevice->createBuffer(desc);
 		glm::uvec3 data = glm::uvec3(m_TopNodeCountX, m_TopNodeCountY, 1);
-		m_SelectNodesPass.topLodDispatchIndirectBuffer = m_RenderDevice->createBuffer(desc, &data, sizeof(data));
+		m_SelectNodesPass.topLodDispatchArgs = m_RenderDevice->createBuffer(desc, &data, sizeof(data));
 	}
 
 	// create scene data buffers
@@ -373,7 +380,7 @@ void Terrain::draw()
 	// update scene data.
 	m_CommandList->updateBuffer(m_SceneDataBuffer, &m_SceneData, sizeof(SceneData), 0);
 
-	m_CommandList->clearBuffer(m_DispatchIndirectBuffer, 0);
+	m_CommandList->clearBuffer(m_SelectNodesPass.nextDispatchArgs, 0);
 	m_CommandList->clearBuffer(m_DrawIndirectBuffer, 0);
 	m_CommandList->clearBuffer(m_SelectNodesPass.finalNodeList, 0);
 	m_CommandList->clearBuffer(m_SelectNodesPass.nodeListA, 0);
@@ -383,12 +390,11 @@ void Terrain::draw()
 	IBuffer* consumeNodeList = m_SelectNodesPass.nodeListA;
 	IBuffer* appendNodeList = m_SelectNodesPass.nodeListB;
 	m_CommandList->copyBuffer(m_SelectNodesPass.topNodeList, 0, consumeNodeList, 0, m_SelectNodesPass.topNodeList->getDesc().size);
-	m_CommandList->copyBuffer(m_SelectNodesPass.topLodDispatchIndirectBuffer, 0, m_DispatchIndirectBuffer, 0,
-		m_SelectNodesPass.topLodDispatchIndirectBuffer->getDesc().size);
+	m_CommandList->copyBuffer(m_SelectNodesPass.topLodDispatchArgs, 0, m_SelectNodesPass.currentDispatchArgs, 0,
+		m_SelectNodesPass.topLodDispatchArgs->getDesc().size);
 
 	ComputeState computeState{};
 	computeState.pipeline = m_SelectNodesPass.pipeline;
-	computeState.indirectArgsBuffer = m_DispatchIndirectBuffer;
 	m_CommandList->setComputeState(computeState);
 
 	for (int i = 0; i < m_NodeLevelCount; ++i)
@@ -403,7 +409,9 @@ void Terrain::draw()
 		m_RenderDevice->updateResourceSet(m_SelectNodesPass.resourceSet, updateBindings, 2);
 		m_CommandList->commitResourceSet(m_SelectNodesPass.resourceSet);
 		m_CommandList->setPushConstant(ShaderType::Compute, &m_ChunkedLodParams);
-		m_CommandList->dispatchIndirect(0);
+		m_CommandList->dispatchIndirect(m_SelectNodesPass.currentDispatchArgs, 0);
+		m_CommandList->copyBuffer(m_SelectNodesPass.nextDispatchArgs, 0, m_SelectNodesPass.currentDispatchArgs, 0, sizeof(DispatchIndirectCommand));
+		m_CommandList->clearBuffer(m_SelectNodesPass.nextDispatchArgs, 0);
 		std::swap(consumeNodeList, appendNodeList);
 	}
 
@@ -418,10 +426,119 @@ void Terrain::draw()
 	graphicsState.vertexBuffers[0] = VertexBufferBinding().setBuffer(m_GraphicPass.planeMesh.vertexBuffer).setSlot(0).setOffset(0);
 	graphicsState.vertexBufferCount = 1;
 	graphicsState.indexBuffer = IndexBufferBinding().setBuffer(m_GraphicPass.planeMesh.indexBuffer).setFormat(Format::R32_UINT).setOffset(0);
-	graphicsState.indirectArgsBuffer = m_DrawIndirectBuffer;
 	m_CommandList->setGraphicsState(graphicsState);
 	m_CommandList->commitResourceSet(m_GraphicPass.resourceSet);
-	m_CommandList->drawIndexedIndirect(0, 1);
+	m_CommandList->drawIndexedIndirect(m_DrawIndirectBuffer, 0, 1);
 	m_CommandList->close();
 	m_RenderDevice->executeCommandLists(&m_CommandList, 1);
+}
+
+void Terrain::KeyEvent(Key key, KeyState state)
+{
+	if (state == KeyState::Press)
+	{
+		switch (key)
+		{
+		case AppBase::Key::Esc:
+			break;
+		case AppBase::Key::W:
+		case AppBase::Key::Up:
+			m_Camera.keys.up = true;
+			break;
+		case AppBase::Key::A:
+		case AppBase::Key::Left:
+			m_Camera.keys.left = true;
+			break;
+		case AppBase::Key::S:
+		case AppBase::Key::Down:
+			m_Camera.keys.down = true;
+			break;
+		case AppBase::Key::D:
+		case AppBase::Key::Right:
+			m_Camera.keys.right = true;
+			break;
+		}
+	}
+	else if (state == KeyState::Release)
+	{
+		switch (key)
+		{
+		case AppBase::Key::Esc:
+			break;
+		case AppBase::Key::W:
+		case AppBase::Key::Up:
+			m_Camera.keys.up = false;
+			break;
+		case AppBase::Key::A:
+		case AppBase::Key::Left:
+			m_Camera.keys.left = false;
+			break;
+		case AppBase::Key::S:
+		case AppBase::Key::Down:
+			m_Camera.keys.down = false;
+			break;
+		case AppBase::Key::D:
+		case AppBase::Key::Right:
+			m_Camera.keys.right = false;
+			break;
+		}
+	}
+}
+
+
+void Terrain::MouseEvent(float x, float y)
+{
+	int32_t dx = (int32_t)mouseState.position.x - x;
+	int32_t dy = (int32_t)mouseState.position.y - y;
+
+	if (mouseState.buttons.left) {
+		m_Camera.rotate(glm::vec3(dy * m_Camera.rotationSpeed, -dx * m_Camera.rotationSpeed, 0.0f));
+		//viewUpdated = true;
+	}
+	if (mouseState.buttons.right) {
+		m_Camera.translate(glm::vec3(-0.0f, 0.0f, dy * .005f));
+		//viewUpdated = true;
+	}
+	if (mouseState.buttons.middle) {
+		m_Camera.translate(glm::vec3(-dx * 0.005f, -dy * 0.005f, 0.0f));
+		//viewUpdated = true;
+	}
+	mouseState.position = glm::vec2((float)x, (float)y);
+}
+
+Terrain::~Terrain()
+{
+	delete m_CommandList;
+	delete m_BuildMinMaxMapErrorMapPass.pipeline;
+	delete m_BuildMinMaxMapErrorMapPass.resourceSetLayout;
+	delete m_BuildMinMaxMapErrorMapPass.resourceSet;
+	for (auto view : m_BuildMinMaxMapErrorMapPass.minMaxErrorMapMipViews)
+	{
+		delete view;
+	}
+
+	delete m_SelectNodesPass.pipeline;
+	delete m_SelectNodesPass.topNodeList;
+	delete m_SelectNodesPass.nodeListA;
+	delete m_SelectNodesPass.nodeListB;
+	delete m_SelectNodesPass.finalNodeList;
+	delete m_SelectNodesPass.topLodDispatchArgs;
+	delete m_SelectNodesPass.currentDispatchArgs;
+	delete m_SelectNodesPass.nextDispatchArgs;
+	delete m_SelectNodesPass.ChunkedLodParametersBuffer;
+	delete m_SelectNodesPass.resourceSetLayout;
+	delete m_SelectNodesPass.resourceSet;
+
+	delete m_GraphicPass.pipeline;
+	delete m_GraphicPass.resourceSetLayout;
+	delete m_GraphicPass.resourceSet;
+	delete m_GraphicPass.planeMesh.indexBuffer;
+	delete m_GraphicPass.planeMesh.vertexBuffer;
+
+	delete m_Heightmap;
+	delete m_LinearSampler;
+	delete m_MinMaxHeightErrorMap;
+	delete m_TerrainParamsBuffer;
+	delete m_DrawIndirectBuffer;
+	delete m_SceneDataBuffer;
 }
