@@ -924,8 +924,6 @@ namespace rhi
 		uint32_t vertexBufferCount = 0;
 
 		IndexBufferBinding indexBuffer;
-
-		IBuffer* indirectArgsBuffer = nullptr;
 		// clear all rendertaget
 		bool clearRenderTarget = false;
 		bool clearDepthStencil = false;
@@ -934,8 +932,6 @@ namespace rhi
 	struct ComputeState
 	{
 		IComputePipeline* pipeline = nullptr;
-
-		IBuffer* indirectArgsBuffer = nullptr;
 	};
 
 	// command list

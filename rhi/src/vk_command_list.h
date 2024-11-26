@@ -61,12 +61,12 @@ namespace rhi
 
 		void draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance) override;
 		void drawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) override;
-		void drawIndirect(uint64_t offset, uint32_t drawCount) override;
-		void drawIndexedIndirect(uint64_t offset, uint32_t drawCount) override;
+		void drawIndirect(IBuffer* argsBuffer, uint64_t offset, uint32_t drawCount) override;
+		void drawIndexedIndirect(IBuffer* argsBuffer, uint64_t offset, uint32_t drawCount) override;
 
 		void setComputeState(const ComputeState& state) override;
 		void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) override;
-		void dispatchIndirect(uint64_t offset) override;
+		void dispatchIndirect(IBuffer* argsBuffer, uint64_t offset) override;
 
 		Object getNativeObject(NativeObjectType type) const override;
 

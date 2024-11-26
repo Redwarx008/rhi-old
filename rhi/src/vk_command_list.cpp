@@ -177,11 +177,11 @@ namespace rhi
 
 	void CommandListVk::commitBarriers()
 	{
-		endRendering();
 		if (m_BufferBarriers.empty() && m_TextureBarriers.empty())
 		{
 			return;
 		}
+		endRendering();
 
 		m_VkImageMemoryBarriers.resize(m_TextureBarriers.size());
 		m_VkBufferMemoryBarriers.resize(m_BufferBarriers.size());
@@ -754,15 +754,6 @@ namespace rhi
 			}
 		}
 
-		if (state.indirectArgsBuffer)
-		{
-			auto buffer = checked_cast<BufferVk*>(state.indirectArgsBuffer);
-			if (m_EnableAutoTransition)
-			{
-				transitionBufferState(buffer, ResourceState::IndirectBuffer);
-			}
-		}
-
 		assert(state.renderTargetCount > 0 || state.depthStencilView != nullptr);
 		for (uint32_t i = 0; i < state.renderTargetCount; ++i)
 		{
@@ -928,9 +919,17 @@ namespace rhi
 		vkCmdDrawIndexed(m_CurrentCmdBuf->vkCmdBuf, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
 	}
 
-	void CommandListVk::drawIndirect(uint64_t offset, uint32_t drawCount)
+	void CommandListVk::drawIndirect(IBuffer* argsBuffer, uint64_t offset, uint32_t drawCount)
 	{
+		assert(argsBuffer);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
+
+		auto indirectBuffer = checked_cast<BufferVk*>(argsBuffer);
+		if (m_EnableAutoTransition)
+		{
+			transitionBufferState(indirectBuffer, ResourceState::IndirectBuffer);
+		}
+		commitBarriers();
 
 		if (!m_RenderingStarted)
 		{
@@ -942,14 +941,21 @@ namespace rhi
 			vkCmdBeginRendering(m_CurrentCmdBuf->vkCmdBuf, &renderingInfo);
 			m_RenderingStarted = true;
 		}
-		auto indiectBuffer = checked_cast<BufferVk*>(m_LastGraphicsState.indirectArgsBuffer);
-		assert(indiectBuffer != nullptr);
-		vkCmdDrawIndirect(m_CurrentCmdBuf->vkCmdBuf, indiectBuffer->buffer, offset, drawCount, sizeof(DrawIndirectCommand));
+
+		vkCmdDrawIndirect(m_CurrentCmdBuf->vkCmdBuf, indirectBuffer->buffer, offset, drawCount, sizeof(DrawIndirectCommand));
 	}
 
-	void CommandListVk::drawIndexedIndirect(uint64_t offset, uint32_t drawCount)
+	void CommandListVk::drawIndexedIndirect(IBuffer* argsBuffer, uint64_t offset, uint32_t drawCount)
 	{
+		assert(argsBuffer);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
+
+		auto indirectBuffer = checked_cast<BufferVk*>(argsBuffer);
+		if (m_EnableAutoTransition)
+		{
+			transitionBufferState(indirectBuffer, ResourceState::IndirectBuffer);
+		}
+		commitBarriers();
 
 		if (!m_RenderingStarted)
 		{
@@ -961,9 +967,8 @@ namespace rhi
 			vkCmdBeginRendering(m_CurrentCmdBuf->vkCmdBuf, &renderingInfo);
 			m_RenderingStarted = true;
 		}
-		auto indiectBuffer = checked_cast<BufferVk*>(m_LastGraphicsState.indirectArgsBuffer);
-		assert(indiectBuffer != nullptr);
-		vkCmdDrawIndexedIndirect(m_CurrentCmdBuf->vkCmdBuf, indiectBuffer->buffer, offset, drawCount, sizeof(DrawIndexedIndirectCommand));
+
+		vkCmdDrawIndexedIndirect(m_CurrentCmdBuf->vkCmdBuf, indirectBuffer->buffer, offset, drawCount, sizeof(DrawIndexedIndirectCommand));
 	}
 
 	void CommandListVk::setComputeState(const ComputeState& state)
@@ -973,17 +978,6 @@ namespace rhi
 		endRendering();
 
 		auto pipeline = checked_cast<ComputePipelineVk*>(state.pipeline);
-
-		if (state.indirectArgsBuffer)
-		{
-			auto indirectBuffer = checked_cast<BufferVk*>(state.indirectArgsBuffer);
-			if (m_EnableAutoTransition)
-			{
-				transitionBufferState(indirectBuffer, ResourceState::IndirectBuffer);
-			}
-		}
-
-		commitBarriers();
 
 		if (state.pipeline != m_LastComputeState.pipeline)
 		{
@@ -1001,13 +995,19 @@ namespace rhi
 		vkCmdDispatch(m_CurrentCmdBuf->vkCmdBuf, groupCountX, groupCountY, groupCountZ);
 	}
 
-	void CommandListVk::dispatchIndirect(uint64_t offset)
+	void CommandListVk::dispatchIndirect(IBuffer* argsBuffer, uint64_t offset)
 	{
+		assert(argsBuffer);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
-		auto indiectBuffer = checked_cast<BufferVk*>(m_LastComputeState.indirectArgsBuffer);
-		assert(indiectBuffer != nullptr);
-		vkCmdDispatchIndirect(m_CurrentCmdBuf->vkCmdBuf, indiectBuffer->buffer, offset);
+		auto indirectBuffer = checked_cast<BufferVk*>(argsBuffer);
+		if (m_EnableAutoTransition)
+		{
+			transitionBufferState(indirectBuffer, ResourceState::IndirectBuffer);
+		}
+		commitBarriers();
+
+		vkCmdDispatchIndirect(m_CurrentCmdBuf->vkCmdBuf, indirectBuffer->buffer, offset);
 	}
 
 	Object CommandListVk::getNativeObject(NativeObjectType type) const

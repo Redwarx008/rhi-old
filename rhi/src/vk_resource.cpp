@@ -549,7 +549,7 @@ namespace rhi
 		case ResourceState::ShaderResource:		return VK_ACCESS_2_SHADER_READ_BIT;
 		case ResourceState::UnorderedAccess:	return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
 		case ResourceState::RenderTarget:		return VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-		case ResourceState::IndirectBuffer:   return VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
+		case ResourceState::IndirectBuffer:		return VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
 		case ResourceState::Present:			return VK_ACCESS_2_NONE;
 		case ResourceState::DepthRead:			return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
 		case ResourceState::DepthWrite:			return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
@@ -580,7 +580,7 @@ namespace rhi
 		case ResourceState::ShaderResource:		return allShaderStages;
 		case ResourceState::UnorderedAccess:	return allShaderStages;
 		case ResourceState::RenderTarget:		return VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-		case ResourceState::IndirectBuffer:   return VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
+		case ResourceState::IndirectBuffer:		return VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
 		case ResourceState::Present:			return VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 		case ResourceState::DepthRead:			return VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
 		case ResourceState::DepthWrite:			return VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
