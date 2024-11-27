@@ -126,7 +126,7 @@ namespace rhi
 
 		virtual void clearColorTexture(ITextureView* textureView, const ClearColor& color) = 0;
 		virtual void clearDepthStencil(ITextureView* textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal) = 0;
-		virtual void clearBuffer(IBuffer* buffer, uint32_t value) = 0;
+		virtual void clearBuffer(IBuffer* buffer, uint32_t value, uint64_t offset = 0, uint64_t size = ~0ull) = 0;
 		virtual void updateBuffer(IBuffer* buffer, const void* data, uint64_t dataSize, uint64_t offset) = 0;
 		virtual void copyBuffer(IBuffer* srcBuffer, uint64_t srcOffset, IBuffer* dstBuffer, uint64_t dstOffset, uint64_t dataSize) = 0;
 		virtual void* mapBuffer(IBuffer* buffer, MapBufferUsage usage) = 0;

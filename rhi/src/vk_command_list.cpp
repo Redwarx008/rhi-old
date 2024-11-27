@@ -411,7 +411,7 @@ namespace rhi
 		}
 	}
 
-	void CommandListVk::clearBuffer(IBuffer* buffer, uint32_t value)
+	void CommandListVk::clearBuffer(IBuffer* buffer, uint32_t value, uint64_t offset, uint64_t size)
 	{
 		assert(buffer);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
@@ -424,7 +424,7 @@ namespace rhi
 		}
 		commitBarriers();
 
-		vkCmdFillBuffer(m_CurrentCmdBuf->vkCmdBuf, buf->buffer, 0, VK_WHOLE_SIZE, value);
+		vkCmdFillBuffer(m_CurrentCmdBuf->vkCmdBuf, buf->buffer, offset, size, value);
 	}
 
 	void CommandListVk::copyBuffer(IBuffer* srcBuffer, uint64_t srcOffset, IBuffer* dstBuffer, uint64_t dstOffset, uint64_t dataSize)
