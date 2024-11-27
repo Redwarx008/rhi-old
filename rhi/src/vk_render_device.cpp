@@ -1412,7 +1412,10 @@ namespace rhi
 		m_CmdBufSubmitInfos.clear();
 
 		// we only need to wait for swapChain image available at first time that graphicPipeline is set.
-		m_SwapChainImgAvailableSemaphore = VK_NULL_HANDLE;
+		if (hasGraphicPipeline)
+		{
+			m_SwapChainImgAvailableSemaphore = VK_NULL_HANDLE;
+		}
 		m_RenderCompleteSemaphore = VK_NULL_HANDLE;
 		return lastSubmittedID;
 	}
