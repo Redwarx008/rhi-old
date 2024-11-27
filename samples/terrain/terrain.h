@@ -60,7 +60,7 @@ public:
 	~Terrain();
 protected:
 	void draw() override;
-	void update() override {};
+	void update(float deltaTime) override;
 private:
 	void KeyEvent(Key key, KeyState state) override;
 	void MouseEvent(float posX, float posY) override;
@@ -162,5 +162,7 @@ private:
 	rhi::IBuffer* m_DrawIndirectBuffer;
 	rhi::IBuffer* m_SceneDataBuffer;
 	uint32_t m_FrameInFlight = 0;
+
+	bool m_MapNeedUpdate = true;
 };
 

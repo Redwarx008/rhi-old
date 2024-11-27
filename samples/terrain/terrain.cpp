@@ -35,6 +35,10 @@ static std::vector<uint32_t> loadShaderData(const char* filePath)
 
 void Terrain::init()
 {
+	m_Camera.type = Camera::CameraType::firstperson;
+	m_Camera.setPerspective(60.0f, (float)m_WindowWidth / (float)m_WindowHeight, 0.1f, 512.0f);
+	m_Camera.setTranslation(glm::vec3(0.5f, 0.0f, 0.0f));
+	m_Camera.movementSpeed = 5.0f;
 	prepareData();
 	initPipeline();
 	m_CommandList = m_RenderDevice->createCommandList();
@@ -206,7 +210,7 @@ void Terrain::buildMinMaxErrorMap(ICommandList* cmdList)
 	ComputeState compState{};
 	compState.pipeline = m_BuildMinMaxMapErrorMapPass.pipeline;
 
-	cmdList->beginDebugLabel("buildMinMaxErrorMap pass", { 0.0, 1.0, 0.0, 1.0 });
+	cmdList->beginDebugLabel("buildMinMaxErrorMap pass", { 0.0, 0.0, 1.0, 1.0 });
 
 	uint32_t width = m_MinMaxHeightErrorMap->getDesc().width;
 	uint32_t height = m_MinMaxHeightErrorMap->getDesc().height;
@@ -338,8 +342,8 @@ void Terrain::prepareData()
 				topNodeData.push_back(y);
 			}
 		}
-		desc.size = topNodeData.size();
-		m_SelectNodesPass.topNodeList = m_RenderDevice->createBuffer(desc, topNodeData.data(), topNodeData.size());
+		desc.size = topNodeData.size() * sizeof(uint32_t);
+		m_SelectNodesPass.topNodeList = m_RenderDevice->createBuffer(desc, topNodeData.data(), desc.size);
 	}
 
 	// create indirct buffer
@@ -375,20 +379,30 @@ void Terrain::prepareData()
 void Terrain::draw()
 {
 	m_CommandList->open();
-	buildMinMaxErrorMap(m_CommandList);
+	if (m_MapNeedUpdate)
+	{
+		buildMinMaxErrorMap(m_CommandList);
+		m_MapNeedUpdate = false;
+	}
 
 	// update scene data.
+	m_CommandList->beginDebugLabel("update and clear resource");
+
 	m_CommandList->updateBuffer(m_SceneDataBuffer, &m_SceneData, sizeof(SceneData), 0);
 
-	m_CommandList->clearBuffer(m_SelectNodesPass.nextDispatchArgs, 0);
+	m_CommandList->clearBuffer(m_SelectNodesPass.nextDispatchArgs, 1);
+	m_CommandList->clearBuffer(m_SelectNodesPass.nextDispatchArgs, 0, 0, sizeof(uint32_t) * 2);
 	m_CommandList->clearBuffer(m_DrawIndirectBuffer, 0);
 	m_CommandList->clearBuffer(m_SelectNodesPass.finalNodeList, 0);
 	m_CommandList->clearBuffer(m_SelectNodesPass.nodeListA, 0);
 	m_CommandList->clearBuffer(m_SelectNodesPass.nodeListB, 0);
 
+	m_CommandList->endDebugLabel();
+
 	// Traversing the quadtree hierarchically
 	IBuffer* consumeNodeList = m_SelectNodesPass.nodeListA;
 	IBuffer* appendNodeList = m_SelectNodesPass.nodeListB;
+	m_CommandList->beginDebugLabel("Traversing the quadtree hierarchically", { 0.0f, 0.0f, 1.0f, 1.0f });
 	m_CommandList->copyBuffer(m_SelectNodesPass.topNodeList, 0, consumeNodeList, 0, m_SelectNodesPass.topNodeList->getDesc().size);
 	m_CommandList->copyBuffer(m_SelectNodesPass.topLodDispatchArgs, 0, m_SelectNodesPass.currentDispatchArgs, 0,
 		m_SelectNodesPass.topLodDispatchArgs->getDesc().size);
@@ -411,10 +425,12 @@ void Terrain::draw()
 		m_CommandList->setPushConstant(ShaderType::Compute, &m_ChunkedLodParams);
 		m_CommandList->dispatchIndirect(m_SelectNodesPass.currentDispatchArgs, 0);
 		m_CommandList->copyBuffer(m_SelectNodesPass.nextDispatchArgs, 0, m_SelectNodesPass.currentDispatchArgs, 0, sizeof(DispatchIndirectCommand));
-		m_CommandList->clearBuffer(m_SelectNodesPass.nextDispatchArgs, 0);
+		m_CommandList->clearBuffer(m_SelectNodesPass.nextDispatchArgs, 0, 0, sizeof(uint32_t) * 2);
 		std::swap(consumeNodeList, appendNodeList);
 	}
+	m_CommandList->endDebugLabel();
 
+	m_CommandList->beginDebugLabel("Draw terrain mesh", { 0.0, 1.0, 0.0, 1.0 });
 	// graphic pass
 	GraphicsState graphicsState{};
 	graphicsState.pipeline = m_GraphicPass.pipeline;
@@ -431,6 +447,18 @@ void Terrain::draw()
 	m_CommandList->drawIndexedIndirect(m_DrawIndirectBuffer, 0, 1);
 	m_CommandList->close();
 	m_RenderDevice->executeCommandLists(&m_CommandList, 1);
+
+	m_CommandList->endDebugLabel();
+}
+
+void Terrain::update(float deltaTime)
+{
+	m_Camera.update(deltaTime);
+	m_SceneData.projectionMatrix = m_Camera.matrices.perspective;
+	m_SceneData.viewMatrix = m_Camera.matrices.view;
+	m_SceneData.cameraPos = glm::vec4(m_Camera.position, 0.0);
+	m_Frustum.update(m_SceneData.projectionMatrix * m_SceneData.viewMatrix);
+	memcpy(m_SceneData.frustumPlanes, m_Frustum.planes.data(), sizeof(glm::vec4) * 6);
 }
 
 void Terrain::KeyEvent(Key key, KeyState state)

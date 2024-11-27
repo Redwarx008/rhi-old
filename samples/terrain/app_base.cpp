@@ -50,24 +50,27 @@ void AppBase::create(uint32_t width, uint32_t height)
 
 void AppBase::run()
 {
-	auto tStart = std::chrono::high_resolution_clock::now();
+	auto tPrevious = std::chrono::high_resolution_clock::now();
 	while (!glfwWindowShouldClose(m_Window))
 	{
 		glfwPollEvents();
 
-		update();
+		auto tCurrent = std::chrono::high_resolution_clock::now();
+		auto tDiff = std::chrono::duration<double, std::milli>(tCurrent - tPrevious).count();
+		tPrevious = tCurrent;
+		float dt = (float)tDiff / 1000.0f;
 
-		int w, h;
+		update(dt);
+
+		int w , h;
 		glfwGetWindowSize(m_Window, &w, &h);
-
-		m_SwapChain->beginFrame();
-		draw();
-		m_SwapChain->present();
+		if (w > 0 && h > 0)
+		{
+			m_SwapChain->beginFrame();
+			draw();
+			m_SwapChain->present();
+		}
 	}
-	auto tEnd = std::chrono::high_resolution_clock::now();
-	auto tDiff = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
-	float dt = (float)tDiff / 1000.0f;
-	m_Camera.update(frameTimer);
 }
 
 void AppBase::GLFW_KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)

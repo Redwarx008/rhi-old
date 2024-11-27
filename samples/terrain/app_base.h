@@ -46,7 +46,7 @@ protected:
         Press = GLFW_PRESS,
         Repeat = GLFW_REPEAT,
     };
-	virtual void update() = 0;
+	virtual void update(float deltaTime) = 0;
 	virtual void draw() = 0;
 
 	rhi::IRenderDevice* m_RenderDevice;

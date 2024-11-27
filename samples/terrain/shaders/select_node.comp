@@ -149,10 +149,10 @@ void main()
 	vec3 minMaxError = texelFetch(minMaxErrorMap, ivec2(nodeXY), lodLevel).xyz;
 	vec3 boundsMin = vec3(xy.x, minMaxError.x, xy.y);
 	vec3 boundsMax = vec3(xy.x, minMaxError.y, xy.y);
-	if (checkAABB(boundsMin, boundsMax))
-	{
-		return;
-	}
+//	if (checkAABB(boundsMin, boundsMax))
+//	{
+//		return;
+//	}
 
 	float distance = minDistanceFromPointToAabb(boundsMin, boundsMax, cameraPos.xyz);
 	float maxScreenSpaceError = minMaxError.z / distance * kFactor;
