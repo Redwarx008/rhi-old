@@ -1380,29 +1380,22 @@ namespace rhi
 		submitInfo.signalSemaphoreInfoCount = 1;
 
 		VkSemaphoreSubmitInfo waitSemaphoreSubmitInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
-		waitSemaphoreSubmitInfo.semaphore = m_SwapChainImgAvailableSemaphore;
-		waitSemaphoreSubmitInfo.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 		if (hasGraphicPipeline && m_SwapChainImgAvailableSemaphore != VK_NULL_HANDLE)
 		{
+			waitSemaphoreSubmitInfo.semaphore = m_SwapChainImgAvailableSemaphore;
+			waitSemaphoreSubmitInfo.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 			submitInfo.waitSemaphoreInfoCount = 1;
 			submitInfo.pWaitSemaphoreInfos = &waitSemaphoreSubmitInfo;
 		}
 
-		VkSemaphoreSubmitInfo signalSemaphoreSubmitInfos[2]{};
-		signalSemaphoreSubmitInfos[0].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-		signalSemaphoreSubmitInfos[0].semaphore = m_TrackingSubmittedSemaphore;
-		signalSemaphoreSubmitInfos[0].value = lastSubmittedID;
-		signalSemaphoreSubmitInfos[0].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+		VkSemaphoreSubmitInfo signalSemaphoreSubmitInfo{};
+		signalSemaphoreSubmitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+		signalSemaphoreSubmitInfo.semaphore = m_TrackingSubmittedSemaphore;
+		signalSemaphoreSubmitInfo.value = lastSubmittedID;
+		signalSemaphoreSubmitInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 
-		if (m_RenderCompleteSemaphore != VK_NULL_HANDLE)
-		{
-			signalSemaphoreSubmitInfos[1].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-			signalSemaphoreSubmitInfos[1].semaphore = m_RenderCompleteSemaphore;
-			signalSemaphoreSubmitInfos[1].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-			submitInfo.signalSemaphoreInfoCount = 2;
-		}
 
-		submitInfo.pSignalSemaphoreInfos = signalSemaphoreSubmitInfos;
+		submitInfo.pSignalSemaphoreInfos = &signalSemaphoreSubmitInfo;
 		submitInfo.commandBufferInfoCount = static_cast<uint32_t>(m_CmdBufSubmitInfos.size());
 		submitInfo.pCommandBufferInfos = m_CmdBufSubmitInfos.data();
 
@@ -1416,7 +1409,6 @@ namespace rhi
 		{
 			m_SwapChainImgAvailableSemaphore = VK_NULL_HANDLE;
 		}
-		m_RenderCompleteSemaphore = VK_NULL_HANDLE;
 		return lastSubmittedID;
 	}
 
@@ -1486,7 +1478,7 @@ namespace rhi
 	{
 		std::vector<CommandBuffer*> submittedCmdBuf = std::move(m_CommandBufferInFlight);
 
-		uint64_t lastFinishedID;
+		uint64_t lastFinishedID = 0;
 		VkResult err = vkGetSemaphoreCounterValue(context.device, m_TrackingSubmittedSemaphore, &lastFinishedID);
 		CHECK_VK_RESULT(err);
 
@@ -1503,5 +1495,58 @@ namespace rhi
 				m_CommandBufferInFlight.push_back(commandBuffer);
 			}
 		}
+	}
+
+	void RenderDeviceVk::executePresentCommandList(ICommandList* cmdList)
+	{
+		++lastSubmittedID;
+
+		auto commandList = checked_cast<CommandListVk*>(cmdList);
+		commandList->updateSubmittedState();
+		CommandBuffer* cmdBuffer = commandList->getCommandBuffer();
+		cmdBuffer->submitID = lastSubmittedID;
+		m_CommandBufferInFlight.push_back(cmdBuffer);
+
+		VkCommandBufferSubmitInfo cmdBufferSubmitInfo{};
+		cmdBufferSubmitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+		cmdBufferSubmitInfo.commandBuffer = cmdBuffer->vkCmdBuf;
+
+
+		VkSubmitInfo2 submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO_2 };
+		submitInfo.signalSemaphoreInfoCount = 1;
+
+		VkSemaphoreSubmitInfo waitSemaphoreSubmitInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
+
+		if (m_SwapChainImgAvailableSemaphore != VK_NULL_HANDLE)
+		{
+			waitSemaphoreSubmitInfo.semaphore = m_SwapChainImgAvailableSemaphore;
+			waitSemaphoreSubmitInfo.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+			submitInfo.waitSemaphoreInfoCount = 1;
+			submitInfo.pWaitSemaphoreInfos = &waitSemaphoreSubmitInfo;
+		}
+
+		VkSemaphoreSubmitInfo signalSemaphoreSubmitInfos[2]{};
+		signalSemaphoreSubmitInfos[0].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+		signalSemaphoreSubmitInfos[0].semaphore = m_TrackingSubmittedSemaphore;
+		signalSemaphoreSubmitInfos[0].value = lastSubmittedID;
+		signalSemaphoreSubmitInfos[0].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+		signalSemaphoreSubmitInfos[1].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+		signalSemaphoreSubmitInfos[1].semaphore = m_RenderCompleteSemaphore;
+		signalSemaphoreSubmitInfos[1].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+
+		submitInfo.signalSemaphoreInfoCount = 2;
+		submitInfo.pSignalSemaphoreInfos = signalSemaphoreSubmitInfos;
+		submitInfo.commandBufferInfoCount = 1;
+		submitInfo.pCommandBufferInfos = &cmdBufferSubmitInfo;
+
+		VkResult err = vkQueueSubmit2(queue, 1, &submitInfo, VK_NULL_HANDLE);
+		CHECK_VK_RESULT(err);
+
+		m_CmdBufSubmitInfos.clear();
+
+		// we only need to wait for swapChain image available at first time that graphicPipeline is set.
+		m_SwapChainImgAvailableSemaphore = VK_NULL_HANDLE;
+		m_RenderCompleteSemaphore = VK_NULL_HANDLE;
 	}
 }

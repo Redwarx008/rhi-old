@@ -335,8 +335,7 @@ namespace rhi
 		m_CompleteRenderingCmdList->transitionFromSubmmitedState(m_ColorAttachments[m_SwapChainImageIndex].get(), ResourceState::Present);
 		m_CompleteRenderingCmdList->commitBarriers();
 		m_CompleteRenderingCmdList->close();
-		ICommandList* cmdLists[] = { m_CompleteRenderingCmdList.get() };
-		m_RenderDevice->executeCommandLists(cmdLists, 1);
+		m_RenderDevice->executePresentCommandList(m_CompleteRenderingCmdList.get());
 
 		VkPresentInfoKHR presentInfo{ VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
 		presentInfo.waitSemaphoreCount = 1;
