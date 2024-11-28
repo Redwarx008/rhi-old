@@ -137,7 +137,6 @@ private:
 
 		rhi::IBuffer* ChunkedLodParametersBuffer;
 
-		rhi::IBuffer* topLodDispatchArgs;
 		rhi::IBuffer* currentDispatchArgs;
 		rhi::IBuffer* nextDispatchArgs;
 	}m_SelectNodesPass;

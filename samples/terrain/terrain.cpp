@@ -284,9 +284,9 @@ void Terrain::prepareData()
 
 	// caculate chunked lod parameters
 	{
-		m_Fov = 60.0;
+		m_Fov = 75.0;
 		m_ChunkedLodParams.tolerableError = 5.0;
-		const double PI = std::atan(1.0) * 4;
+		const double PI = 3.14159274F;
 		float tanHalfFov = std::tanf(0.5 * m_Fov * PI / 180.0);
 		m_ChunkedLodParams.kFactor = m_WindowWidth / (2.0 * tanHalfFov);
 
@@ -325,15 +325,16 @@ void Terrain::prepareData()
 		BufferDesc desc{};
 		desc.access = BufferAccess::GpuOnly;
 		desc.usage = BufferUsage::StorageBuffer;
-		desc.size = sizeof(uint32_t) + sizeof(glm::uvec2) * maxNodePerSelect; // counter + [nodeX, nodeY]
+		desc.size = sizeof(int32_t) * 2 + sizeof(glm::uvec2) * maxNodePerSelect; // counter + [nodeX, nodeY]
 		m_SelectNodesPass.nodeListA = m_RenderDevice->createBuffer(desc);
 		m_SelectNodesPass.nodeListB = m_RenderDevice->createBuffer(desc);
 
-		desc.size = sizeof(uint32_t) + sizeof(glm::vec4) * maxNodePerSelect; // counter + [nodeX, nodeY, LodLevel, morphValue]
+		desc.size = sizeof(int32_t) * 4 + sizeof(glm::vec4) * maxNodePerSelect; // counter + [nodeX, nodeY, LodLevel, morphValue]
 		m_SelectNodesPass.finalNodeList = m_RenderDevice->createBuffer(desc);
 
 		std::vector<uint32_t> topNodeData;
 		topNodeData.push_back(m_TopNodeCountX * m_TopNodeCountY);
+		topNodeData.push_back(0);		//padding
 		for (int y = 0; y < m_TopNodeCountY; ++y)
 		{
 			for (int x = 0; x < m_TopNodeCountX; ++x)
@@ -358,8 +359,6 @@ void Terrain::prepareData()
 		desc.size = sizeof(DispatchIndirectCommand);
 		m_SelectNodesPass.currentDispatchArgs = m_RenderDevice->createBuffer(desc);
 		m_SelectNodesPass.nextDispatchArgs = m_RenderDevice->createBuffer(desc);
-		glm::uvec3 data = glm::uvec3(m_TopNodeCountX, m_TopNodeCountY, 1);
-		m_SelectNodesPass.topLodDispatchArgs = m_RenderDevice->createBuffer(desc, &data, sizeof(data));
 	}
 
 	// create scene data buffers
@@ -390,8 +389,10 @@ void Terrain::draw()
 
 	m_CommandList->updateBuffer(m_SceneDataBuffer, &m_SceneData, sizeof(SceneData), 0);
 
+	m_CommandList->clearBuffer(m_SelectNodesPass.currentDispatchArgs, 1);
+	m_CommandList->clearBuffer(m_SelectNodesPass.currentDispatchArgs, m_TopNodeCountX * m_TopNodeCountY, 0, sizeof(uint32_t)); // init currentDispatchArgs 
 	m_CommandList->clearBuffer(m_SelectNodesPass.nextDispatchArgs, 1);
-	m_CommandList->clearBuffer(m_SelectNodesPass.nextDispatchArgs, 0, 0, sizeof(uint32_t) * 2);
+	m_CommandList->clearBuffer(m_SelectNodesPass.nextDispatchArgs, 0, 0, sizeof(uint32_t)); // set nextDispatchArgs to {0,1,1}
 	m_CommandList->clearBuffer(m_DrawIndirectBuffer, 0);
 	m_CommandList->clearBuffer(m_SelectNodesPass.finalNodeList, 0);
 	m_CommandList->clearBuffer(m_SelectNodesPass.nodeListA, 0);
@@ -404,8 +405,6 @@ void Terrain::draw()
 	IBuffer* appendNodeList = m_SelectNodesPass.nodeListB;
 	m_CommandList->beginDebugLabel("Traversing the quadtree hierarchically", { 0.0f, 0.0f, 1.0f, 1.0f });
 	m_CommandList->copyBuffer(m_SelectNodesPass.topNodeList, 0, consumeNodeList, 0, m_SelectNodesPass.topNodeList->getDesc().size);
-	m_CommandList->copyBuffer(m_SelectNodesPass.topLodDispatchArgs, 0, m_SelectNodesPass.currentDispatchArgs, 0,
-		m_SelectNodesPass.topLodDispatchArgs->getDesc().size);
 
 	ComputeState computeState{};
 	computeState.pipeline = m_SelectNodesPass.pipeline;
@@ -425,7 +424,7 @@ void Terrain::draw()
 		m_CommandList->setPushConstant(ShaderType::Compute, &m_ChunkedLodParams);
 		m_CommandList->dispatchIndirect(m_SelectNodesPass.currentDispatchArgs, 0);
 		m_CommandList->copyBuffer(m_SelectNodesPass.nextDispatchArgs, 0, m_SelectNodesPass.currentDispatchArgs, 0, sizeof(DispatchIndirectCommand));
-		m_CommandList->clearBuffer(m_SelectNodesPass.nextDispatchArgs, 0, 0, sizeof(uint32_t) * 2);
+		m_CommandList->clearBuffer(m_SelectNodesPass.nextDispatchArgs, 0, 0, sizeof(uint32_t)); // only clear x group
 		std::swap(consumeNodeList, appendNodeList);
 	}
 	m_CommandList->endDebugLabel();
@@ -536,6 +535,7 @@ void Terrain::MouseEvent(float x, float y)
 
 Terrain::~Terrain()
 {
+	m_RenderDevice->waitIdle();
 	delete m_CommandList;
 	delete m_BuildMinMaxMapErrorMapPass.pipeline;
 	delete m_BuildMinMaxMapErrorMapPass.resourceSetLayout;
@@ -550,7 +550,6 @@ Terrain::~Terrain()
 	delete m_SelectNodesPass.nodeListA;
 	delete m_SelectNodesPass.nodeListB;
 	delete m_SelectNodesPass.finalNodeList;
-	delete m_SelectNodesPass.topLodDispatchArgs;
 	delete m_SelectNodesPass.currentDispatchArgs;
 	delete m_SelectNodesPass.nextDispatchArgs;
 	delete m_SelectNodesPass.ChunkedLodParametersBuffer;

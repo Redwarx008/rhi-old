@@ -7,19 +7,19 @@ layout(binding = 0) uniform sampler2D minMaxErrorMap;
 
 layout(binding = 1, std430) buffer ConsumeNodeList 
 {
-	uint count;
+	int count;
 	uvec2 data[];
 } consumeNodeList;
 
 layout(binding = 2, std430) buffer AppendNodeList 
 {
-	uint count;
+	int count;
 	uvec2 data[];
 } appendNodeList;
 
 layout(binding = 3, std430) buffer FinalNodeList 
 {
-	uint count;
+	int count;
 	vec4 data[];
 } finalNodeList;
 
@@ -138,21 +138,22 @@ bool isAABBOutSidePlane(vec4 plane, vec3 boundsMin, vec3 boundsMax)
 
 void main()
 {
-	uint index = atomicAdd(consumeNodeList.count, -1);
+	uint index = gl_GlobalInvocationID.x;
+	atomicAdd(consumeNodeList.count, -1);
 	uvec2 nodeXY = consumeNodeList.data[index];
 	uint chunkSize = baseChunkSize << lodLevel;
 	uvec2 xy = nodeXY * chunkSize;
-	if (xy.x > heightmapSize.x || xy.y > heightmapSize.y)
+	if (xy.x >= heightmapSize.x || xy.y >= heightmapSize.y)
 	{
 		return;
 	}
 	vec3 minMaxError = texelFetch(minMaxErrorMap, ivec2(nodeXY), lodLevel).xyz;
 	vec3 boundsMin = vec3(xy.x, minMaxError.x, xy.y);
 	vec3 boundsMax = vec3(xy.x, minMaxError.y, xy.y);
-//	if (checkAABB(boundsMin, boundsMax))
-//	{
-//		return;
-//	}
+	if (checkAABB(boundsMin, boundsMax))
+	{
+		return;
+	}
 
 	float distance = minDistanceFromPointToAabb(boundsMin, boundsMax, cameraPos.xyz);
 	float maxScreenSpaceError = minMaxError.z / distance * kFactor;
@@ -176,8 +177,7 @@ void main()
 		index = atomicAdd(appendNodeList.count, 1);
 		appendNodeList.data[index] = nodeXY * 2 + uvec2(1, 1);
 		// set dispatch indirect buffer
-		atomicAdd(dispatchIndirectBuffer.x, 2);
-		atomicAdd(dispatchIndirectBuffer.y, 2);
+		atomicAdd(dispatchIndirectBuffer.x, 4);
 	}
 }
 

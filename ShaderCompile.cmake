@@ -18,7 +18,7 @@ function(compile_shader TARGET_NAME SHADERS SHADER_INCLUDE_FOLDER GENERATED_DIR 
         if(SHADER_INCLUDE_FOLDER STREQUAL "")
         add_custom_command(
             OUTPUT ${SPV_FILE}
-            COMMAND ${GLSLANG_BIN} -V ${SHADER} -o ${SPV_FILE} 
+            COMMAND ${GLSLANG_BIN} -gVS -V ${SHADER} -o ${SPV_FILE} 
             DEPENDS ${SHADER}
             WORKING_DIRECTORY "${WORKING_DIR}")
         else()
