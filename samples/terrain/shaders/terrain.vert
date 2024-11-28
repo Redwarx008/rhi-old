@@ -8,7 +8,7 @@ layout(binding = 0) uniform sampler2D heightmap;
 
 layout(binding = 1, std430) readonly buffer SelectedNodeList
 {
-	uint count;
+	int count;
 	vec4 data[]; //[nodeX, nodeY, lodLevel, morphValue]
 }selectedNodeList;
 
@@ -17,6 +17,7 @@ layout(binding = 2, std430) uniform SceneData
 	mat4 projectionMatrix;
 	mat4 modelMatrix;
 	mat4 viewMatrix;
+	vec4 cameraPos;
 };
 
 layout(binding = 3, std430) uniform TerrainParams
@@ -31,8 +32,8 @@ layout(location = 0) out vec2 uv;
 
 float GetOriginHeight(vec2 worldSpacePosXZ, uvec2 lodDection)
 {
-	float h1 = textureLod(heightmap, (worldSpacePosXZ - vec2(lodDection)) / vec2(heightmapSize), 0).r;
-	float h2 = textureLod(heightmap, (worldSpacePosXZ + vec2(lodDection)) / vec2(heightmapSize), 0).r;
+	float h1 = textureLod(heightmap, (worldSpacePosXZ - vec2(lodDection)) / vec2(heightmapSize), 0).r * heightScale;
+	float h2 = textureLod(heightmap, (worldSpacePosXZ + vec2(lodDection)) / vec2(heightmapSize), 0).r * heightScale;
 	return (h1 + h2) * 0.5;
 }
 
@@ -42,17 +43,18 @@ void main()
 	uint lodLevel = uint(selectedNodeList.data[gl_InstanceIndex].z);
 	uvec2 scaledLodDir = lodDirection << lodLevel;
 	float chunkScale = float(1 << lodLevel);
-	vec3 position = inPosition;
-	position.xz *= chunkScale;
+	float chunkSize = baseChunkSize * chunkScale;
+	vec3 positionInModel = inPosition;
+	positionInModel.xz *= chunkScale;
 	vec2 nodeXY = selectedNodeList.data[gl_InstanceIndex].xy;
-	vec3 worldSpacePos =  position * vec3(nodeXY.x, 1.0, nodeXY.y);
+	vec3 worldSpacePos =  positionInModel + vec3(nodeXY.x, 0.0, nodeXY.y) * chunkSize;
 	//Remove the extra vertices
 	worldSpacePos.xz = min(worldSpacePos.xz, vec2(heightmapSize) - vec2(1.0, 1.0));
 	uv = worldSpacePos.xz / vec2(heightmapSize);
 
 	float morphValue = selectedNodeList.data[gl_InstanceIndex].w;
 	float originH = GetOriginHeight(worldSpacePos.xz, scaledLodDir);
-	float height = textureLod(heightmap, uv, 0).r;
+	float height = textureLod(heightmap, uv, 0).r * heightScale;
 	height = mix(originH, height, morphValue);
 	worldSpacePos.y = height;
 	gl_Position = projectionMatrix * viewMatrix * vec4(worldSpacePos, 1);

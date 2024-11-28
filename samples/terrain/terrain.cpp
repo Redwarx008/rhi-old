@@ -36,8 +36,9 @@ static std::vector<uint32_t> loadShaderData(const char* filePath)
 void Terrain::init()
 {
 	m_Camera.type = Camera::CameraType::firstperson;
-	m_Camera.setPerspective(60.0f, (float)m_WindowWidth / (float)m_WindowHeight, 0.1f, 512.0f);
-	m_Camera.setTranslation(glm::vec3(0.5f, 0.0f, 0.0f));
+	m_Camera.setPerspective(60.0f, (float)m_WindowWidth / (float)m_WindowHeight, 0.1f, 3000.0f);
+	m_Camera.setRotation(glm::vec3(-90.0f, 0.0f, 0.0f));
+	m_Camera.setTranslation(glm::vec3(0.5f, 100.0f, 0.0f));
 	m_Camera.movementSpeed = 5.0f;
 	prepareData();
 	initPipeline();
