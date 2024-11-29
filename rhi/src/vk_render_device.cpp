@@ -23,23 +23,48 @@ namespace rhi
 
 		MessageSeverity serverity = MessageSeverity::Info;
 
-		if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {
+		std::string prefix;
+		if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) 
+		{
+#if defined(_WIN32)
+			prefix = "\033[32m" + prefix + "\033[0m";
+#endif
+			prefix = "VERBOSE: ";
 			serverity = MessageSeverity::Verbose;
 		}
-		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
+		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+		{
+			prefix = "INFO: ";
+#if defined(_WIN32)
+			prefix = "\033[36m" + prefix + "\033[0m";
+#endif
 			serverity = MessageSeverity::Info;
 		}
-		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) 
+		{
+			prefix = "WARNING: ";
+#if defined(_WIN32)
+			prefix = "\033[33m" + prefix + "\033[0m";
+#endif
 			serverity = MessageSeverity::Warning;
 		}
-		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+		{
+			prefix = "ERROR: ";
+#if defined(_WIN32)
+			prefix = "\033[31m" + prefix + "\033[0m";
+#endif
 			serverity = MessageSeverity::Error;
 		}
 
 		std::stringstream debugMessage;
-		if (pCallbackData->pMessageIdName) {
-			debugMessage << "[" << pCallbackData->pMessageIdName << "] : " << pCallbackData->pMessage;
+
+		if (!g_DebugMessageCallback)
+		{
+			debugMessage << prefix;
 		}
+
+		debugMessage << pCallbackData->pMessage;
 
 		if (g_DebugMessageCallback)
 		{
@@ -124,6 +149,31 @@ namespace rhi
 				}
 			}
 			if (validationLayerPresent) {
+
+				const VkBool32 setting_validate_core = VK_TRUE;
+				const VkBool32 setting_validate_sync = VK_TRUE;
+				const VkBool32 setting_thread_safety = VK_TRUE;
+				const char* setting_debug_action[] = { "VK_DBG_LAYER_ACTION_LOG_MSG" };
+				const char* setting_report_flags[] = { "info", "warn", "perf", "error", "debug" };
+				const VkBool32 setting_enable_message_limit = VK_TRUE;
+				const int32_t setting_duplicate_message_limit = 10;
+
+				const VkLayerSettingEXT settings[] = {
+					{validationLayerName, "validate_core", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_core},
+					{validationLayerName, "validate_sync", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_sync},
+					{validationLayerName, "thread_safety", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_thread_safety},
+					{validationLayerName, "debug_action", VK_LAYER_SETTING_TYPE_STRING_EXT, 1, setting_debug_action},
+					{validationLayerName, "report_flags", VK_LAYER_SETTING_TYPE_STRING_EXT, static_cast<uint32_t>(std::size(setting_report_flags)), setting_report_flags},
+					{validationLayerName, "enable_message_limit", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,& setting_enable_message_limit },
+					{validationLayerName, "duplicate_message_limit", VK_LAYER_SETTING_TYPE_INT32_EXT, 1, &setting_duplicate_message_limit} };
+
+				const VkLayerSettingsCreateInfoEXT layerSettingsCreateInfo =
+				{
+					VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT, nullptr,
+					static_cast<uint32_t>(std::size(settings)), settings 
+				};
+				debugUtilsMessengerCI.pNext = &layerSettingsCreateInfo;
+
 				instanceCreateInfo.ppEnabledLayerNames = &validationLayerName;
 				instanceCreateInfo.enabledLayerCount = 1;
 			}
