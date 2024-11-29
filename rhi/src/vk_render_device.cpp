@@ -331,11 +331,14 @@ namespace rhi
 
 	void RenderDeviceVk::destroyDebugUtilsMessenger()
 	{
-		assert(context.instace && m_DebugUtilsMessenger);
+		assert(context.instace);
 
-		auto vkDestroyDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(context.instace, "vkDestroyDebugUtilsMessengerEXT"));
+		if (m_DebugUtilsMessenger)
+		{
+			auto vkDestroyDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(context.instace, "vkDestroyDebugUtilsMessengerEXT"));
 
-		vkDestroyDebugUtilsMessengerEXT(context.instace, m_DebugUtilsMessenger, nullptr);
+			vkDestroyDebugUtilsMessengerEXT(context.instace, m_DebugUtilsMessenger, nullptr);
+		}
 	}
 
 	RenderDeviceVk* RenderDeviceVk::create(const RenderDeviceCreateInfo& createInfo)
