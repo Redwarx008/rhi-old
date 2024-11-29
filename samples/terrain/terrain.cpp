@@ -393,11 +393,11 @@ void Terrain::draw()
 	m_CommandList->clearBuffer(m_SelectNodesPass.currentDispatchArgs, 1);
 	m_CommandList->clearBuffer(m_SelectNodesPass.currentDispatchArgs, m_TopNodeCountX * m_TopNodeCountY, 0, sizeof(uint32_t)); // init currentDispatchArgs 
 	m_CommandList->clearBuffer(m_SelectNodesPass.nextDispatchArgs, 1);
-	m_CommandList->clearBuffer(m_SelectNodesPass.nextDispatchArgs, 0, 0, sizeof(uint32_t)); // set nextDispatchArgs to {0,1,1}
+	m_CommandList->clearBuffer(m_SelectNodesPass.nextDispatchArgs, 0, 0, sizeof(uint32_t)); // set nextDispatchArgs to {0,1,1}, we only use x groups
 	m_CommandList->clearBuffer(m_DrawIndirectBuffer, 0);
-	m_CommandList->clearBuffer(m_SelectNodesPass.finalNodeList, 0);
-	m_CommandList->clearBuffer(m_SelectNodesPass.nodeListA, 0);
-	m_CommandList->clearBuffer(m_SelectNodesPass.nodeListB, 0);
+	m_CommandList->clearBuffer(m_SelectNodesPass.finalNodeList, 0, 0, sizeof(int32_t)); // clear counters
+	m_CommandList->clearBuffer(m_SelectNodesPass.nodeListA, 0, 0, sizeof(int32_t));
+	m_CommandList->clearBuffer(m_SelectNodesPass.nodeListB, 0, 0, sizeof(int32_t));
 
 	m_CommandList->endDebugLabel();
 
