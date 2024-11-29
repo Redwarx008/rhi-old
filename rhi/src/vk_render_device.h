@@ -20,7 +20,7 @@ namespace rhi
 		CommandBuffer* getOrCreateCommandBuffer();
 		void setSwapChainImageAvailableSeamaphore(const VkSemaphore& semaphore);
 		void setRenderCompleteSemaphore(const VkSemaphore& semaphore);
-		TextureVk* createTextureWithExistImage(const TextureDesc& desc, VkImage image);
+		TextureVk* createRenderTarget(const TextureDesc& desc, VkImage image);
 		void recycleCommandBuffers();
 		void executePresentCommandList(ICommandList* cmdList);
 

@@ -256,7 +256,7 @@ namespace rhi
 		colorTextureDesc.usage = TextureUsage::RenderTarget;
 		for (int i = 0; i < m_ColorAttachments.size(); ++i)
 		{
-			TextureVk* colorTex = m_RenderDevice->createTextureWithExistImage(colorTextureDesc, images[i]);
+			TextureVk* colorTex = m_RenderDevice->createRenderTarget(colorTextureDesc, images[i]);
 			m_ColorAttachments[i] = std::unique_ptr<TextureVk>(colorTex);
 		}
 

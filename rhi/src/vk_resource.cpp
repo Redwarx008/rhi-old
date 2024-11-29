@@ -557,6 +557,7 @@ namespace rhi
 		case ResourceState::CopyDest:		    return VK_ACCESS_2_TRANSFER_WRITE_BIT;
 		case ResourceState::ResolveSource:      return VK_ACCESS_2_TRANSFER_READ_BIT;
 		case ResourceState::ResolveDest:	    return VK_ACCESS_2_TRANSFER_WRITE_BIT;
+		case ResourceState::InitialRenderTarget:return VK_ACCESS_2_NONE;
 		default:
 			LOG_ERROR("Unexpected resource state");
 			return 0;
@@ -581,13 +582,14 @@ namespace rhi
 		case ResourceState::UnorderedAccess:	return allShaderStages;
 		case ResourceState::RenderTarget:		return VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 		case ResourceState::IndirectBuffer:		return VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
-		case ResourceState::Present:			return VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+		case ResourceState::Present:			return VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
 		case ResourceState::DepthRead:			return VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
 		case ResourceState::DepthWrite:			return VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
-		case ResourceState::CopySource:			return VK_PIPELINE_STAGE_2_COPY_BIT_KHR;
-		case ResourceState::CopyDest:		    return VK_PIPELINE_STAGE_2_COPY_BIT_KHR;
-		case ResourceState::ResolveSource:      return VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-		case ResourceState::ResolveDest:	    return VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+		case ResourceState::CopySource:			return VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+		case ResourceState::CopyDest:		    return VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+		case ResourceState::ResolveSource:      return VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+		case ResourceState::ResolveDest:	    return VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+		case ResourceState::InitialRenderTarget:return VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 		default:
 			LOG_ERROR("Unexpected resource state");
 			return 0;
@@ -654,6 +656,7 @@ namespace rhi
 		case ResourceState::CopyDest:		    return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 		case ResourceState::ResolveSource:      return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 		case ResourceState::ResolveDest:	    return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		case ResourceState::InitialRenderTarget:return VK_IMAGE_LAYOUT_UNDEFINED;
 		default:
 			LOG_ERROR("Unexpected resource state");
 			return VK_IMAGE_LAYOUT_UNDEFINED;

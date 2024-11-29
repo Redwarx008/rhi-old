@@ -1376,7 +1376,7 @@ namespace rhi
 		return pipeline;
 	}
 
-	TextureVk* RenderDeviceVk::createTextureWithExistImage(const TextureDesc& desc, VkImage image)
+	TextureVk* RenderDeviceVk::createRenderTarget(const TextureDesc& desc, VkImage image)
 	{
 		assert(desc.format != Format::UNKNOWN);
 		assert(desc.dimension != TextureDimension::Undefined);
@@ -1387,7 +1387,8 @@ namespace rhi
 		tex->format = formatToVkFormat(desc.format);
 		tex->desc = desc;
 		tex->createDefaultView();
-
+		// an image layout transition needs to be performed on a presentable image before it is used in a graphics pipeline
+		tex->setState(ResourceState::InitialRenderTarget);
 		return tex;
 	}
 
