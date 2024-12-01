@@ -28,7 +28,7 @@ layout(binding = 3, std430) uniform TerrainParams
 };
 
 layout(location = 0) out vec2 uv;
-
+layout(location = 1) out vec3 worldSpacePos;
 
 float GetOriginHeight(vec2 worldSpacePosXZ, uvec2 lodDection)
 {

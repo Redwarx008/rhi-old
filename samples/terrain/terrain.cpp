@@ -7,6 +7,11 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/glm.hpp>
+
 using namespace rhi;
 
 static std::vector<uint32_t> loadShaderData(const char* filePath)
@@ -38,8 +43,8 @@ void Terrain::init()
 	m_Camera.type = Camera::CameraType::firstperson;
 	m_Camera.setPerspective(60.0f, (float)m_WindowWidth / (float)m_WindowHeight, 0.1f, 3000.0f);
 	m_Camera.setRotation(glm::vec3(-90.0f, 0.0f, 0.0f));
-	m_Camera.setTranslation(glm::vec3(0.5f, 100.0f, 0.0f));
-	m_Camera.movementSpeed = 5.0f;
+	m_Camera.setTranslation(glm::vec3(-1000, 100.0f, -1111));
+	m_Camera.movementSpeed = 200.0f;
 	prepareData();
 	initPipeline();
 	m_CommandList = m_RenderDevice->createCommandList();
@@ -161,7 +166,7 @@ void Terrain::initPipeline()
 				ResourceSetLayoutBinding::TextureWithSampler(ShaderType::Vertex | ShaderType::Fragment, 0), // heightmap
 				ResourceSetLayoutBinding::StorageBuffer(ShaderType::Vertex, 1), // finalNodeList
 				ResourceSetLayoutBinding::UniformBuffer(ShaderType::Vertex, 2), // sceneData
-				ResourceSetLayoutBinding::UniformBuffer(ShaderType::Vertex, 3) // terrain parameters
+				ResourceSetLayoutBinding::UniformBuffer(ShaderType::Vertex | ShaderType::Fragment, 3) // terrain parameters
 			};
 
 			ResourceSetBinding bindings[] =
@@ -196,8 +201,10 @@ void Terrain::initPipeline()
 		pipelineCI.renderTargetFormatCount = 1;
 		pipelineCI.renderTargetFormats[0] = m_SwapChain->getRenderTargetFormat();
 		pipelineCI.depthStencilFormat = m_SwapChain->getDepthStencilFormat();
-		pipelineCI.depthStencilState.depthTestEnable = true;
+		pipelineCI.depthStencilState.depthTestEnable = false;
+		pipelineCI.rasterState.frontCounterClockwise = false;
 		pipelineCI.rasterState.cullMode = CullMode::back;
+		pipelineCI.rasterState.fillMode = PolygonMode::Line;
 		m_GraphicPass.pipeline = m_RenderDevice->createGraphicsPipeline(pipelineCI);
 
 		delete vertexShader;
@@ -434,6 +441,7 @@ void Terrain::draw()
 	// graphic pass
 	GraphicsState graphicsState{};
 	graphicsState.pipeline = m_GraphicPass.pipeline;
+	graphicsState.clearRenderTarget = true;
 	graphicsState.viewports[0] = { (float)m_WindowWidth, (float)m_WindowHeight };
 	graphicsState.viewportCount = 1;
 	graphicsState.renderTargetViews[0] = m_SwapChain->getCurrentRenderTargetView();
@@ -484,6 +492,8 @@ void Terrain::KeyEvent(Key key, KeyState state)
 		case AppBase::Key::D:
 		case AppBase::Key::Right:
 			m_Camera.keys.right = true;
+		case AppBase::Key::MB_Left:
+			mouseState.buttons.left = true;
 			break;
 		}
 	}
@@ -509,8 +519,13 @@ void Terrain::KeyEvent(Key key, KeyState state)
 		case AppBase::Key::Right:
 			m_Camera.keys.right = false;
 			break;
+		case AppBase::Key::MB_Left:
+			mouseState.buttons.left = false;
+			break;
 		}
 	}
+
+
 }
 
 

@@ -150,7 +150,7 @@ void main()
 	vec3 minMaxError = texelFetch(minMaxErrorMap, ivec2(nodeXY), lodLevel).xyz;
 	vec3 boundsMin = vec3(startXY.x, minMaxError.x, startXY.y);
 	vec3 boundsMax = vec3(startXY.x + chunkSize, minMaxError.y, startXY.y + chunkSize);
-	if (checkAABB(boundsMin, boundsMax))
+	if (!checkAABB(boundsMin, boundsMax))
 	{
 		return;
 	}
