@@ -291,6 +291,7 @@ namespace rhi
 		deviceFeatures.textureCompressionBC = true;
 		deviceFeatures.geometryShader = true;
 		deviceFeatures.tessellationShader = true;
+		deviceFeatures.fillModeNonSolid = true;
 		deviceFeatures.multiViewport = desc.enableMultiViewport;
 		deviceFeatures.depthBiasClamp = desc.enableDepthBiasClamp;
 		deviceFeatures.depthClamp = desc.enableDepthClamp;
