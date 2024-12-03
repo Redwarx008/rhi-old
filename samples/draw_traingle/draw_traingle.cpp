@@ -10,6 +10,7 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "camera.hpp"
@@ -67,7 +68,8 @@ struct ShaderData {
 
 Camera camera;
 
-
+float lastX = 1024 / 2;
+float lastY = 1024 / 2;
 
 class App
 {
@@ -89,8 +91,10 @@ public:
 			return;
 		}
 
+		//glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		glfwSetWindowUserPointer(m_Window, this);
-
+		glfwSetKeyCallback(m_Window, &GLFW_KeyCallback);
+		glfwSetCursorPosCallback(m_Window, &GLFW_CursorPosCallback);
 
 		RenderDeviceCreateInfo rdCI{};
 		rdCI.enableDebugRuntime = true;
@@ -158,7 +162,8 @@ public:
 		pipelineCI.renderTargetFormats[0] = m_SwapChain->getRenderTargetFormat();
 		pipelineCI.depthStencilFormat = m_SwapChain->getDepthStencilFormat();
 		pipelineCI.depthStencilState.depthTestEnable = true;
-		pipelineCI.rasterState.cullMode = CullMode::None;
+		pipelineCI.rasterState.cullMode = CullMode::back;
+		pipelineCI.rasterState.frontCounterClockwise = false;
 
 		m_Pipeline = m_RenderDevice->createGraphicsPipeline(pipelineCI);
 
@@ -167,10 +172,7 @@ public:
 
 		m_CmdList = m_RenderDevice->createCommandList();
 
-		camera.type = Camera::CameraType::lookat;
-		camera.setPosition(glm::vec3(0.0f, 0.0f, -2.5f));
-		camera.setRotation(glm::vec3(0.0f));
-		camera.setPerspective(60.0f, (float)m_windowWidth / (float)m_windowHeight, 1.0f, 256.0f);
+		camera.position = glm::vec3(0, 0, 3);
 
 		m_GraphicState.pipeline = m_Pipeline;
 		m_GraphicState.renderTargetCount = 1;
@@ -199,8 +201,12 @@ public:
 	{
 		// Update the uniform buffer for the next frame
 		ShaderData shaderData{};
-		shaderData.projectionMatrix = camera.matrices.perspective;
-		shaderData.viewMatrix = camera.matrices.view;
+		camera.update();
+		glm::mat4 projection = glm::perspective(glm::radians(70.f), (float)m_windowWidth / (float)m_windowHeight, 10000.f, 0.1f);
+		//projection[1][1] *= -1;
+		glm::mat4 view = camera.getViewMatrix();
+		shaderData.projectionMatrix = projection;
+		shaderData.viewMatrix = view;
 		shaderData.modelMatrix = glm::mat4(1.0f);
 
 		auto rtv = m_SwapChain->getCurrentRenderTargetView();
@@ -215,7 +221,7 @@ public:
 		m_CmdList->updateBuffer(m_UniformBuffer, &shaderData, sizeof(ShaderData), 0);
 		m_CmdList->setGraphicsState(m_GraphicState);
 		m_CmdList->commitResourceSet(m_ResourceSet);
-		m_CmdList->setScissors(&scissor, 1);
+		//m_CmdList->setScissors(&scissor, 1);
 		m_CmdList->drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 		m_CmdList->close();
 
@@ -261,6 +267,76 @@ private:
 
 	std::unique_ptr<ISwapChain> m_SwapChain;
 	std::unique_ptr<IRenderDevice> m_RenderDevice;
+
+	static void GLFW_KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+	{
+		if (action == GLFW_PRESS)
+		{
+			if (key == GLFW_KEY_W)
+			{
+				camera.velocity.z = -1;
+			}
+			if (key == GLFW_KEY_S)
+			{
+				camera.velocity.z = 1;
+			}
+			if (key == GLFW_KEY_A)
+			{
+				camera.velocity.x = -1;
+			}
+			if (key == GLFW_KEY_D)
+			{
+				camera.velocity.x = 1;
+			}
+		}
+		if (action == GLFW_RELEASE)
+		{
+			if (key == GLFW_KEY_W)
+			{
+				camera.velocity.z = 0;
+			}
+			if (key == GLFW_KEY_S)
+			{
+				camera.velocity.z = 0;
+			}
+			if (key == GLFW_KEY_A)
+			{
+				camera.velocity.x = 0;
+			}
+			if (key == GLFW_KEY_D)
+			{
+				camera.velocity.x = 0;
+			}
+		}
+
+	}
+
+
+	static void GLFW_CursorPosCallback(GLFWwindow* wnd, double xpos, double ypos)
+	{
+		float xscale = 1;
+		float yscale = 1;
+		glfwGetWindowContentScale(wnd, &xscale, &yscale);
+
+		float xoffset = xpos - lastX;
+		float yoffset = ypos - lastY; // reversed since y-coordinates go from bottom to top
+
+		lastX = xpos;
+		lastY = ypos;
+
+		float mouseSensitivity = 0.005f;
+		xoffset *= mouseSensitivity;
+		yoffset *= mouseSensitivity;
+
+
+		camera.yaw += xoffset;
+		camera.pitch += yoffset;
+
+		if (camera.pitch > 89.0f)
+			camera.pitch = 89.0f;
+		if (camera.pitch < -89.0f)
+			camera.pitch = -89.0f;
+	}
 };
 
 
