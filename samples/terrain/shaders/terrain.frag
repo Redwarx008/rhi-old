@@ -3,6 +3,7 @@
 
 layout(location = 0) in vec2 uv;
 layout(location = 1) in vec3 worldSpacePos;
+layout(location = 2) in vec3 debugColor;
 
 layout(binding = 0) uniform sampler2D heightmap;
 
@@ -36,5 +37,5 @@ void main()
 	vec3 diffuse = vec3(max(dot(normal, lightDir), 0.0));
 	vec3 color = vec3(0.5,0.5,0.5);
 	//outFragColor = vec4((ambient + diffuse) * color, 1.0);
-	outFragColor = vec4(normal.xzy, 1);
+	outFragColor = vec4(debugColor, 1);
 }

@@ -29,6 +29,7 @@ layout(binding = 3, std430) uniform TerrainParams
 
 layout(location = 0) out vec2 uv;
 layout(location = 1) out vec3 worldSpacePos;
+layout(location = 2) out vec3 debugColor;
 
 float GetOriginHeight(vec2 worldSpacePosXZ, uvec2 lodDection)
 {
@@ -41,6 +42,27 @@ void main()
 {
 	uvec2 lodDirection = inUV;
 	uint lodLevel = uint(selectedNodeList.data[gl_InstanceIndex].z);
+	switch(lodLevel)
+	{
+	case 0: 
+		debugColor = vec3(0, 1, 0);
+		break;
+	case 1:
+		debugColor = vec3(0, 0, 1);
+		break;
+	case 2:
+		debugColor = vec3(1, 0, 0);
+		break;
+	case 3:
+		debugColor = vec3(1, 1, 0);
+		break;
+	case 4:
+		debugColor = vec3(0, 1, 1);
+		break;
+	case 5:
+		debugColor = vec3(1, 0, 1);
+		break;
+	}
 	uvec2 scaledLodDir = lodDirection << lodLevel;
 	float chunkScale = float(1 << lodLevel);
 	float chunkSize = baseChunkSize * chunkScale;

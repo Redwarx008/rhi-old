@@ -43,8 +43,9 @@ void Terrain::init()
 	m_Camera.type = Camera::CameraType::firstperson;
 	m_Camera.setPerspective(60.0f, (float)m_WindowWidth / (float)m_WindowHeight, 0.1f, 3000.0f);
 	m_Camera.setRotation(glm::vec3(-90.0f, 0.0f, 0.0f));
-	m_Camera.setTranslation(glm::vec3(-1000, 100.0f, -1111));
+	m_Camera.setTranslation(glm::vec3(0, 100.0f, 0));
 	m_Camera.movementSpeed = 200.0f;
+	//m_Camera.flipY = true;
 	prepareData();
 	initPipeline();
 	m_CommandList = m_RenderDevice->createCommandList();
@@ -201,7 +202,7 @@ void Terrain::initPipeline()
 		pipelineCI.renderTargetFormatCount = 1;
 		pipelineCI.renderTargetFormats[0] = m_SwapChain->getRenderTargetFormat();
 		pipelineCI.depthStencilFormat = m_SwapChain->getDepthStencilFormat();
-		pipelineCI.depthStencilState.depthTestEnable = false;
+		pipelineCI.depthStencilState.depthTestEnable = true;
 		pipelineCI.rasterState.frontCounterClockwise = false;
 		pipelineCI.rasterState.cullMode = CullMode::back;
 		pipelineCI.rasterState.fillMode = PolygonMode::Line;
@@ -270,7 +271,7 @@ void Terrain::prepareData()
 		// Determine the lod count
 		{
 			uint32_t minLength = (std::min)(m_RasterSizeX, m_RasterSizeZ);
-			topNodeSize = std::pow(2, (int)std::log2(minLength) - 3);
+			topNodeSize = std::pow(2, (int)std::log2(minLength) - 1);
 			m_NodeLevelCount = std::log2(topNodeSize) - std::log2(m_BaseNodeSize) + 1;
 		}
 
@@ -293,7 +294,7 @@ void Terrain::prepareData()
 	// caculate chunked lod parameters
 	{
 		m_Fov = 75.0;
-		m_ChunkedLodParams.tolerableError = 5.0;
+		m_ChunkedLodParams.tolerableError = 6.0;
 		const double PI = 3.14159274F;
 		float tanHalfFov = std::tanf(0.5 * m_Fov * PI / 180.0);
 		m_ChunkedLodParams.kFactor = m_WindowWidth / (2.0 * tanHalfFov);
@@ -464,7 +465,7 @@ void Terrain::update(float deltaTime)
 	m_Camera.update(deltaTime);
 	m_SceneData.projectionMatrix = m_Camera.matrices.perspective;
 	m_SceneData.viewMatrix = m_Camera.matrices.view;
-	m_SceneData.cameraPos = glm::vec4(m_Camera.position, 0.0);
+	m_SceneData.cameraPos = m_Camera.viewPos;
 	m_Frustum.update(m_SceneData.projectionMatrix * m_SceneData.viewMatrix);
 	memcpy(m_SceneData.frustumPlanes, m_Frustum.planes.data(), sizeof(glm::vec4) * 6);
 }
