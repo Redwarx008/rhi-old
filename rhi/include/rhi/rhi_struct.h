@@ -234,11 +234,23 @@ namespace rhi
 
 	struct TextureUpdateInfo
 	{
-		uint32_t srcRowPitch = 0;
-		uint32_t srcDepthPitch = 0;
+		uint32_t srcRowPitch = 0;	 // bytes between two rows of a texture
+		uint32_t srcDepthPitch = 0;  // bytes between two depth slices of a texture
 		uint32_t arrayLayer = 0;
 		uint32_t mipLevel = 0;
 		Region3D dstRegion;
+	};
+
+	struct TextureCopyInfo
+	{
+		uint32_t srcMipLevel = 0;
+		uint32_t srcSlice = 0;
+		Region3D* srcRegion = nullptr; // Source region to copy. Use nullptr to copy the entire subresource.
+		uint32_t dstMipLevel = 0;
+		uint32_t dstSlice = 0;
+		uint32_t dstX = 0;
+		uint32_t dstY = 0;
+		uint32_t dstZ = 0;
 	};
 
 	struct TextureViewDesc

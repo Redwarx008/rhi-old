@@ -131,6 +131,8 @@ namespace rhi
 		virtual void copyBuffer(IBuffer* srcBuffer, uint64_t srcOffset, IBuffer* dstBuffer, uint64_t dstOffset, uint64_t dataSize) = 0;
 		virtual void* mapBuffer(IBuffer* buffer, MapBufferUsage usage) = 0;
 		virtual void updateTexture(ITexture* texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo) = 0;
+		virtual void copyTexture(ITexture* srcTexture, ITexture* dstTexture, const TextureCopyInfo& copyInfo) = 0;
+		virtual void copyTextureToBuffer(ITexture* srcTexture, IBuffer* dstBuffer, const TextureCopyInfo& copyInfo) = 0;
 
 		virtual void commitResourceSet(IResourceSet* resourceSet, uint32_t dstSet = 0) = 0;
 

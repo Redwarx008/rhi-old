@@ -52,6 +52,7 @@ namespace rhi
 		void copyBuffer(IBuffer* srcBuffer, uint64_t srcOffset, IBuffer* dstBuffer, uint64_t dstOffset, uint64_t dataSize) override;
 		void* mapBuffer(IBuffer* buffer, MapBufferUsage usage) override;
 		void updateTexture(ITexture* texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo) override;
+		void copyTexture(ITexture* srcTexture, ITexture* dstTexture, const TextureCopyInfo& copyInfo) override;
 
 		void commitResourceSet(IResourceSet* resourceSet, uint32_t dstSet = 0) override;
 

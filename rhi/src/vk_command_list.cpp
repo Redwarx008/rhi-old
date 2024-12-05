@@ -567,6 +567,17 @@ namespace rhi
 		vkCmdCopyBufferToImage(m_CurrentCmdBuf->vkCmdBuf, stageBuffer->buffer, tex->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferCopyRegion);
 	}
 
+	void CommandListVk::copyTexture(ITexture* srcTexture, ITexture* dstTexture, const TextureCopyInfo& copyInfo)
+	{
+		assert(srcTexture && dstTexture);
+		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
+
+		auto srcTex = checked_cast<TextureVk*>(srcTexture);
+		auto dstTex = checked_cast<TextureVk*>(dstTexture);
+
+
+	}
+
 	void CommandListVk::transitionResourceSet(IResourceSet* set, ShaderType dstVisibleStages)
 	{
 		assert(set);
