@@ -3,6 +3,7 @@
 #include "vk_pipeline.h"
 #include "vk_render_device.h"
 #include "vk_resource.h"
+#include "vk_errors.h"
 #include "rhi/common/Error.h"
 
 #include <array>
@@ -10,25 +11,64 @@
 
 namespace rhi
 {
-	CommandBuffer::~CommandBuffer()
+	CommandQueue::CommandQueue(RenderDeviceVk* renderDevice)
+		:m_RenderDevice(renderDevice)
 	{
-		vkDestroyCommandPool(m_Context.device, vkCmdPool, nullptr);
-		if (!referencedInternalStageBuffer.empty())
+		// Setup the timeline semaphore
+		VkSemaphoreTypeCreateInfo semaphoreTypeCI{};
+		semaphoreTypeCI.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO_KHR;
+		semaphoreTypeCI.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE_KHR;
+
+		VkSemaphoreCreateInfo semaphoreCI{};
+		semaphoreCI.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+		semaphoreCI.pNext = &semaphoreTypeCI;
+
+		VkResult err = vkCreateSemaphore(m_RenderDevice->context.device, &semaphoreCI, nullptr, &trackingSubmittedSemaphore);
+		CHECK_VK_RESULT(err);
+	}
+
+	CommandQueue::~CommandQueue()
+	{
+		vkDestroySemaphore(m_RenderDevice->context.device, trackingSubmittedSemaphore, nullptr);
+	}
+
+
+	CommandListVk* CommandQueue::getValidCommandList()
+	{
+		CommandListVk* cmdList;
+		if (m_CommandListPool.empty())
 		{
-			referencedInternalStageBuffer.clear();
+			cmdList = new CommandListVk(m_RenderDevice);
+			VkCommandPoolCreateInfo commandPoolCI{};
+			commandPoolCI.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+			commandPoolCI.queueFamilyIndex = queueFamilyIndex;
+			commandPoolCI.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+			VkResult err = vkCreateCommandPool(m_RenderDevice->context.device, &commandPoolCI, nullptr, &cmdList->commandPool);
+			CHECK_VK_RESULT(err, "Could not create vkCommandPool");
+
+			VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
+			commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+			commandBufferAllocateInfo.commandPool = cmdList->commandPool;
+			commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+			commandBufferAllocateInfo.commandBufferCount = 1;
+
+			err = vkAllocateCommandBuffers(m_RenderDevice->context.device, &commandBufferAllocateInfo, &cmdList->commandBuffer);
+			CHECK_VK_RESULT(err, "Could not create vkCommandBuffer");
 		}
 	}
 
-	CommandListVk::CommandListVk(RenderDeviceVk& renderDevice)
+
+	CommandListVk::CommandListVk(RenderDeviceVk* renderDevice)
 		:m_RenderDevice(renderDevice)
 	{
 		// to do: delete it, if vulkan 1.4 is released.
-		vkCmdPushDescriptorSetKHR = (PFN_vkCmdPushDescriptorSetKHR)vkGetDeviceProcAddr(m_RenderDevice.context.device, "vkCmdPushDescriptorSetKHR");
+		vkCmdPushDescriptorSetKHR = (PFN_vkCmdPushDescriptorSetKHR)vkGetDeviceProcAddr(m_RenderDevice->context.device, "vkCmdPushDescriptorSetKHR");
 
-		if (renderDevice.createInfo.enableDebugRuntime)
+		if (renderDevice->createInfo.enableDebugRuntime)
 		{
-			this->vkCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetDeviceProcAddr(m_RenderDevice.context.device, "vkCmdBeginDebugUtilsLabelEXT");
-			this->vkCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetDeviceProcAddr(m_RenderDevice.context.device, "vkCmdEndDebugUtilsLabelEXT");
+			this->vkCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetDeviceProcAddr(m_RenderDevice->context.device, "vkCmdBeginDebugUtilsLabelEXT");
+			this->vkCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetDeviceProcAddr(m_RenderDevice->context.device, "vkCmdEndDebugUtilsLabelEXT");
 		}
 	}
 

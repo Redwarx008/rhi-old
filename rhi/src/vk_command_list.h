@@ -14,28 +14,65 @@ namespace rhi
 	class BufferVk;
 	struct ContextVk;
 	struct TextureUpdateInfo;
+	class CommandListVk;
 
-	class CommandBuffer
+	struct UploadAllocation
+	{
+		BufferVk* buffer = nullptr;
+		uint64_t offset = 0;
+	};
+
+	class UploadAllocator
 	{
 	public:
-		explicit CommandBuffer(const ContextVk& context)
-			:m_Context(context)
+		explicit UploadAllocator(RenderDeviceVk* renderDevice)
+			:m_RenderDevice(renderDevice)
 		{}
-		~CommandBuffer();
-		VkCommandBuffer vkCmdBuf{ VK_NULL_HANDLE };
-		VkCommandPool vkCmdPool{ VK_NULL_HANDLE };
+		UploadAllocation allocate(uint64_t dataSize)
+		{
+			UploadAllocation allocation;
+			if (dataSize == 0)
+			{
+				return allocation;
+			}
 
-		std::vector<std::unique_ptr<BufferVk>> referencedInternalStageBuffer;
-		uint64_t submitID = 0;
+			uint64_t freeSpace = m_Buffer == nullptr ? 0 : m_Buffer->desc.size - m_Offset;
+			if (dataSize > freeSpace)
+			{
+				BufferDesc desc{};
+				desc.access = BufferAccess::CpuWrite;
+				desc.size = dataSize * 2;
+				BufferVk* buffer = m_RenderDevice->createBuffer()
+			}
+		}
 	private:
-		const ContextVk& m_Context;
+		RenderDeviceVk* m_RenderDevice;
+		std::unique_ptr<BufferVk> m_Buffer;
+		uint64_t m_Offset = 0;
+	};
+
+	class CommandQueue
+	{
+	public:
+		CommandQueue(RenderDeviceVk* renderDevice);
+		~CommandQueue();
+		CommandListVk* getValidCommandList();
+		QueueType type = QueueType::Graphics;
+		VkSemaphore trackingSubmittedSemaphore = VK_NULL_HANDLE;
+		VkQueue queue = VK_NULL_HANDLE;
+		uint64_t lastSubmitID = 0;
+		uint32_t queueFamilyIndex = UINT32_MAX;
+	private:
+		RenderDeviceVk* m_RenderDevice;
+		std::vector<CommandListVk*> m_ActiveCommandLists;
+		std::vector<CommandListVk*> m_CommandListPool;
 	};
 
 	class CommandListVk final : public ICommandList
 	{
 	public:
 		~CommandListVk();
-		explicit CommandListVk(RenderDeviceVk& renderDevice);
+		explicit CommandListVk(RenderDeviceVk* renderDevice);
 		void open() override;
 		void close() override;
 
@@ -76,7 +113,9 @@ namespace rhi
 		void transitionFromSubmmitedState(ITexture* texture, ResourceState newState);
 		void updateSubmittedState();
 		bool hasSetGraphicPipeline() const { return m_LastGraphicsState.pipeline != nullptr; }
-		CommandBuffer* getCommandBuffer() const { return m_CurrentCmdBuf; }
+
+		VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
+		VkCommandPool commandPool = VK_NULL_HANDLE;
 	private:
 		CommandListVk() = delete;
 		void transitionResourceSet(IResourceSet* set, ShaderType dstVisibleStages);
@@ -112,14 +151,10 @@ namespace rhi
 		std::vector<TextureBarrier> m_TextureBarriers;
 		std::vector<BufferBarrier> m_BufferBarriers;
 
-		std::vector<TextureVk*> m_TrackingSubmittedStates;
-
 		std::vector<VkImageMemoryBarrier2> m_VkImageMemoryBarriers;
 		std::vector<VkBufferMemoryBarrier2> m_VkBufferMemoryBarriers;
 
-		CommandBuffer* m_CurrentCmdBuf = nullptr;
-
-		RenderDeviceVk& m_RenderDevice;
+		RenderDeviceVk* m_RenderDevice;
 
 		// todo: delete it, if vulkan 1.4 is released.
 		PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR = nullptr;

@@ -1010,6 +1010,13 @@ namespace rhi
 
 	// render device
 
+	enum class QueueType
+	{
+		Graphics,
+		Compute,
+		Transfer
+	};
+
 	enum class MessageSeverity : uint8_t
 	{
 		Verbose,

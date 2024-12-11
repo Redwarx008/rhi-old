@@ -300,7 +300,7 @@ namespace rhi
 			vkCreateSemaphore(m_RenderDevice->context.device, &semaphoreCI, nullptr, &semaphore);
 		}
 
-		m_CompleteRenderingCmdList = std::unique_ptr<CommandListVk>(checked_cast<CommandListVk*>(m_RenderDevice->createCommandList()));
+		m_CompleteRenderingCmdList = std::unique_ptr<CommandListVk>(checked_cast<CommandListVk*>(m_RenderDevice->beginCommandList()));
 	}
 
 	void SwapChainVk::recreateSwapChain()

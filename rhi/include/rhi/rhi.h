@@ -167,7 +167,7 @@ namespace rhi
 		virtual IShader* createShader(const ShaderCreateInfo& shaderCI, const uint32_t* pCode, size_t codeSize) = 0;
 		virtual ISampler* createSampler(const SamplerDesc& desc) = 0;
 		virtual void* mapBuffer(IBuffer* buffer) = 0;
-		virtual ICommandList* createCommandList() = 0;
+		virtual ICommandList* beginCommandList(QueueType queueType = QueueType::Graphics) = 0;
 		virtual uint64_t executeCommandLists(ICommandList** cmdLists, size_t numCmdLists) = 0;
 		virtual void waitForExecution(uint64_t executeID, uint64_t timeout = UINT64_MAX) = 0;
 	};

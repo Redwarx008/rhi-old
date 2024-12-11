@@ -170,7 +170,7 @@ public:
 		delete vertexShader;
 		delete fragmentShader;
 
-		m_CmdList = m_RenderDevice->createCommandList();
+		m_CmdList = m_RenderDevice->beginCommandList();
 
 		camera.position = glm::vec3(0, 0, 3);
 

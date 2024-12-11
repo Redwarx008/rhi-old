@@ -35,7 +35,7 @@ namespace rhi
 		// Interface implementation
 		void waitIdle() override;
 
-		ICommandList* createCommandList() override;
+		ICommandList* beginCommandList(QueueType queueType = QueueType::Graphics) override;
 
 		ITexture* createTexture(const TextureDesc& desc) override;
 		IBuffer* createBuffer(const BufferDesc& desc) override;
@@ -73,7 +73,7 @@ namespace rhi
 
 		VkSemaphore m_RenderCompleteSemaphore{ VK_NULL_HANDLE };
 
-		VkSemaphore m_TrackingSubmittedSemaphore{ VK_NULL_HANDLE };
+
 
 		std::vector<VkCommandBufferSubmitInfo> m_CmdBufSubmitInfos;
 		std::vector<CommandBuffer*> m_CommandBufferInFlight;

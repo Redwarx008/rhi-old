@@ -403,18 +403,8 @@ namespace rhi
 		allocatorCreateInfo.physicalDevice = renderDevice->context.physicalDevice;
 		allocatorCreateInfo.device = renderDevice->context.device;
 		allocatorCreateInfo.instance = renderDevice->context.instace;
-		vmaCreateAllocator(&allocatorCreateInfo, &renderDevice->m_Allocator);
+		VkResult err = vmaCreateAllocator(&allocatorCreateInfo, &renderDevice->m_Allocator);
 
-		// Setup the timeline semaphore
-		VkSemaphoreTypeCreateInfo semaphoreTypeCI{};
-		semaphoreTypeCI.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO_KHR;
-		semaphoreTypeCI.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE_KHR;
-
-		VkSemaphoreCreateInfo semaphoreCI{};
-		semaphoreCI.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-		semaphoreCI.pNext = &semaphoreTypeCI;
-
-		VkResult err = vkCreateSemaphore(renderDevice->context.device, &semaphoreCI, nullptr, &renderDevice->m_TrackingSubmittedSemaphore);
 		CHECK_VK_RESULT(err);
 		if (err != VK_SUCCESS)
 		{
@@ -430,7 +420,6 @@ namespace rhi
 
 		destroyDebugUtilsMessenger();
 		vmaDestroyAllocator(m_Allocator);
-		vkDestroySemaphore(context.device, m_TrackingSubmittedSemaphore, nullptr);
 
 		for (auto commandBuffer : m_AllCommandBuffers)
 		{
@@ -600,7 +589,7 @@ namespace rhi
 		BufferVk* buffer = checked_cast<BufferVk*>(createBuffer(desc));
 		if (buffer->getDesc().access == BufferAccess::GpuOnly)
 		{
-			auto tmpCmdList = std::unique_ptr<CommandListVk>(checked_cast<CommandListVk*>(createCommandList()));
+			auto tmpCmdList = std::unique_ptr<CommandListVk>(checked_cast<CommandListVk*>(beginCommandList()));
 			tmpCmdList->open();
 			tmpCmdList->updateBuffer(buffer, data, dataSize, 0);
 			tmpCmdList->close();
@@ -1406,7 +1395,7 @@ namespace rhi
 		m_RenderCompleteSemaphore = semaphore;
 	}
 
-	ICommandList* RenderDeviceVk::createCommandList()
+	ICommandList* RenderDeviceVk::beginCommandList(QueueType queueType)
 	{
 		return new CommandListVk(*this);
 	}
