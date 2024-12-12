@@ -28,7 +28,10 @@ namespace rhi
 	public:
 		CommandQueue(RenderDeviceVk* renderDevice);
 		~CommandQueue();
+		void addWaitSemaphore(VkSemaphore semaphore, uint64_t value = 0);
+		void addSingalSemaphore(VkSemaphore semaphore, uint64_t value = 0);
 		CommandListVk* getValidCommandList();
+		uint64_t submit();
 		QueueType type = QueueType::Graphics;
 		VkSemaphore trackingSubmittedSemaphore = VK_NULL_HANDLE;
 		VkQueue queue = VK_NULL_HANDLE;
@@ -38,6 +41,11 @@ namespace rhi
 		RenderDeviceVk* m_RenderDevice;
 		std::vector<CommandListVk*> m_ActiveCommandLists;
 		std::vector<CommandListVk*> m_CommandListPool;
+
+		std::vector<VkSemaphore> m_WaitSemaphoresForSubmit;
+		std::vector<uint64_t> m_WaitSemaphoreValuesForSubmit;
+		std::vector<VkSemaphore> m_SingalSemaphoreForSubmit;
+		std::vector<uint64_t> m_SingalSemaphoreValuesForSubmit;
 	};
 
 	class CommandListVk final : public ICommandList
@@ -47,6 +55,8 @@ namespace rhi
 		explicit CommandListVk(RenderDeviceVk* renderDevice);
 		void open() override;
 		void close() override;
+
+		void waitCommandList(ICommandList* other) override;
 
 		void setResourceAutoTransition(bool enable) override;
 		void commitBarriers() override;
@@ -96,6 +106,7 @@ namespace rhi
 
 		bool m_EnableAutoTransition = true;
 		bool m_RenderingStarted = false;
+		QueueType m_QueueType
 
 		enum class PipelineType
 		{
@@ -125,6 +136,8 @@ namespace rhi
 
 		std::vector<VkImageMemoryBarrier2> m_VkImageMemoryBarriers;
 		std::vector<VkBufferMemoryBarrier2> m_VkBufferMemoryBarriers;
+
+		std::vector<ICommandList*> m_WaitCommandLists;
 
 		RenderDeviceVk* m_RenderDevice;
 

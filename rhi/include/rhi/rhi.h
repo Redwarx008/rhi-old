@@ -118,6 +118,8 @@ namespace rhi
 		virtual void open() = 0;
 		virtual void close() = 0;
 
+		virtual void waitCommandList(ICommandList* other) = 0;
+
 		virtual void setResourceAutoTransition(bool enable) = 0;
 		virtual void commitBarriers() = 0;
 		virtual void transitionTextureState(ITexture* texture, ResourceState newState) = 0;

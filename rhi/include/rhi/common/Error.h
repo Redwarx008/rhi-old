@@ -39,6 +39,10 @@ namespace rhi
 		{
 			std::cerr << ss.str();
 		}
+		if (severity >= MessageSeverity::Error)
+		{
+			throw std::runtime_error(std::move(ss));
+		}
 	}
 
 #define LOG_ERROR(...)																			 \

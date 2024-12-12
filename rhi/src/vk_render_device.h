@@ -7,9 +7,12 @@
 #include <vk_mem_alloc.h>
 #include "vk_resource.h"
 
+#include <array>
+
 namespace rhi
 {
 	class CommandBuffer;
+	class CommandQueue;
 
 	class RenderDeviceVk final : public IRenderDevice
 	{
@@ -73,12 +76,9 @@ namespace rhi
 
 		VkSemaphore m_RenderCompleteSemaphore{ VK_NULL_HANDLE };
 
-
+		std::array<std::unique_ptr<CommandQueue>, static_cast<uint32_t>(QueueType::Count)> m_Queues;
 
 		std::vector<VkCommandBufferSubmitInfo> m_CmdBufSubmitInfos;
-		std::vector<CommandBuffer*> m_CommandBufferInFlight;
-		std::vector<CommandBuffer*> m_CommandBufferPool;
-		std::vector<CommandBuffer*> m_AllCommandBuffers; // to release CommandBuffers
 	};
 }
 

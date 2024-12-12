@@ -1397,7 +1397,7 @@ namespace rhi
 
 	ICommandList* RenderDeviceVk::beginCommandList(QueueType queueType)
 	{
-		return new CommandListVk(*this);
+		return new CommandListVk(this);
 	}
 
 	uint64_t RenderDeviceVk::executeCommandLists(ICommandList** cmdLists, size_t numCmdLists)

@@ -1014,7 +1014,8 @@ namespace rhi
 	{
 		Graphics,
 		Compute,
-		Transfer
+		Transfer,
+		Count
 	};
 
 	enum class MessageSeverity : uint8_t

@@ -55,7 +55,14 @@ namespace rhi
 
 			err = vkAllocateCommandBuffers(m_RenderDevice->context.device, &commandBufferAllocateInfo, &cmdList->commandBuffer);
 			CHECK_VK_RESULT(err, "Could not create vkCommandBuffer");
+			m_ActiveCommandLists.push_back(cmdList);
 		}
+		else
+		{
+			cmdList = m_CommandListPool.back();
+			m_CommandListPool.pop_back();
+		}
+		return cmdList;
 	}
 
 
@@ -100,6 +107,11 @@ namespace rhi
 		endRendering();
 		commitBarriers();
 		vkEndCommandBuffer(m_CurrentCmdBuf->vkCmdBuf);
+	}
+
+	void CommandListVk::waitCommandList(ICommandList* other)
+	{
+		if ()
 	}
 
 	void CommandListVk::endRendering()
