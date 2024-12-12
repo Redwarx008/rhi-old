@@ -60,7 +60,8 @@ namespace rhi
 
 
 	CommandListVk::CommandListVk(RenderDeviceVk* renderDevice)
-		:m_RenderDevice(renderDevice)
+		:m_RenderDevice(renderDevice),
+		m_UploadAllocator(renderDevice)
 	{
 		// to do: delete it, if vulkan 1.4 is released.
 		vkCmdPushDescriptorSetKHR = (PFN_vkCmdPushDescriptorSetKHR)vkGetDeviceProcAddr(m_RenderDevice->context.device, "vkCmdPushDescriptorSetKHR");
@@ -1089,5 +1090,68 @@ namespace rhi
 			return static_cast<Object>(m_CurrentCmdBuf->vkCmdBuf);
 		}
 		return nullptr;
+	}
+
+	UploadAllocation CommandListVk::UploadAllocator::allocate(uint64_t dataSize, uint32_t alignment)
+	{
+		UploadAllocation allocation;
+		UploadPage pageToRetire;
+		if (m_CurrentPage.valid())
+		{
+			uint64_t alignedOffset = alignUp(m_CurrentPage.offset, alignment);
+			uint64_t endPoint = alignedOffset + dataSize;
+			if (m_CurrentPage.buffer->desc.size >= endPoint)
+			{
+				m_CurrentPage.offset = endPoint;
+				m_CurrentPage.inUse = true;
+
+				allocation.buffer = m_CurrentPage.buffer;
+				allocation.offset = alignedOffset;
+				allocation.mappedAdress = static_cast<uint8_t*>(allocation.buffer->allocaionInfo.pMappedData) + alignedOffset;
+				return allocation;
+			}
+
+			// if there is not enough space
+			pageToRetire = m_CurrentPage;
+		}
+
+		for (auto it = m_UploadPagePool.begin(); it != m_UploadPagePool.end(); ++it)
+		{
+			UploadPage& page = *it;
+			if (!page.inUse && page.buffer->desc.size >= dataSize)
+			{
+				m_CurrentPage = page;
+				std::swap(page, *m_UploadPagePool.end());
+				m_UploadPagePool.pop_back();
+				break;
+			}
+		}
+
+		if (pageToRetire.valid())
+		{
+			m_UploadPagePool.push_back(pageToRetire);
+		}
+
+		// If we can't find a suitable one in the end, create one.
+		if (!m_CurrentPage.valid())
+		{
+			m_CurrentPage = createNewPage(dataSize);
+		}
+
+		m_CurrentPage.offset = dataSize;
+		allocation.buffer = m_CurrentPage.buffer;
+		allocation.offset = 0;
+		allocation.mappedAdress = m_CurrentPage.buffer->allocaionInfo.pMappedData;
+		return allocation;
+	}
+
+	CommandListVk::UploadAllocator::UploadPage CommandListVk::UploadAllocator::createNewPage(uint64_t size)
+	{
+		UploadPage newPage{};
+		BufferDesc desc{};
+		desc.access = BufferAccess::CpuWrite;
+		desc.size = alignUp((std::max)(size, c_DefaultPageSize), c_SizeAlignment);
+		newPage.buffer = checked_cast<BufferVk*>(m_RenderDevice->createBuffer(desc));
+		return newPage;
 	}
 }

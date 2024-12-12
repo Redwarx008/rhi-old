@@ -1,7 +1,7 @@
 #pragma once
 
 #include "rhi/rhi.h"
-
+#include "rhi/common/Utils.h"
 #include <vulkan/vulkan.h>
 #include <vector>
 #include <memory>
@@ -20,35 +20,7 @@ namespace rhi
 	{
 		BufferVk* buffer = nullptr;
 		uint64_t offset = 0;
-	};
-
-	class UploadAllocator
-	{
-	public:
-		explicit UploadAllocator(RenderDeviceVk* renderDevice)
-			:m_RenderDevice(renderDevice)
-		{}
-		UploadAllocation allocate(uint64_t dataSize)
-		{
-			UploadAllocation allocation;
-			if (dataSize == 0)
-			{
-				return allocation;
-			}
-
-			uint64_t freeSpace = m_Buffer == nullptr ? 0 : m_Buffer->desc.size - m_Offset;
-			if (dataSize > freeSpace)
-			{
-				BufferDesc desc{};
-				desc.access = BufferAccess::CpuWrite;
-				desc.size = dataSize * 2;
-				BufferVk* buffer = m_RenderDevice->createBuffer()
-			}
-		}
-	private:
-		RenderDeviceVk* m_RenderDevice;
-		std::unique_ptr<BufferVk> m_Buffer;
-		uint64_t m_Offset = 0;
+		void* mappedAdress = nullptr;
 	};
 
 	class CommandQueue
@@ -121,7 +93,7 @@ namespace rhi
 		void transitionResourceSet(IResourceSet* set, ShaderType dstVisibleStages);
 		void setBufferBarrier(BufferVk* buffer, VkPipelineStageFlags2 dstStage, VkAccessFlags2 dstAccess);
 		void endRendering();
-		
+
 		bool m_EnableAutoTransition = true;
 		bool m_RenderingStarted = false;
 
@@ -161,5 +133,30 @@ namespace rhi
 
 		PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT = nullptr;
 		PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabelEXT = nullptr;
+
+		class UploadAllocator
+		{
+			static constexpr uint64_t c_SizeAlignment = 4096; // GPU page size
+			static constexpr uint64_t c_DefaultPageSize = 64 * 1024;
+		public:
+			explicit UploadAllocator(RenderDeviceVk* renderDevice)
+				:m_RenderDevice(renderDevice)
+			{}
+			UploadAllocation allocate(uint64_t dataSize, uint32_t alignment);
+		private:
+			struct UploadPage
+			{
+				BufferVk* buffer = nullptr;
+				uint64_t offset = 0;
+				bool inUse = false;
+				bool valid() { return buffer != nullptr; }
+			};
+
+			UploadPage createNewPage(uint64_t size);
+
+			RenderDeviceVk* m_RenderDevice;
+			UploadPage m_CurrentPage;
+			std::vector<UploadPage> m_UploadPagePool;
+		} m_UploadAllocator;
 	};
 }
