@@ -11,61 +11,6 @@
 
 namespace rhi
 {
-	CommandQueue::CommandQueue(RenderDeviceVk* renderDevice)
-		:m_RenderDevice(renderDevice)
-	{
-		// Setup the timeline semaphore
-		VkSemaphoreTypeCreateInfo semaphoreTypeCI{};
-		semaphoreTypeCI.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO_KHR;
-		semaphoreTypeCI.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE_KHR;
-
-		VkSemaphoreCreateInfo semaphoreCI{};
-		semaphoreCI.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-		semaphoreCI.pNext = &semaphoreTypeCI;
-
-		VkResult err = vkCreateSemaphore(m_RenderDevice->context.device, &semaphoreCI, nullptr, &trackingSubmittedSemaphore);
-		CHECK_VK_RESULT(err);
-	}
-
-	CommandQueue::~CommandQueue()
-	{
-		vkDestroySemaphore(m_RenderDevice->context.device, trackingSubmittedSemaphore, nullptr);
-	}
-
-
-	CommandListVk* CommandQueue::getValidCommandList()
-	{
-		CommandListVk* cmdList;
-		if (m_CommandListPool.empty())
-		{
-			cmdList = new CommandListVk(m_RenderDevice);
-			VkCommandPoolCreateInfo commandPoolCI{};
-			commandPoolCI.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-			commandPoolCI.queueFamilyIndex = queueFamilyIndex;
-			commandPoolCI.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-
-			VkResult err = vkCreateCommandPool(m_RenderDevice->context.device, &commandPoolCI, nullptr, &cmdList->commandPool);
-			CHECK_VK_RESULT(err, "Could not create vkCommandPool");
-
-			VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
-			commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-			commandBufferAllocateInfo.commandPool = cmdList->commandPool;
-			commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-			commandBufferAllocateInfo.commandBufferCount = 1;
-
-			err = vkAllocateCommandBuffers(m_RenderDevice->context.device, &commandBufferAllocateInfo, &cmdList->commandBuffer);
-			CHECK_VK_RESULT(err, "Could not create vkCommandBuffer");
-			m_ActiveCommandLists.push_back(cmdList);
-		}
-		else
-		{
-			cmdList = m_CommandListPool.back();
-			m_CommandListPool.pop_back();
-		}
-		return cmdList;
-	}
-
-
 	CommandListVk::CommandListVk(RenderDeviceVk* renderDevice)
 		:m_RenderDevice(renderDevice),
 		m_UploadAllocator(renderDevice)
@@ -111,7 +56,12 @@ namespace rhi
 
 	void CommandListVk::waitCommandList(ICommandList* other)
 	{
-		if ()
+		auto otherCmdList = checked_cast<CommandListVk*>(other);
+		if (queueType == otherCmdList->queueType)
+		{
+			return; // The order of commandlists on the same queue is implicitly guaranteed.
+		}
+		m_WaitCommandLists.push_back(other);
 	}
 
 	void CommandListVk::endRendering()
@@ -1102,6 +1052,11 @@ namespace rhi
 			return static_cast<Object>(m_CurrentCmdBuf->vkCmdBuf);
 		}
 		return nullptr;
+	}
+
+	bool CommandListVk::hasPresentTexture()
+	{
+		
 	}
 
 	UploadAllocation CommandListVk::UploadAllocator::allocate(uint64_t dataSize, uint32_t alignment)

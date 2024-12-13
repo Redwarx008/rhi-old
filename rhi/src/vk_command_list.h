@@ -1,7 +1,6 @@
 #pragma once
 
 #include "rhi/rhi.h"
-#include "rhi/common/Utils.h"
 #include <vulkan/vulkan.h>
 #include <vector>
 #include <memory>
@@ -21,31 +20,6 @@ namespace rhi
 		BufferVk* buffer = nullptr;
 		uint64_t offset = 0;
 		void* mappedAdress = nullptr;
-	};
-
-	class CommandQueue
-	{
-	public:
-		CommandQueue(RenderDeviceVk* renderDevice);
-		~CommandQueue();
-		void addWaitSemaphore(VkSemaphore semaphore, uint64_t value = 0);
-		void addSingalSemaphore(VkSemaphore semaphore, uint64_t value = 0);
-		CommandListVk* getValidCommandList();
-		uint64_t submit();
-		QueueType type = QueueType::Graphics;
-		VkSemaphore trackingSubmittedSemaphore = VK_NULL_HANDLE;
-		VkQueue queue = VK_NULL_HANDLE;
-		uint64_t lastSubmitID = 0;
-		uint32_t queueFamilyIndex = UINT32_MAX;
-	private:
-		RenderDeviceVk* m_RenderDevice;
-		std::vector<CommandListVk*> m_ActiveCommandLists;
-		std::vector<CommandListVk*> m_CommandListPool;
-
-		std::vector<VkSemaphore> m_WaitSemaphoresForSubmit;
-		std::vector<uint64_t> m_WaitSemaphoreValuesForSubmit;
-		std::vector<VkSemaphore> m_SingalSemaphoreForSubmit;
-		std::vector<uint64_t> m_SingalSemaphoreValuesForSubmit;
 	};
 
 	class CommandListVk final : public ICommandList
@@ -94,10 +68,13 @@ namespace rhi
 
 		void transitionFromSubmmitedState(ITexture* texture, ResourceState newState);
 		void updateSubmittedState();
-		bool hasSetGraphicPipeline() const { return m_LastGraphicsState.pipeline != nullptr; }
+		bool hasPresentTexture() const;
 
 		VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
 		VkCommandPool commandPool = VK_NULL_HANDLE;
+		QueueType queueType = QueueType::Graphics;
+		uint64_t submitID = 0;
+		uint32_t allocateIndex = 0;
 	private:
 		CommandListVk() = delete;
 		void transitionResourceSet(IResourceSet* set, ShaderType dstVisibleStages);
@@ -106,7 +83,7 @@ namespace rhi
 
 		bool m_EnableAutoTransition = true;
 		bool m_RenderingStarted = false;
-		QueueType m_QueueType
+		QueueType m_QueueType;
 
 		enum class PipelineType
 		{

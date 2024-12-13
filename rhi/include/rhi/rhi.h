@@ -157,7 +157,15 @@ namespace rhi
 	{
 	public:
 		virtual ~IRenderDevice() = default;
+		virtual void present() = 0;
+		virtual void resizeSwapChain() = 0;
+		virtual ITextureView* getCurrentRenderTargetView() = 0;
+		virtual ITextureView* getDepthStencilView() = 0;
+		virtual Format getRenderTargetFormat() = 0;
+		virtual Format getDepthStencilFormat() = 0;
 		virtual void waitIdle() = 0;
+		virtual void createSwapChain(const SwapChainCreateInfo& swapChainCI) = 0;
+		virtual void recreateSwapChain() = 0;
 		virtual IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineCreateInfo& pipelineCI) = 0;
 		virtual IComputePipeline* createComputePipeline(const ComputePipelineCreateInfo& pipelineCI) = 0;
 		virtual IResourceSetLayout* createResourceSetLayout(const ResourceSetLayoutBinding* bindings, uint32_t bindingCount) = 0;
@@ -174,20 +182,6 @@ namespace rhi
 		virtual void waitForExecution(uint64_t executeID, uint64_t timeout = UINT64_MAX) = 0;
 	};
 
-	class ISwapChain
-	{
-	public:
-		virtual ~ISwapChain() = default;
-		virtual void beginFrame() = 0;
-		virtual void present() = 0;
-		virtual void resize() = 0;
-		virtual ITextureView* getCurrentRenderTargetView() = 0;
-		virtual ITextureView* getDepthStencilView() = 0;
-		virtual Format getRenderTargetFormat() = 0;
-		virtual Format getDepthStencilFormat() = 0;
-	};
 
     IRenderDevice* createRenderDevice(const RenderDeviceCreateInfo& createInfo);
-
-    ISwapChain* createSwapChain(const SwapChainCreateInfo& createInfo);
 }

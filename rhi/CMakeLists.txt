@@ -103,7 +103,9 @@ set(src_vk
 	"src/vk_command_list.h"
 	"src/vk_command_list.cpp"
 	"src/vk_pipeline.h"
-	"src/vk_pipeline.cpp"  )
+	"src/vk_pipeline.cpp"  
+	"src/vk_command_queue.h"
+	"src/vk_command_queue.cpp")
 
 add_library(rhi "")
 

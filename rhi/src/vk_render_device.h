@@ -18,24 +18,27 @@ namespace rhi
 	{
 	public:
 		~RenderDeviceVk();
-		// Internal methods
+		// Internal methodsd
 		static RenderDeviceVk* create(const RenderDeviceCreateInfo& desc);
 		CommandBuffer* getOrCreateCommandBuffer();
 		void setSwapChainImageAvailableSeamaphore(const VkSemaphore& semaphore);
 		void setRenderCompleteSemaphore(const VkSemaphore& semaphore);
-		TextureVk* createRenderTarget(const TextureDesc& desc, VkImage image);
 		void recycleCommandBuffers();
 		void executePresentCommandList(ICommandList* cmdList);
 
 		RenderDeviceCreateInfo createInfo{};
-		ContextVk context{};
-		VkQueue queue{ VK_NULL_HANDLE };
 		VkPhysicalDeviceProperties physicalDeviceProperties{};
-		uint32_t queueFamilyIndex = UINT32_MAX;
 		uint32_t maxPushDescriptors = 0;
-		uint64_t lastSubmittedID = 0;
 
 		// Interface implementation
+
+		ITextureView* getCurrentRenderTargetView() override;
+		ITextureView* getDepthStencilView() override;
+		Format getRenderTargetFormat() override { return m_SwapChainFormat; }
+		Format getDepthStencilFormat() override { return m_DepthStencilFormat; }
+
+		void createSwapChain(const SwapChainCreateInfo& swapChainCI) override;
+		void recreateSwapChain() override;
 		void waitIdle() override;
 
 		ICommandList* beginCommandList(QueueType queueType = QueueType::Graphics) override;
@@ -61,24 +64,52 @@ namespace rhi
 
 	private:
 		RenderDeviceVk() = default;
+		TextureVk* createRenderTarget(const TextureDesc& desc, VkImage image);
 		bool createInstance(bool enableDebugRuntime);
 		bool pickPhysicalDevice();
 		bool createDevice(const RenderDeviceCreateInfo& desc);
+		void createSurface(void* platformWindow);
+		void createSwapChainInternal();
+		void destroySwapChain();
 		void destroyDebugUtilsMessenger();
 #if defined RHI_ENABLE_THREAD_RECORDING
 		std::mutex m_Mutex;
 #endif
-		VmaAllocator m_Allocator{VK_NULL_HANDLE};
 
-		VkDebugUtilsMessengerEXT m_DebugUtilsMessenger{ VK_NULL_HANDLE };
+		ContextVk m_Context = {};
+		VmaAllocator m_Allocator = VK_NULL_HANDLE;
 
-		VkSemaphore m_SwapChainImgAvailableSemaphore{ VK_NULL_HANDLE };
+		VkDebugUtilsMessengerEXT m_DebugUtilsMessenger = VK_NULL_HANDLE;
 
-		VkSemaphore m_RenderCompleteSemaphore{ VK_NULL_HANDLE };
+		VkSemaphore m_SwapChainImgAvailableSemaphore = VK_NULL_HANDLE;
+
+		VkSemaphore m_RenderCompleteSemaphore = VK_NULL_HANDLE;
 
 		std::array<std::unique_ptr<CommandQueue>, static_cast<uint32_t>(QueueType::Count)> m_Queues;
 
 		std::vector<VkCommandBufferSubmitInfo> m_CmdBufSubmitInfos;
+
+		uint32_t m_SwapChainImageWidth = 0;
+		uint32_t m_SwapChainImageHeight = 0;
+
+		Format m_SwapChainFormat = Format::UNKNOWN;
+		Format m_DepthStencilFormat = Format::UNKNOWN;
+
+		bool m_VSyncEnabled = false;
+
+		VkSurfaceKHR m_WindowSurface = VK_NULL_HANDLE;
+		VkSwapchainKHR m_SwapChain = VK_NULL_HANDLE;
+
+		uint32_t m_CurrentFrameInFlight = 0;
+		uint32_t m_SwapChainImageIndex = UINT32_MAX;
+
+		std::queue<uint64_t> m_LastSubmittedIDPerFrame;
+
+		std::array<VkSemaphore, g_MaxConcurrentFrames + 1> m_ImageAvailableSemaphores{};
+		std::array<VkSemaphore, g_MaxConcurrentFrames + 1> m_RenderCompleteSemaphores{};
+
+		std::vector<std::unique_ptr<TextureVk>> m_ColorAttachments;
+		std::unique_ptr<TextureVk> m_DepthStencilAttachments;
 	};
 }
 
