@@ -11,17 +11,18 @@
 
 namespace rhi
 {
-	CommandListVk::CommandListVk(RenderDeviceVk* renderDevice)
+	CommandListVk::CommandListVk(RenderDeviceVk* renderDevice, const ContextVk& context)
 		:m_RenderDevice(renderDevice),
+		m_Context(context),
 		m_UploadAllocator(renderDevice)
 	{
 		// to do: delete it, if vulkan 1.4 is released.
-		vkCmdPushDescriptorSetKHR = (PFN_vkCmdPushDescriptorSetKHR)vkGetDeviceProcAddr(m_RenderDevice->context.device, "vkCmdPushDescriptorSetKHR");
+		vkCmdPushDescriptorSetKHR = (PFN_vkCmdPushDescriptorSetKHR)vkGetDeviceProcAddr(m_Context.device, "vkCmdPushDescriptorSetKHR");
 
 		if (renderDevice->createInfo.enableDebugRuntime)
 		{
-			this->vkCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetDeviceProcAddr(m_RenderDevice->context.device, "vkCmdBeginDebugUtilsLabelEXT");
-			this->vkCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetDeviceProcAddr(m_RenderDevice->context.device, "vkCmdEndDebugUtilsLabelEXT");
+			this->vkCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetDeviceProcAddr(m_Context.device, "vkCmdBeginDebugUtilsLabelEXT");
+			this->vkCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetDeviceProcAddr(m_Context.device, "vkCmdEndDebugUtilsLabelEXT");
 		}
 	}
 
@@ -30,28 +31,11 @@ namespace rhi
 
 	}
 
-	void CommandListVk::open()
-	{
-		m_CurrentCmdBuf = m_RenderDevice.getOrCreateCommandBuffer();
-
-		VkCommandBufferBeginInfo cmdBufferBeginInfo{};
-		cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-		vkBeginCommandBuffer(m_CurrentCmdBuf->vkCmdBuf, &cmdBufferBeginInfo);
-
-		//clear states
-		m_LastGraphicsState = {};
-		m_LastComputeState = {};
-	}
-
 	void CommandListVk::close()
 	{
-		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
-
 		endRendering();
 		commitBarriers();
-		vkEndCommandBuffer(m_CurrentCmdBuf->vkCmdBuf);
+		vkEndCommandBuffer(commandBuffer);
 	}
 
 	void CommandListVk::waitCommandList(ICommandList* other)
@@ -642,7 +626,7 @@ namespace rhi
 		}
 	}
 
-	void CommandListVk::commitResourceSet(IResourceSet* resourceSet, uint32_t dstSet)
+	void CommandListVk::commitShaderResources(IResourceSet* resourceSet, uint32_t dstSet)
 	{
 		assert(resourceSet);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
@@ -737,7 +721,7 @@ namespace rhi
 		renderingInfo.viewMask = 0;
 	}
 
-	void CommandListVk::setGraphicsState(const GraphicsState& state)
+	void CommandListVk::setPipeline(const GraphicsState& state)
 	{
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
@@ -980,7 +964,7 @@ namespace rhi
 		vkCmdDrawIndexedIndirect(m_CurrentCmdBuf->vkCmdBuf, indirectBuffer->buffer, offset, drawCount, sizeof(DrawIndexedIndirectCommand));
 	}
 
-	void CommandListVk::setComputeState(const ComputeState& state)
+	void CommandListVk::setPipeline(const ComputeState& state)
 	{
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 

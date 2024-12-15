@@ -7,8 +7,9 @@
 
 namespace rhi
 {
-	CommandQueue::CommandQueue(RenderDeviceVk* renderDevice)
-		:m_RenderDevice(renderDevice)
+	CommandQueue::CommandQueue(RenderDeviceVk* rd, const ContextVk& context)
+		:m_RenderDevice(rd),
+		m_Context(context)
 	{
 		// Setup the timeline semaphore
 		VkSemaphoreTypeCreateInfo semaphoreTypeCI{};
@@ -19,13 +20,13 @@ namespace rhi
 		semaphoreCI.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 		semaphoreCI.pNext = &semaphoreTypeCI;
 
-		VkResult err = vkCreateSemaphore(m_RenderDevice->context.device, &semaphoreCI, nullptr, &trackingSubmittedSemaphore);
+		VkResult err = vkCreateSemaphore(m_Context.device, &semaphoreCI, nullptr, &trackingSubmittedSemaphore);
 		CHECK_VK_RESULT(err);
 	}
 
 	CommandQueue::~CommandQueue()
 	{
-		vkDestroySemaphore(m_RenderDevice->context.device, trackingSubmittedSemaphore, nullptr);
+		vkDestroySemaphore(m_Context.device, trackingSubmittedSemaphore, nullptr);
 	}
 
 
@@ -40,7 +41,7 @@ namespace rhi
 			commandPoolCI.queueFamilyIndex = queueFamilyIndex;
 			commandPoolCI.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-			VkResult err = vkCreateCommandPool(m_RenderDevice->context.device, &commandPoolCI, nullptr, &cmdList->commandPool);
+			VkResult err = vkCreateCommandPool(m_Context.device, &commandPoolCI, nullptr, &cmdList->commandPool);
 			CHECK_VK_RESULT(err, "Could not create vkCommandPool");
 
 			VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
@@ -49,7 +50,7 @@ namespace rhi
 			commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 			commandBufferAllocateInfo.commandBufferCount = 1;
 
-			err = vkAllocateCommandBuffers(m_RenderDevice->context.device, &commandBufferAllocateInfo, &cmdList->commandBuffer);
+			err = vkAllocateCommandBuffers(m_Context.device, &commandBufferAllocateInfo, &cmdList->commandBuffer);
 			CHECK_VK_RESULT(err, "Could not create vkCommandBuffer");
 			cmdList->queueType = type;
 		}

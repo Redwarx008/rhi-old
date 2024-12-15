@@ -158,56 +158,30 @@ namespace rhi
 	class ShaderVk final : public IShader
 	{
 	public:
-		explicit ShaderVk(const ContextVk& context, ShaderDesc desc)
-			:m_Context(context),
-			m_Desc(desc) {}
+		explicit ShaderVk(ShaderDesc desc)
+			:m_Desc(desc) {}
 		~ShaderVk();
-		Object getNativeObject(NativeObjectType type) const override;
 		const ShaderDesc& getDesc() const override { return m_Desc; }
-
-		VkShaderModule shaderModule = VK_NULL_HANDLE;
+		std::vector<uint32_t> spirv;
 		std::vector<SpecializationConstant> specializationConstants;
 	private:
-		const ContextVk& m_Context;
 		ShaderDesc m_Desc;
 	};
 
-	// resource set
+	// shaderResourceBinding
 
-	class ResourceSetLayoutVk final : public IResourceSetLayout
+	class ShaderResourceBinding final : public IShaderResourceBinding
 	{
 	public:
-		explicit ResourceSetLayoutVk(const ContextVk& context)
-			:m_Context(context) {}
-		~ResourceSetLayoutVk();
-		Object getNativeObject(NativeObjectType type) const override;
-		VkDescriptorSetLayout descriptorSetLayout = nullptr;
-		std::vector<ResourceSetLayoutBinding> resourceSetLayoutBindings;
+		explicit ShaderResourceBinding();
+		~ShaderResourceBinding();
+		void bindBuffer(IBuffer* buffer, uint32_t slot, uint32_t set = 0, uint64_t offset = 0, uint64_t range = ~0ull) override;
+		void bindTexture(ITextureView* textureView, uint32_t slot, uint32_t set = 0) override;
+		void bindSampler(ISampler* sampler, uint32_t slot, uint32_t set = 0) override;
+		void bindTextureWithSampler(ITextureView* textrueView, ISampler* sampler, uint32_t slot, uint32_t set = 0) override;
+
 	private:
-		const ContextVk& m_Context;
-	};
-
-	struct ResourceSetBindngWithVisibleStages
-	{
-		ResourceSetBinding binding;
-		ShaderType visibleStages;
-	};
-
-	class ResourceSetVk final : public IResourceSet
-	{
-	public:
-		explicit ResourceSetVk(const ContextVk& context)
-			:m_Context(context) {}
-		~ResourceSetVk() = default;
-		Object getNativeObject(NativeObjectType type) const override;
-		const ResourceSetLayoutVk* resourceSetLayout = nullptr;
-
-		std::vector<VkWriteDescriptorSet> writeDescriptorSets;
-		std::vector<VkDescriptorImageInfo> descriptorImageInfos;
-		std::vector<VkDescriptorBufferInfo> descriptorBufferInfos;
-		std::vector<ResourceSetBindngWithVisibleStages> resourcesNeedStateTransition;
-	private:
-		const ContextVk& m_Context;
+		std::array<std::vector<VkWriteDescriptorSet>, 4> m_DescriptorSets;
 	};
 
 	const FormatInfo& getFormatInfo(Format format);

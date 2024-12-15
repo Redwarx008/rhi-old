@@ -20,7 +20,7 @@ namespace rhi
 		~RenderDeviceVk();
 		// Internal methodsd
 		static RenderDeviceVk* create(const RenderDeviceCreateInfo& desc);
-		CommandBuffer* getOrCreateCommandBuffer();
+
 		void setSwapChainImageAvailableSeamaphore(const VkSemaphore& semaphore);
 		void setRenderCompleteSemaphore(const VkSemaphore& semaphore);
 		void recycleCommandBuffers();

@@ -5,6 +5,7 @@
 #include "vk_errors.h"
 #include "vk_pipeline.h"
 #include "vk_resource.h"
+#include "vk_command_queue.h"
 
 #include <string>
 #include <sstream>
@@ -910,24 +911,13 @@ namespace rhi
 		desc.entry = shaderCI.entry;
 		desc.type = shaderCI.type;
 
-		auto shader = new ShaderVk(context, desc);
+		auto shader = new ShaderVk(desc);
 
-		VkShaderModuleCreateInfo moduleCreateInfo{ VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
-		moduleCreateInfo.codeSize = codeSize;
-		moduleCreateInfo.pCode = pCode;
-
-		VkResult err = vkCreateShaderModule(context.device, &moduleCreateInfo, nullptr, &shader->shaderModule);
-		CHECK_VK_RESULT(err, "Failed to create shaderModule.");
-
+		shader->spirv.resize(codeSize);
+		memcpy(shader->spirv.data(), pCode, codeSize);
 		for (uint32_t i = 0; i < shaderCI.specializationConstantCount; ++i)
 		{
 			shader->specializationConstants.push_back(shaderCI.specializationConstants[i]);
-		}
-
-		if (err != VK_SUCCESS)
-		{
-			delete shader;
-			shader = nullptr;
 		}
 
 		return shader;
@@ -1361,7 +1351,7 @@ namespace rhi
 
 	IGraphicsPipeline* RenderDeviceVk::createGraphicsPipeline(const GraphicsPipelineCreateInfo& pipelineCI)
 	{
-		auto pipeline = new GraphicsPipelineVk(context);
+		auto pipeline = new GraphicsPipelineVk(m_Context);
 
 		// pipeline layout
 		std::vector<VkDescriptorSetLayout> descriptorSetLayouts{ pipelineCI.resourceSetLayoutCount };
@@ -1694,7 +1684,14 @@ namespace rhi
 
 	ICommandList* RenderDeviceVk::beginCommandList(QueueType queueType)
 	{
-		return new CommandListVk(this);
+		CommandListVk* cmdList = m_Queues[static_cast<uint32_t>(queueType)]->getValidCommandList();
+
+		VkCommandBufferBeginInfo cmdBufferBeginInfo{};
+		cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		vkBeginCommandBuffer(cmdList->commandBuffer, &cmdBufferBeginInfo);
+
+		return cmdList;
 	}
 
 	uint64_t RenderDeviceVk::executeCommandLists(ICommandList** cmdLists, size_t numCmdLists)
@@ -1771,48 +1768,6 @@ namespace rhi
 
 		err = vkWaitSemaphores(context.device, &semaphoreWaitInfo, timeout);
 		CHECK_VK_RESULT(err);
-	}
-
-	CommandBuffer* RenderDeviceVk::getOrCreateCommandBuffer()
-	{
-#if defined RHI_ENABLE_THREAD_RECORDING
-		std::lock_guard(m_Mutex);
-#endif
-		CommandBuffer* cmdBuf;
-		if (m_CommandBufferPool.empty())
-		{
-			cmdBuf = new CommandBuffer(context);
-			VkCommandPoolCreateInfo commandPoolCI{};
-			commandPoolCI.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-			commandPoolCI.queueFamilyIndex = queueFamilyIndex;
-			commandPoolCI.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-
-			VkResult err = vkCreateCommandPool(context.device, &commandPoolCI, nullptr, &cmdBuf->vkCmdPool);
-			CHECK_VK_RESULT(err, "Could not create vkCommandPool");
-
-			VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
-			commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-			commandBufferAllocateInfo.commandPool = cmdBuf->vkCmdPool;
-			commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-			commandBufferAllocateInfo.commandBufferCount = 1;
-
-			err = vkAllocateCommandBuffers(context.device, &commandBufferAllocateInfo, &cmdBuf->vkCmdBuf);
-			CHECK_VK_RESULT(err, "Could not create vkCommandBuffer");
-
-			if (err != VK_SUCCESS)
-			{
-				delete cmdBuf;
-				return nullptr;
-			}
-			m_AllCommandBuffers.push_back(cmdBuf);
-		}
-		else
-		{
-			cmdBuf = m_CommandBufferPool.back();
-			m_CommandBufferPool.pop_back();
-		}
-
-		return cmdBuf;
 	}
 
 	void RenderDeviceVk::recycleCommandBuffers()

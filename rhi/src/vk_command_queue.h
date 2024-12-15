@@ -9,11 +9,12 @@ namespace rhi
 {
 	class RenderDeviceVk;
 	class CommandListVk;
+	struct ContextVk;
 
 	class CommandQueue
 	{
 	public:
-		CommandQueue(RenderDeviceVk* renderDevice);
+		CommandQueue(RenderDeviceVk* rd, const ContextVk& context);
 		~CommandQueue();
 		void addWaitSemaphore(VkSemaphore semaphore, uint64_t value = 0);
 		void addSingalSemaphore(VkSemaphore semaphore, uint64_t value = 0);
@@ -28,6 +29,7 @@ namespace rhi
 		uint32_t queueFamilyIndex = UINT32_MAX;
 	private:
 		RenderDeviceVk* m_RenderDevice;
+		const ContextVk& m_Context;
 		std::vector<CommandListVk*> m_ActiveCommandLists;
 		std::vector<CommandListVk*> m_CommandListPool;
 

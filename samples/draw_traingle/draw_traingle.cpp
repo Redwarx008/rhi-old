@@ -219,8 +219,8 @@ public:
 
 		m_CmdList->open();
 		m_CmdList->updateBuffer(m_UniformBuffer, &shaderData, sizeof(ShaderData), 0);
-		m_CmdList->setGraphicsState(m_GraphicState);
-		m_CmdList->commitResourceSet(m_ResourceSet);
+		m_CmdList->setPipeline(m_GraphicState);
+		m_CmdList->commitShaderResources(m_ResourceSet);
 		//m_CmdList->setScissors(&scissor, 1);
 		m_CmdList->drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 		m_CmdList->close();

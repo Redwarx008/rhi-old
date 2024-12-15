@@ -867,13 +867,13 @@ namespace rhi
 		RasterState rasterState;
 		DepthStencilState depthStencilState;
 
+		uint32_t viewportCount = 1;
+		uint32_t renderTargetCount = 0;
 		Format renderTargetFormats[g_MaxColorAttachments];
-		uint32_t renderTargetFormatCount = 0;
 		Format depthStencilFormat = Format::UNKNOWN;
 
 		uint8_t sampleCount = 1;
 		uint32_t patchControlPoints = 0;
-		uint32_t viewportCount = 1;
 
 		const void* cacheData = nullptr;
 		uint64_t cacheSize = 0;

@@ -70,30 +70,28 @@ namespace rhi
 		virtual const SamplerDesc& getDesc() const = 0;
 	};
 
-	class IShader : public IObject
+	class IShader
 	{
 	public:
 		~IShader() = default;
 		virtual const ShaderDesc& getDesc() const = 0;
 	};
 
-	class IResourceSetLayout : public IObject
+	class IShaderResourceBinding
 	{
 	public:
-		virtual ~IResourceSetLayout() = default;
-	};
-
-	class IResourceSet : public IObject
-	{
-	public:
-		virtual ~IResourceSet() = default;
+		virtual ~IShaderResourceBinding() = default;
+		virtual void bindBuffer(IBuffer* buffer, uint32_t slot, uint32_t set = 0, uint64_t offset = 0, uint64_t range = ~0ull) = 0;
+		virtual void bindTexture(ITextureView* textureView, uint32_t slot, uint32_t set = 0) = 0;
+		virtual void bindSampler(ISampler* sampler, uint32_t slot, uint32_t set = 0) = 0;
+		virtual void bindTextureWithSampler(ITextureView* textrueView, ISampler* sampler, uint32_t slot, uint32_t set = 0) = 0;
 	};
 
 	class IPipeline : public IObject
 	{
 	public:
 		virtual ~IPipeline() = default;
-		virtual bool getPipelineCacheData(void* pData, size_t* pDataSize) const = 0;
+		virtual IShaderResourceBinding* createShaderResourceBinding() = 0;
 	};
 
 	class IGraphicsPipeline : public IPipeline
@@ -124,7 +122,6 @@ namespace rhi
 		virtual void commitBarriers() = 0;
 		virtual void transitionTextureState(ITexture* texture, ResourceState newState) = 0;
 		virtual void transitionBufferState(IBuffer* buffer, ResourceState newState) = 0;
-		virtual void transitionResourceSet(IResourceSet* resourceSet) = 0;
 
 		virtual void clearColorTexture(ITextureView* textureView, const ClearColor& color) = 0;
 		virtual void clearDepthStencil(ITextureView* textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal) = 0;
@@ -134,18 +131,21 @@ namespace rhi
 		virtual void* mapBuffer(IBuffer* buffer, MapBufferUsage usage) = 0;
 		virtual void updateTexture(ITexture* texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo) = 0;
 
-		virtual void commitResourceSet(IResourceSet* resourceSet, uint32_t dstSet = 0) = 0;
+		virtual void commitShaderResources(IShaderResourceBinding* shaderResourceBinding) = 0;
+
+		virtual void setPipeline(const IGraphicsPipeline* pipeline) = 0;
+		virtual void setPipeline(const IComputePipeline* pipeline) = 0;
 
 		virtual void setPushConstant(ShaderType stages, const void* data) = 0;
+		virtual void setVertexBuffer(uint32_t startSlot, uint32_t bufferCount, IBuffer* buffers, uint64_t* offsets) = 0;
+		virtual void setIndexBuffer(IBuffer* indexBuffer, uint64_t offset, Format indexFormat) = 0;
 		virtual void setScissors(const Rect* scissors, uint32_t scissorCount) = 0;
-		virtual void setGraphicsState(const GraphicsState& state) = 0;
 
 		virtual void draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance) = 0;
 		virtual void drawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) = 0;
 		virtual void drawIndirect(IBuffer* argsBuffer, uint64_t offset, uint32_t drawCount) = 0;
 		virtual void drawIndexedIndirect(IBuffer* argsBuffer, uint64_t offset, uint32_t drawCount) = 0;
 
-		virtual void setComputeState(const ComputeState& state) = 0;
 		virtual void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) = 0;
 		virtual void dispatchIndirect(IBuffer* argsBuffer, uint64_t offset) = 0;
 

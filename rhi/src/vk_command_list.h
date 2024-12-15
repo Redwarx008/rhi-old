@@ -26,7 +26,7 @@ namespace rhi
 	{
 	public:
 		~CommandListVk();
-		explicit CommandListVk(RenderDeviceVk* renderDevice);
+		explicit CommandListVk(RenderDeviceVk* renderDevice, const ContextVk& context);
 		void open() override;
 		void close() override;
 
@@ -46,18 +46,18 @@ namespace rhi
 		void* mapBuffer(IBuffer* buffer, MapBufferUsage usage) override;
 		void updateTexture(ITexture* texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo) override;
 
-		void commitResourceSet(IResourceSet* resourceSet, uint32_t dstSet = 0) override;
+		void commitShaderResources(IResourceSet* resourceSet, uint32_t dstSet = 0) override;
 
 		void setPushConstant(ShaderType stages, const void* data) override;
 		void setScissors(const Rect* scissors, uint32_t scissorCount) override;
-		void setGraphicsState(const GraphicsState& state) override;
+		void setPipeline(const GraphicsState& state) override;
 
 		void draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance) override;
 		void drawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) override;
 		void drawIndirect(IBuffer* argsBuffer, uint64_t offset, uint32_t drawCount) override;
 		void drawIndexedIndirect(IBuffer* argsBuffer, uint64_t offset, uint32_t drawCount) override;
 
-		void setComputeState(const ComputeState& state) override;
+		void setPipeline(const ComputeState& state) override;
 		void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) override;
 		void dispatchIndirect(IBuffer* argsBuffer, uint64_t offset) override;
 
@@ -117,6 +117,7 @@ namespace rhi
 		std::vector<ICommandList*> m_WaitCommandLists;
 
 		RenderDeviceVk* m_RenderDevice;
+		const ContextVk& m_Context;
 
 		// todo: delete it, if vulkan 1.4 is released.
 		PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR = nullptr;
