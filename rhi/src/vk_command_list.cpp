@@ -290,7 +290,7 @@ namespace rhi
 
 		auto tv = checked_cast<TextureViewVk*>(textureView);
 		auto texture = checked_cast<TextureVk*>(tv->getTexture());
-		VkClearColorValue clearValue = convertVkClearColor(color, texture->desc.format);
+		VkClearColorValue clearValue = convertVkClearColor(color, texture->m_Desc.format);
 
 		// Check if the textureView is one of the currently bound renderTargetView
 		int rendetTargetIndex = -1;
@@ -311,9 +311,9 @@ namespace rhi
 
 			VkClearRect clearRect{};
 			clearRect.rect.offset = { 0, 0 };
-			clearRect.rect.extent = { texture->desc.width,  texture->desc.height };
+			clearRect.rect.extent = { texture->m_Desc.width,  texture->m_Desc.height };
 			clearRect.baseArrayLayer = 0;
-			clearRect.layerCount = texture->desc.arraySize;
+			clearRect.layerCount = texture->m_Desc.arraySize;
 
 			vkCmdClearAttachments(m_CurrentCmdBuf->vkCmdBuf, 1, &clearAttachment, 1, &clearRect);
 		}
@@ -327,10 +327,10 @@ namespace rhi
 
 			VkImageSubresourceRange imageSubresourceRange{};
 			imageSubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			imageSubresourceRange.baseArrayLayer = tv->desc.baseArrayLayer;
-			imageSubresourceRange.layerCount = tv->desc.arrayLayerCount;
-			imageSubresourceRange.baseMipLevel = tv->desc.baseMipLevel;
-			imageSubresourceRange.levelCount = tv->desc.mipLevelCount;
+			imageSubresourceRange.baseArrayLayer = tv->m_Desc.baseArrayLayer;
+			imageSubresourceRange.layerCount = tv->m_Desc.arrayLayerCount;
+			imageSubresourceRange.baseMipLevel = tv->m_Desc.baseMipLevel;
+			imageSubresourceRange.levelCount = tv->m_Desc.mipLevelCount;
 
 			vkCmdClearColorImage(m_CurrentCmdBuf->vkCmdBuf, texture->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &imageSubresourceRange);
 		}
@@ -362,9 +362,9 @@ namespace rhi
 
 			VkClearRect clearRect{};
 			clearRect.rect.offset = { 0, 0 };
-			clearRect.rect.extent = { texture->desc.width,  texture->desc.height };
+			clearRect.rect.extent = { texture->m_Desc.width,  texture->m_Desc.height };
 			clearRect.baseArrayLayer = 0;
-			clearRect.layerCount = texture->desc.arraySize;
+			clearRect.layerCount = texture->m_Desc.arraySize;
 
 			vkCmdClearAttachments(m_CurrentCmdBuf->vkCmdBuf, 1, &clearAttachment, 1, &clearRect);
 		}
@@ -385,10 +385,10 @@ namespace rhi
 			{
 				imageSubresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 			}
-			imageSubresourceRange.baseArrayLayer = tv->desc.baseArrayLayer;
-			imageSubresourceRange.layerCount = tv->desc.arrayLayerCount;
-			imageSubresourceRange.baseMipLevel = tv->desc.baseMipLevel;
-			imageSubresourceRange.levelCount = tv->desc.mipLevelCount;
+			imageSubresourceRange.baseArrayLayer = tv->m_Desc.baseArrayLayer;
+			imageSubresourceRange.layerCount = tv->m_Desc.arrayLayerCount;
+			imageSubresourceRange.baseMipLevel = tv->m_Desc.baseMipLevel;
+			imageSubresourceRange.levelCount = tv->m_Desc.mipLevelCount;
 
 			VkClearDepthStencilValue clearValue;
 			clearValue.depth = depthVal;
@@ -1051,7 +1051,7 @@ namespace rhi
 		{
 			uint64_t alignedOffset = alignUp(m_CurrentPage.offset, alignment);
 			uint64_t endPoint = alignedOffset + dataSize;
-			if (m_CurrentPage.buffer->desc.size >= endPoint)
+			if (m_CurrentPage.buffer->m_Desc.size >= endPoint)
 			{
 				m_CurrentPage.offset = endPoint;
 				m_CurrentPage.inUse = true;
@@ -1069,7 +1069,7 @@ namespace rhi
 		for (auto it = m_UploadPagePool.begin(); it != m_UploadPagePool.end(); ++it)
 		{
 			UploadPage& page = *it;
-			if (!page.inUse && page.buffer->desc.size >= dataSize)
+			if (!page.inUse && page.buffer->m_Desc.size >= dataSize)
 			{
 				m_CurrentPage = page;
 				std::swap(page, *m_UploadPagePool.end());

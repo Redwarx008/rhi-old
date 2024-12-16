@@ -187,7 +187,7 @@ namespace rhi
 		instanceCreateInfo.enabledExtensionCount = (uint32_t)instanceExtensions.size();
 		instanceCreateInfo.ppEnabledExtensionNames = instanceExtensions.data();
 
-		VkResult result = vkCreateInstance(&instanceCreateInfo, nullptr, &context.instace);
+		VkResult result = vkCreateInstance(&instanceCreateInfo, nullptr, &m_Context.instace);
 		if (result != VK_SUCCESS)
 		{
 			LOG_ERROR("Failed to create a Vulkan instance");
@@ -199,10 +199,10 @@ namespace rhi
 
 	bool RenderDeviceVk::pickPhysicalDevice()
 	{
-		assert(context.instace != VK_NULL_HANDLE);
+		assert(m_Context.instace != VK_NULL_HANDLE);
 
 		uint32_t deviceCount = 0;
-		vkEnumeratePhysicalDevices(context.instace, &deviceCount, nullptr);
+		vkEnumeratePhysicalDevices(m_Context.instace, &deviceCount, nullptr);
 
 		if (deviceCount == 0)
 		{
@@ -211,7 +211,7 @@ namespace rhi
 		}
 
 		std::vector<VkPhysicalDevice> physicalDevices(deviceCount);
-		vkEnumeratePhysicalDevices(context.instace, &deviceCount, physicalDevices.data());
+		vkEnumeratePhysicalDevices(m_Context.instace, &deviceCount, physicalDevices.data());
 
 		// pick the first discrete GPU if it exists, otherwise the first integrated GPU
 		for (const VkPhysicalDevice& physicalDevice : physicalDevices)
@@ -221,42 +221,68 @@ namespace rhi
 
 			if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
 			{
-				context.physicalDevice = physicalDevice;
+				m_Context.physicalDevice = physicalDevice;
 				physicalDeviceProperties = deviceProperties;
 				return true;
 			}
 		}
 
-		context.physicalDevice = physicalDevices[0];
-		vkGetPhysicalDeviceProperties(context.physicalDevice, &physicalDeviceProperties);
+		m_Context.physicalDevice = physicalDevices[0];
+		vkGetPhysicalDeviceProperties(m_Context.physicalDevice, &physicalDeviceProperties);
 		return true;
 	}
 
 	bool RenderDeviceVk::createDevice(const RenderDeviceCreateInfo& desc)
 	{
-		assert(context.physicalDevice != VK_NULL_HANDLE);
+		assert(m_Context.physicalDevice != VK_NULL_HANDLE);
 		// find queue family
 		uint32_t queueFamilyCount = 0;
-		vkGetPhysicalDeviceQueueFamilyProperties(context.physicalDevice, &queueFamilyCount, nullptr);
+		vkGetPhysicalDeviceQueueFamilyProperties(m_Context.physicalDevice, &queueFamilyCount, nullptr);
 		std::vector<VkQueueFamilyProperties> queueFamilyPropertieses(queueFamilyCount);
-		vkGetPhysicalDeviceQueueFamilyProperties(context.physicalDevice, &queueFamilyCount, queueFamilyPropertieses.data());
+		vkGetPhysicalDeviceQueueFamilyProperties(m_Context.physicalDevice, &queueFamilyCount, queueFamilyPropertieses.data());
 		for (uint32_t i = 0; i < queueFamilyPropertieses.size(); i++)
 		{
 			const auto& queueFamilyProps = queueFamilyPropertieses[i];
 
-			if (queueFamilyProps.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT))
+			if (m_Queues[static_cast<uint32_t>(QueueType::Graphics)] == nullptr &&
+				queueFamilyProps.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT))
 			{
-				queueFamilyIndex = i;
-				break;
+				m_Queues[static_cast<uint32_t>(QueueType::Graphics)] = std::make_unique<CommandQueue>(this, m_Context);
+				m_Queues[static_cast<uint32_t>(QueueType::Graphics)]->queueFamilyIndex = i;
+			}
+
+			if (m_Queues[static_cast<uint32_t>(QueueType::Compute)] == nullptr &&
+				queueFamilyProps.queueFlags & VK_QUEUE_COMPUTE_BIT && 
+				!(queueFamilyProps.queueFlags & VK_QUEUE_GRAPHICS_BIT))
+			{
+				m_Queues[static_cast<uint32_t>(QueueType::Compute)] = std::make_unique<CommandQueue>(this, m_Context);
+				m_Queues[static_cast<uint32_t>(QueueType::Compute)]->queueFamilyIndex = i;
+			}
+
+			if (m_Queues[static_cast<uint32_t>(QueueType::Transfer)] == nullptr &&
+				queueFamilyProps.queueFlags & VK_QUEUE_TRANSFER_BIT &&
+				!(queueFamilyProps.queueFlags & VK_QUEUE_GRAPHICS_BIT) &&
+				!(queueFamilyProps.queueFlags & VK_QUEUE_TRANSFER_BIT))
+			{
+				m_Queues[static_cast<uint32_t>(QueueType::Transfer)] = std::make_unique<CommandQueue>(this, m_Context);
+				m_Queues[static_cast<uint32_t>(QueueType::Transfer)]->queueFamilyIndex = i;
 			}
 		}
 
 		float priority = 1.f;
-		VkDeviceQueueCreateInfo queueCI{};
-		queueCI.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-		queueCI.queueFamilyIndex = queueFamilyIndex;;
-		queueCI.queueCount = 1;
-		queueCI.pQueuePriorities = &priority;
+		std::vector<VkDeviceQueueCreateInfo> queueCIs;
+		
+		for (uint32_t i = 0; i < m_Queues.size(); ++i)
+		{
+			if (m_Queues[i] != nullptr)
+			{
+				auto& queueCI = queueCIs.emplace_back();
+				queueCI.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+				queueCI.queueFamilyIndex = m_Queues[i]->queueFamilyIndex;;
+				queueCI.queueCount = 1;
+				queueCI.pQueuePriorities = &priority;
+			}
+		}
 
 		// Create the logical device
 		std::vector<const char*> deviceExtensions;
@@ -267,11 +293,11 @@ namespace rhi
 		// Get list of supported extensions
 		std::vector<std::string> supportedExtensions;
 		uint32_t extCount = 0;
-		vkEnumerateDeviceExtensionProperties(context.physicalDevice, nullptr, &extCount, nullptr);
+		vkEnumerateDeviceExtensionProperties(m_Context.physicalDevice, nullptr, &extCount, nullptr);
 		if (extCount > 0)
 		{
 			std::vector<VkExtensionProperties> extensions(extCount);
-			if (vkEnumerateDeviceExtensionProperties(context.physicalDevice, nullptr, &extCount, &extensions.front()) == VK_SUCCESS)
+			if (vkEnumerateDeviceExtensionProperties(m_Context.physicalDevice, nullptr, &extCount, &extensions.front()) == VK_SUCCESS)
 			{
 				for (auto& ext : extensions)
 				{
@@ -317,18 +343,22 @@ namespace rhi
 		deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
 		deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
 		deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
-		deviceCreateInfo.queueCreateInfoCount = 1;
-		deviceCreateInfo.pQueueCreateInfos = &queueCI;
+		deviceCreateInfo.queueCreateInfoCount = queueCIs.size();
+		deviceCreateInfo.pQueueCreateInfos = queueCIs.data();
 		deviceCreateInfo.pNext = &feature12;
 
-		VkResult err = vkCreateDevice(context.physicalDevice, &deviceCreateInfo, nullptr, &context.device);
+		VkResult err = vkCreateDevice(m_Context.physicalDevice, &deviceCreateInfo, nullptr, &m_Context.device);
 		CHECK_VK_RESULT(err);
 		if (err != VK_SUCCESS)
 		{
 			return false;
 		}
 
-		vkGetDeviceQueue(context.device, queueFamilyIndex, 0, &queue);
+		for (uint32_t i = 0; i < queueCIs.size(); ++i)
+		{
+			vkGetDeviceQueue(m_Context.device, m_Queues[i]->queueFamilyIndex, 0, &m_Queues[i]->queue);
+		}
+		
 		return true;
 	}
 
@@ -345,7 +375,7 @@ namespace rhi
 		CHECK_VK_RESULT(err, "Could not create surface!");
 
 		VkBool32 isGraphicsSupportPresent;
-		vkGetPhysicalDeviceSurfaceSupportKHR(m_Context.physicalDevice, m_Queues[QueueType::Graphics]->queueFamilyIndex, m_WindowSurface, &isGraphicsSupportPresent);
+		vkGetPhysicalDeviceSurfaceSupportKHR(m_Context.physicalDevice, m_Queues[static_cast<uint32_t>(QueueType::Graphics)]->queueFamilyIndex, m_WindowSurface, &isGraphicsSupportPresent);
 		if (!isGraphicsSupportPresent)
 		{
 			LOG_ERROR("Could not support present!");
@@ -740,7 +770,7 @@ namespace rhi
 		assert(desc.dimension != TextureDimension::Undefined);
 		TextureVk* tex = new TextureVk(context, m_Allocator);
 		tex->format = formatToVkFormat(desc.format);
-		tex->desc = desc;
+		tex->m_Desc = desc;
 
 		VkImageCreateInfo imageCreateInfo{};
 		imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -777,7 +807,7 @@ namespace rhi
 	IBuffer* RenderDeviceVk::createBuffer(const BufferDesc& desc)
 	{
 		BufferVk* buffer = new BufferVk(context, m_Allocator);
-		buffer->desc = desc;
+		buffer->m_Desc = desc;
 		VkBufferCreateInfo bufferCI{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 		bufferCI.size = desc.size;
 		bufferCI.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
@@ -912,6 +942,13 @@ namespace rhi
 		desc.type = shaderCI.type;
 
 		auto shader = new ShaderVk(desc);
+
+		VkShaderModuleCreateInfo moduleCreateInfo{ VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+		moduleCreateInfo.codeSize = codeSize;
+		moduleCreateInfo.pCode = pCode;
+
+		VkResult err = vkCreateShaderModule(m_Context.device, &moduleCreateInfo, nullptr, &shader->shaderModule);
+		CHECK_VK_RESULT(err, "Failed to create shaderModule.");
 
 		shader->spirv.resize(codeSize);
 		memcpy(shader->spirv.data(), pCode, codeSize);
@@ -1665,7 +1702,7 @@ namespace rhi
 		tex->image = image;
 		tex->managed = false;
 		tex->format = formatToVkFormat(desc.format);
-		tex->desc = desc;
+		tex->m_Desc = desc;
 		tex->createDefaultView();
 		// an image layout transition needs to be performed on a presentable image before it is used in a graphics pipeline
 		tex->setState(ResourceState::InitialRenderTarget);

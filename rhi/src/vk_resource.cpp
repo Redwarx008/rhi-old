@@ -475,11 +475,11 @@ namespace rhi
 	{
 		assert(this->m_DefaultView == nullptr);
 		TextureViewDesc desc{};
-		desc.dimension = this->desc.dimension;
+		desc.dimension = this->m_Desc.dimension;
 		desc.baseArrayLayer = 0;
-		desc.arrayLayerCount = this->desc.arraySize;
+		desc.arrayLayerCount = this->m_Desc.arraySize;
 		desc.baseMipLevel = 0;
-		desc.mipLevelCount = this->desc.mipLevels;
+		desc.mipLevelCount = this->m_Desc.mipLevels;
 		this->m_DefaultView = checked_cast<TextureViewVk*>(createView(desc));
 	}
 
@@ -690,15 +690,6 @@ namespace rhi
 		specializationConstants.clear();
 		assert(shaderModule != VK_NULL_HANDLE);
 		vkDestroyShaderModule(m_Context.device, shaderModule, nullptr);
-	}
-
-	Object ShaderVk::getNativeObject(NativeObjectType type) const
-	{
-		if (type == NativeObjectType::VK_ShaderModule)
-		{
-			return static_cast<Object>(shaderModule);
-		}
-		return nullptr;
 	}
 
 	VkShaderStageFlagBits shaderTypeToVkShaderStageFlagBits(ShaderType shaderType)

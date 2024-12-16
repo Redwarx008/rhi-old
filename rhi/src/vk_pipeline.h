@@ -4,6 +4,8 @@
 
 #include "rhi/rhi.h"
 #include <vector>
+#include <array>
+
 namespace rhi
 {
 	struct ContextVk;
@@ -21,7 +23,6 @@ namespace rhi
 		GraphicsPipelineDesc desc;
 		VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 		VkPipeline pipeline = VK_NULL_HANDLE;
-		VkPipelineCache pipelineCache = VK_NULL_HANDLE;
 
 		struct PushConstantInfo
 		{
@@ -29,6 +30,7 @@ namespace rhi
 			uint32_t offset = 0;
 		};
 		std::vector<PushConstantInfo> pushConstantInfos;
+		std::array<std::vector<>>
 	private:
 		const ContextVk& m_Context;
 	};

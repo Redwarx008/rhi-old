@@ -58,12 +58,13 @@ namespace rhi
 	class TextureVk final : public ITexture, public MemoryResource
 	{
 	public:
-		explicit TextureVk(const ContextVk& context, const VmaAllocator& allocator)
-			:m_Context(context),
+		explicit TextureVk(TextureDesc desc, const ContextVk& context, const VmaAllocator& allocator)
+			:m_Desc(desc),
+			m_Context(context),
 			m_Allocator(allocator) {}
 		void setState(ResourceState state) { m_State = state; }
 		ResourceState getState() const override { return m_State; }
-		const TextureDesc& getDesc() const override { return desc; }
+		const TextureDesc& getDesc() const override { return m_Desc; }
 		ITextureView* getDefaultView() const override { return m_DefaultView; }
 		ITextureView* createView(TextureViewDesc desc) override;
 		Object getNativeObject(NativeObjectType type) const override;
@@ -71,11 +72,11 @@ namespace rhi
 		
 		void createDefaultView();
 		ResourceState submittedState = ResourceState::Undefined;
-		TextureDesc desc;
 		VkImage image = VK_NULL_HANDLE;
 		VkFormat format = VK_FORMAT_UNDEFINED;
 	private:
 		TextureVk() = default;
+		TextureDesc m_Desc;
 		const ContextVk& m_Context;
 		const VmaAllocator& m_Allocator;
 		ResourceState m_State = ResourceState::Undefined;
@@ -85,18 +86,19 @@ namespace rhi
 	class TextureViewVk final : public ITextureView
 	{
 	public:
-		explicit TextureViewVk(const ContextVk& context, TextureVk& texture)
-			:m_Context(context),
+		explicit TextureViewVk(TextureViewDesc desc, const ContextVk& context, TextureVk& texture)
+			:m_Desc(desc),
+			m_Context(context),
 			m_Texture(texture){}
-		const TextureViewDesc& getDesc() const override { return desc; }
+		const TextureViewDesc& getDesc() const override { return m_Desc; }
 		ITexture* getTexture() const override { return &m_Texture; }
 		Object getNativeObject(NativeObjectType type) const override;
 		~TextureViewVk();
 
-		TextureViewDesc desc;
 		VkImageView imageView = VK_NULL_HANDLE;
 	private:
 		TextureViewVk() = default;
+		TextureViewDesc m_Desc;
 		const ContextVk& m_Context;
 		TextureVk& m_Texture;
 	};
@@ -120,34 +122,35 @@ namespace rhi
 	class SamplerVk : public ISampler
 	{
 	public:
-		explicit SamplerVk(const ContextVk& context)
-			:m_Context(context) {}
+		explicit SamplerVk(SamplerDesc desc, const ContextVk& context)
+			:m_Desc(desc),
+			m_Context(context) {}
 		~SamplerVk();
-		const SamplerDesc& getDesc() const override { return desc; }
-		SamplerDesc desc;
-		VkSampler sampler = nullptr;
+		const SamplerDesc& getDesc() const override { return m_Desc; }
+		VkSampler sampler = VK_NULL_HANDLE;
 	private:
+		SamplerDesc m_Desc;
 		const ContextVk& m_Context;
 	};
 
 	class BufferVk : public IBuffer, public MemoryResource
 	{
 	public:
-		explicit BufferVk(const ContextVk& context, const VmaAllocator& allocator)
-			:m_Context(context),
+		explicit BufferVk(BufferDesc desc, const ContextVk& context, const VmaAllocator& allocator)
+			:m_Desc(desc),
+			m_Context(context),
 			m_Allocator(allocator)
 		{}
 		void setState(ResourceState state) { m_State = state; }
 		ResourceState getState() const override { return m_State; }
-		const BufferDesc& getDesc() const override { return desc; }
+		const BufferDesc& getDesc() const override { return m_Desc; }
 		Object getNativeObject(NativeObjectType type) const override;
 		~BufferVk();
 
-		//ResourceState submittedState = ResourceState::Undefined;
-		BufferDesc desc;
-		VkBuffer buffer = nullptr;
+		VkBuffer buffer = VK_NULL_HANDLE;
 		VmaAllocationInfo allocaionInfo{};
 	private:
+		BufferDesc m_Desc;
 		const ContextVk& m_Context;
 		const VmaAllocator& m_Allocator;
 		ResourceState m_State = ResourceState::Undefined;
@@ -162,10 +165,12 @@ namespace rhi
 			:m_Desc(desc) {}
 		~ShaderVk();
 		const ShaderDesc& getDesc() const override { return m_Desc; }
+		VkShaderModule shaderModule;
 		std::vector<uint32_t> spirv;
 		std::vector<SpecializationConstant> specializationConstants;
 	private:
 		ShaderDesc m_Desc;
+		const ContextVk& m_Context;
 	};
 
 	// shaderResourceBinding
