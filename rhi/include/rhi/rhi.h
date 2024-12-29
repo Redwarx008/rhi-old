@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include "rhi/common/Utils.h"
 #include "rhi_struct.h"
@@ -25,6 +26,8 @@ namespace rhi
 			void* pointer;
 		};
 	};
+
+
 
 	class IObject
 	{

@@ -88,7 +88,7 @@ set(interface_rhi
 set(common_rhi
 	"include/rhi/common/Error.h"
 	"include/rhi/common/Utils.h"
-	)
+	 "include/rhi/common/Object.h")
 
 set(src_vk
 	"src/vk_vma.cpp"
