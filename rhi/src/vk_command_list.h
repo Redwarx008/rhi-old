@@ -43,7 +43,7 @@ namespace rhi
 		void clearBuffer(IBuffer* buffer, uint32_t value, uint64_t offset = 0, uint64_t size = ~0ull) override;
 		void updateBuffer(IBuffer* buffer, const void* data, uint64_t dataSize, uint64_t offset) override;
 		void copyBuffer(IBuffer* srcBuffer, uint64_t srcOffset, IBuffer* dstBuffer, uint64_t dstOffset, uint64_t dataSize) override;
-		void* mapBuffer(IBuffer* buffer, MapBufferUsage usage) override;
+		void* mapBuffer(IBuffer* buffer, MapMode usage) override;
 		void updateTexture(ITexture* texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo) override;
 
 		void commitShaderResources(IResourceSet* resourceSet, uint32_t dstSet = 0) override;

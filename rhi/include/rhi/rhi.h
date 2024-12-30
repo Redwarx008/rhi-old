@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cstdint>
 #include "rhi/common/Utils.h"
+#include "rhi/common/Object.h"
 #include "rhi_struct.h"
 
 namespace rhi
@@ -36,17 +37,16 @@ namespace rhi
 		virtual Object getNativeObject(NativeObjectType type) const = 0;
 	};
 
-	class IResource : public IObject
-	{
-	public:
-		virtual ResourceState getState() const = 0;
-	};
-
-	class IBuffer : public IResource
+	class IBuffer : public RefCounted
 	{
 	public:
 		virtual ~IBuffer() = default;
-		virtual const BufferDesc& getDesc() const = 0;
+		virtual BufferUsage GetUsage() const = 0;
+		virtual void MapAsync(MapMode mode,
+			size_t offset,
+			size_t size,
+			BufferMapCallback callback,
+			void* userData) = 0;
 	};
 
 	class ITextureView : public IObject
@@ -131,7 +131,7 @@ namespace rhi
 		virtual void clearBuffer(IBuffer* buffer, uint32_t value, uint64_t offset = 0, uint64_t size = ~0ull) = 0;
 		virtual void updateBuffer(IBuffer* buffer, const void* data, uint64_t dataSize, uint64_t offset) = 0;
 		virtual void copyBuffer(IBuffer* srcBuffer, uint64_t srcOffset, IBuffer* dstBuffer, uint64_t dstOffset, uint64_t dataSize) = 0;
-		virtual void* mapBuffer(IBuffer* buffer, MapBufferUsage usage) = 0;
+		virtual void* mapBuffer(IBuffer* buffer, MapMode usage) = 0;
 		virtual void updateTexture(ITexture* texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo) = 0;
 
 		virtual void commitShaderResources(IShaderResourceBinding* shaderResourceBinding) = 0;

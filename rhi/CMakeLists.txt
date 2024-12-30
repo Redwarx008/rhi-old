@@ -105,7 +105,7 @@ set(src_vk
 	"src/vk_pipeline.h"
 	"src/vk_pipeline.cpp"  
 	"src/vk_command_queue.h"
-	"src/vk_command_queue.cpp")
+	"src/vk_command_queue.cpp" "src/Ref.h")
 
 add_library(rhi "")
 

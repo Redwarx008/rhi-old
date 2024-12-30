@@ -480,7 +480,7 @@ namespace rhi
 		}
 	}
 
-	void* CommandListVk::mapBuffer(IBuffer* buffer, MapBufferUsage usage)
+	void* CommandListVk::mapBuffer(IBuffer* buffer, MapMode usage)
 	{
 		assert(buffer);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
@@ -490,7 +490,7 @@ namespace rhi
 		ASSERT_MSG(buf->getDesc().access != BufferAccess::CpuRead,
 			"Only tagged with BufferAccess::CpuRead buffer can be mapped.");
 
-		if (usage == MapBufferUsage::Read)
+		if (usage == MapMode::Read)
 		{
 			setBufferBarrier(buf, VK_PIPELINE_STAGE_2_HOST_BIT, VK_ACCESS_2_HOST_READ_BIT);
 		}

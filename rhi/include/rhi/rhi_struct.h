@@ -75,47 +75,56 @@ namespace rhi
 
 
 	// buffer
-	enum class MapBufferUsage : uint8_t
+	enum class MapMode : uint8_t
 	{
 		Read,
 		Write
 	};
 
-	enum class BufferAccess : uint8_t
+	enum class BufferMapAsyncStatus
 	{
-		// means VK_MEMORY_HEAP_DEVICE_LOCAL_BIT
-		GpuOnly,
-		// means VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-		CpuWrite,
-		// Buffers for data written by or transferred from the GPU that you want to read back on the CPU, e.g. results of some computations.
-		// means vVK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT 
-		CpuRead,
+		Success,
+		Unknown,
+		DeviceLost,
+		OffsetOutOfRange,
+		SizeOutOfRange,
 	};
+
+	using BufferMapCallback = void (*)(BufferMapAsyncStatus status, void* userdata);
+
+	//enum class BufferAccess : uint8_t
+	//{
+	//	// means VK_MEMORY_HEAP_DEVICE_LOCAL_BIT
+	//	GpuOnly,
+	//	// means VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+	//	CpuWrite,
+	//	// Buffers for data written by or transferred from the GPU that you want to read back on the CPU, e.g. results of some computations.
+	//	// means vVK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT 
+	//	CpuRead,
+	//};
 
 	// defualt VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
 	enum class BufferUsage : uint32_t
 	{
 		None = 0 << 0,
-		VertexBuffer = 1 << 0,
-		IndexBuffer = 1 << 1,
-		IndirectBuffer = 1 << 2,
-		UniformBuffer = 1 << 3,
-		StorageBuffer = 1 << 4,
-		UniformTexelBuffer = 1 << 5,
-		StorageTexelBuffer = 1 << 6
+		Vertex = 1 << 0,
+		Index = 1 << 1,
+		Indirect = 1 << 2,
+		Uniform = 1 << 3,
+		Storage = 1 << 4,
+		MapRead = 1 << 5,
+		MapWrite = 1 << 6
 	};
 	ENUM_CLASS_FLAG_OPERATORS(BufferUsage);
 
 	struct BufferDesc
 	{
 		size_t size = 0;
-
-		BufferAccess access = BufferAccess::GpuOnly;
-
+		const char* name = nullptr;
 		BufferUsage usage = BufferUsage::None;
 
 		BufferDesc& setSize(size_t size) { this->size = size; return *this; }
-		BufferDesc& setAccess(BufferAccess accessFlag) { this->access = accessFlag; return *this; }
+		BufferDesc& setName(const char* name) { this->name = name; return *this; }
 		BufferDesc& setUsage(BufferUsage usageFlag) { this->usage = usage; return *this; }
 	};
 
