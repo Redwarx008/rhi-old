@@ -18,7 +18,7 @@ namespace rhi
 			// https://www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html
 			uint64_t previousRefCount = mRefCount.fetch_sub(1, std::memory_order_release);
 
-			if (previousRefCount <= 1)
+			if (previousRefCount < 2)
 			{
 				std::atomic_thread_fence(std::memory_order_acquire);
 				delete this;
@@ -27,7 +27,7 @@ namespace rhi
 	protected:
 		virtual ~RefCounted() = default;
 	private:
-		std::atomic<uint64_t> mRefCount = 0;
+		std::atomic<uint64_t> mRefCount = 1;
 	};
 
 }
