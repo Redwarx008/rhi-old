@@ -1049,7 +1049,7 @@ namespace rhi
 		UploadPage pageToRetire;
 		if (m_CurrentPage.valid())
 		{
-			uint64_t alignedOffset = alignUp(m_CurrentPage.offset, alignment);
+			uint64_t alignedOffset = AlignUp(m_CurrentPage.offset, alignment);
 			uint64_t endPoint = alignedOffset + dataSize;
 			if (m_CurrentPage.buffer->m_Desc.size >= endPoint)
 			{
@@ -1101,7 +1101,7 @@ namespace rhi
 		UploadPage newPage{};
 		BufferDesc desc{};
 		desc.access = BufferAccess::CpuWrite;
-		desc.size = alignUp((std::max)(size, c_DefaultPageSize), c_SizeAlignment);
+		desc.size = AlignUp((std::max)(size, c_DefaultPageSize), c_SizeAlignment);
 		newPage.buffer = checked_cast<BufferVk*>(m_RenderDevice->createBuffer(desc));
 		return newPage;
 	}

@@ -416,8 +416,8 @@ namespace rhi
 
 		if (formatInfo.isCompressed())
 		{
-			uint32_t blockAlignedRegionWidth = alignUp(regionWidth, formatInfo.blockSize);
-			uint32_t blockAlignedRegionHeight = alignUp(regionHeight, formatInfo.blockSize);
+			uint32_t blockAlignedRegionWidth = AlignUp(regionWidth, formatInfo.blockSize);
+			uint32_t blockAlignedRegionHeight = AlignUp(regionHeight, formatInfo.blockSize);
 
 			copyInfo.rowBytesCount = blockAlignedRegionWidth / formatInfo.blockSize * formatInfo.bytesPerBlock;
 			copyInfo.rowCount = blockAlignedRegionHeight / formatInfo.blockSize;
@@ -428,7 +428,7 @@ namespace rhi
 			copyInfo.rowCount = regionHeight;
 		}
 
-		copyInfo.rowStride = static_cast<uint32_t>(alignUp(copyInfo.rowBytesCount, optimalBufferCopyRowPitchAlignment));
+		copyInfo.rowStride = static_cast<uint32_t>(AlignUp(copyInfo.rowBytesCount, optimalBufferCopyRowPitchAlignment));
 		copyInfo.depthStride = copyInfo.rowCount * copyInfo.rowStride;
 		copyInfo.regionBytesCount = regionDepth * copyInfo.depthStride;
 		return copyInfo;

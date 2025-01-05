@@ -65,7 +65,7 @@ namespace rhi
 	}
 
 	template <typename T1, typename T2>
-	inline typename std::conditional<sizeof(T1) >= sizeof(T2), T1, T2>::type alignUp(T1 val, T2 alignment)
+	inline typename std::conditional<sizeof(T1) >= sizeof(T2), T1, T2>::type AlignUp(T1 val, T2 alignment)
 	{
 		static_assert(std::is_unsigned<T1>::value == std::is_unsigned<T2>::value, "both types must be either signed or unsigned");
 		static_assert(!std::is_pointer<T1>::value && !std::is_pointer<T2>::value, "types must not be pointers");

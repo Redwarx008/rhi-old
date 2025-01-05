@@ -88,7 +88,7 @@ set(interface_rhi
 set(common_rhi
 	"include/rhi/common/Error.h"
 	"include/rhi/common/Utils.h"
-	 "include/rhi/common/Object.h")
+	 "include/rhi/common/RefCounted.h")
 
 set(src_vk
 	"src/vk_vma.cpp"
@@ -105,7 +105,7 @@ set(src_vk
 	"src/vk_pipeline.h"
 	"src/vk_pipeline.cpp"  
 	"src/vk_command_queue.h"
-	"src/vk_command_queue.cpp" "src/Ref.h")
+	"src/vk_command_queue.cpp" "src/Ref.hpp" "src/UploadAllocator.h" "src/UploadAllocator.cpp")
 
 add_library(rhi "")
 

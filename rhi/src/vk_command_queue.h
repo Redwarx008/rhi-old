@@ -5,6 +5,8 @@
 #include <vector>
 #include <memory>
 
+#include "Ref.hpp"
+
 namespace rhi
 {
 	class RenderDeviceVk;
@@ -39,6 +41,8 @@ namespace rhi
 		std::vector<uint64_t> m_WaitSemaphoreValuesForSubmit;
 		std::vector<VkSemaphore> m_SingalSemaphoreForSubmit;
 		std::vector<uint64_t> m_SingalSemaphoreValuesForSubmit;
+
+
 	};
 }
 
