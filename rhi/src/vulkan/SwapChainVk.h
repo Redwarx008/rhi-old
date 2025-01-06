@@ -8,21 +8,24 @@
 #include <queue>
 #include <memory>
 
-//#include "../Ref.hpp"
+#include "../Ref.hpp"
 
 namespace rhi::vulkan
 {
 	static constexpr uint32_t g_MaxConcurrentFrames = 2;
 
+	//template <typename T>
+	//class Ref;
 	class TextureVk;
 	class Device;
 	class CommandList;
 	class SwapChain final : public ISwapChain
 	{
 	public:
+		static Ref<SwapChain> Create(const SwapChainCreateInfo& swapChainCI);
 		~SwapChain();
 		SwapChain(Device* device);
-
+		void recreateSwapChain() override;
 		//ITextureView* getCurrentRenderTargetView() override;
 		//ITextureView* getDepthStencilView() override;
 		//Format getRenderTargetFormat() override { return m_SwapChainFormat; }

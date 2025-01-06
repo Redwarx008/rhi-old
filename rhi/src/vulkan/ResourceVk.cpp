@@ -512,13 +512,13 @@ namespace rhi::vulkan
 
 	// buffer
 
-	BufferVk::~BufferVk()
+	Buffer::~Buffer()
 	{
 		assert(buffer != VK_NULL_HANDLE);
 		vmaDestroyBuffer(m_Allocator, buffer, allocation);
 	}
 
-	Object BufferVk::getNativeObject(NativeObjectType type) const
+	Object Buffer::getNativeObject(NativeObjectType type) const
 	{
 		if (type == NativeObjectType::VK_Buffer)
 		{

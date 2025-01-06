@@ -6,6 +6,8 @@
 #endif
 #include <vk_mem_alloc.h>
 
+#include "../Ref.hpp"
+
 #include <array>
 
 namespace rhi::vulkan
@@ -22,13 +24,13 @@ namespace rhi::vulkan
 	public:
 		~Device();
 		// Internal methodsd
-		static Device* create(const DeviceCreateInfo& desc);
+		static Ref<Device> create(const DeviceCreateInfo& desc);
 
-		Ref<ITexture> createTextureImpl(const TextureDesc& desc);
-		Ref<IBuffer> createBufferImpl(const BufferDesc& desc);
-		Ref<IBuffer> createBufferImpl(const BufferDesc& desc, const void* data, size_t dataSize);
-		Ref<IShader> createShaderImpl(const ShaderCreateInfo& shaderCI, const uint32_t* pCode, size_t codeSize);
-		Ref<ISampler> createSamplerImpl(const SamplerDesc& desc);
+		Ref<ITexture> createTextureInternal(const TextureDesc& desc);
+		Ref<IBuffer> createBufferInternal(const BufferDesc& desc);
+		Ref<IBuffer> createBufferInternal(const BufferDesc& desc, const void* data, size_t dataSize);
+		Ref<IShader> createShaderInternal(const ShaderCreateInfo& shaderCI, const uint32_t* pCode, size_t codeSize);
+		Ref<ISampler> createSamplerInternal(const SamplerDesc& desc);
 
 		void setSwapChainImageAvailableSeamaphore(const VkSemaphore& semaphore);
 		void setRenderCompleteSemaphore(const VkSemaphore& semaphore);
@@ -42,8 +44,7 @@ namespace rhi::vulkan
 		// Interface implementation
 
 
-		void createSwapChain(const SwapChainCreateInfo& swapChainCI) override;
-		void recreateSwapChain() override;
+
 		void waitIdle() override;
 
 		ICommandList* beginCommandList(QueueType queueType = QueueType::Graphics) override;

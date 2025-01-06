@@ -22,6 +22,17 @@ namespace rhi::vulkan
 
 	}
 
+	void SwapChain::createSwapChain(const SwapChainCreateInfo& swapChainCI)
+	{
+		m_SwapChainFormat = swapChainCI.preferredColorFormat;
+		m_DepthStencilFormat = swapChainCI.preferredDepthStencilFormat;
+		m_SwapChainImageWidth = swapChainCI.initialWidth;
+		m_SwapChainImageHeight = swapChainCI.initialHeight;
+		m_VSyncEnabled = swapChainCI.enableVSync;
+
+		createSurface(swapChainCI.windowHandle);
+		createSwapChainInternal();
+	}
 
 	void SwapChain::createSurface(void* platformWindow)
 	{

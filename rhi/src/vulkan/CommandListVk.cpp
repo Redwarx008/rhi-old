@@ -130,7 +130,7 @@ namespace rhi
 	void CommandList::transitionBufferState(IBuffer* buffer, ResourceState newState)
 	{
 		assert(buffer);
-		auto bufferVk = checked_cast<BufferVk*>(buffer);
+		auto bufferVk = checked_cast<Buffer*>(buffer);
 
 		ResourceState oldState = bufferVk->getState();
 
@@ -259,7 +259,7 @@ namespace rhi
 		m_VkImageMemoryBarriers.clear();
 	}
 
-	void CommandList::setBufferBarrier(BufferVk* buffer, VkPipelineStageFlags2 dstStage, VkAccessFlags2 dstAccess)
+	void CommandList::setBufferBarrier(Buffer* buffer, VkPipelineStageFlags2 dstStage, VkAccessFlags2 dstAccess)
 	{
 		assert(buffer);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
@@ -403,7 +403,7 @@ namespace rhi
 		assert(buffer);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
-		auto buf = checked_cast<BufferVk*>(buffer);
+		auto buf = checked_cast<Buffer*>(buffer);
 
 		if (m_EnableAutoTransition)
 		{
@@ -419,8 +419,8 @@ namespace rhi
 		assert(srcBuffer && dstBuffer);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
-		auto srcBuf = checked_cast<BufferVk*>(srcBuffer);
-		auto dstBuf = checked_cast<BufferVk*>(dstBuffer);
+		auto srcBuf = checked_cast<Buffer*>(srcBuffer);
+		auto dstBuf = checked_cast<Buffer*>(dstBuffer);
 
 		assert(srcOffset + dataSize <= srcBuf->getDesc().size);
 		assert(dstOffset + dataSize <= dstBuf->getDesc().size);
@@ -444,7 +444,7 @@ namespace rhi
 		assert(buffer);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
-		auto buf = checked_cast<BufferVk*>(buffer);
+		auto buf = checked_cast<Buffer*>(buffer);
 
 		if (buf->getDesc().access != BufferAccess::GpuOnly)
 		{
@@ -475,7 +475,7 @@ namespace rhi
 			stageBufferDesc.usage = BufferUsage::None;
 			stageBufferDesc.size = dataSize;
 			auto& stageBuffer = m_CurrentCmdBuf->referencedInternalStageBuffer.emplace_back();
-			stageBuffer = std::unique_ptr<BufferVk>(checked_cast<BufferVk*>(m_RenderDevice.createBuffer(stageBufferDesc, data, dataSize)));
+			stageBuffer = std::unique_ptr<Buffer>(checked_cast<Buffer*>(m_RenderDevice.createBuffer(stageBufferDesc, data, dataSize)));
 			copyBuffer(stageBuffer.get(), 0, buf, 0, dataSize);
 		}
 	}
@@ -485,7 +485,7 @@ namespace rhi
 		assert(buffer);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
-		auto buf = checked_cast<BufferVk*>(buffer);
+		auto buf = checked_cast<Buffer*>(buffer);
 
 		ASSERT_MSG(buf->getDesc().access != BufferAccess::CpuRead,
 			"Only tagged with BufferAccess::CpuRead buffer can be mapped.");
@@ -521,7 +521,7 @@ namespace rhi
 		stageBufferDesc.usage = BufferUsage::None;
 		stageBufferDesc.size = copyInfo.regionBytesCount;
 		auto& stageBuffer = m_CurrentCmdBuf->referencedInternalStageBuffer.emplace_back();
-		stageBuffer = std::unique_ptr<BufferVk>(checked_cast<BufferVk*>(m_RenderDevice.createBuffer(stageBufferDesc, data, copyInfo.regionBytesCount)));
+		stageBuffer = std::unique_ptr<Buffer>(checked_cast<Buffer*>(m_RenderDevice.createBuffer(stageBufferDesc, data, copyInfo.regionBytesCount)));
 
 		uint32_t regionDepth = updateInfo.dstRegion.getDepth();
 
@@ -586,14 +586,14 @@ namespace rhi
 			case ShaderResourceType::UniformBuffer:
 			{
 				assert(itemWithVisibleStages.binding.buffer);
-				auto buffer = checked_cast<BufferVk*>(itemWithVisibleStages.binding.buffer);
+				auto buffer = checked_cast<Buffer*>(itemWithVisibleStages.binding.buffer);
 				transitionBufferState(buffer, ResourceState::ShaderResource);
 				break;
 			}
 			case ShaderResourceType::StorageBuffer:
 			{
 				assert(itemWithVisibleStages.binding.buffer);
-				auto buffer = checked_cast<BufferVk*>(itemWithVisibleStages.binding.buffer);
+				auto buffer = checked_cast<Buffer*>(itemWithVisibleStages.binding.buffer);
 				transitionBufferState(buffer, ResourceState::UnorderedAccess);
 				break;
 			}
@@ -729,7 +729,7 @@ namespace rhi
 		for (uint32_t i = 0; i < state.vertexBufferCount; ++i)
 		{
 			assert(state.vertexBuffers[i].buffer != nullptr);
-			auto buffer = checked_cast<BufferVk*>(state.vertexBuffers[i].buffer);
+			auto buffer = checked_cast<Buffer*>(state.vertexBuffers[i].buffer);
 			if (m_EnableAutoTransition)
 			{
 				transitionBufferState(buffer, ResourceState::VertexBuffer);
@@ -740,7 +740,7 @@ namespace rhi
 		if (state.indexBuffer.buffer)
 		{
 			assert(state.indexBuffer.buffer != nullptr);
-			auto buffer = checked_cast<BufferVk*>(state.indexBuffer.buffer);
+			auto buffer = checked_cast<Buffer*>(state.indexBuffer.buffer);
 			if (m_EnableAutoTransition)
 			{
 				transitionBufferState(buffer, ResourceState::IndexBuffer);
@@ -776,7 +776,7 @@ namespace rhi
 			for (uint32_t i = 0; i < state.vertexBufferCount; ++i)
 			{
 				const VertexBufferBinding& binding = state.vertexBuffers[i];
-				buffers[binding.bindingSlot] = checked_cast<BufferVk*>(binding.buffer)->buffer;
+				buffers[binding.bindingSlot] = checked_cast<Buffer*>(binding.buffer)->buffer;
 				bufferOffsets[binding.bindingSlot] = binding.offset;
 				maxBindingSlot = (std::max)(maxBindingSlot, binding.bindingSlot);
 			}
@@ -785,7 +785,7 @@ namespace rhi
 
 		if (state.indexBuffer.buffer && state.indexBuffer != m_LastGraphicsState.indexBuffer)
 		{
-			auto* buffer = checked_cast<BufferVk*>(state.indexBuffer.buffer);
+			auto* buffer = checked_cast<Buffer*>(state.indexBuffer.buffer);
 			vkCmdBindIndexBuffer(m_CurrentCmdBuf->vkCmdBuf, buffer->buffer, state.indexBuffer.offset,
 				state.indexBuffer.format == Format::R16_UINT ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
 		}
@@ -917,7 +917,7 @@ namespace rhi
 		assert(argsBuffer);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
-		auto indirectBuffer = checked_cast<BufferVk*>(argsBuffer);
+		auto indirectBuffer = checked_cast<Buffer*>(argsBuffer);
 		if (m_EnableAutoTransition)
 		{
 			transitionBufferState(indirectBuffer, ResourceState::IndirectBuffer);
@@ -943,7 +943,7 @@ namespace rhi
 		assert(argsBuffer);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
-		auto indirectBuffer = checked_cast<BufferVk*>(argsBuffer);
+		auto indirectBuffer = checked_cast<Buffer*>(argsBuffer);
 		if (m_EnableAutoTransition)
 		{
 			transitionBufferState(indirectBuffer, ResourceState::IndirectBuffer);
@@ -993,7 +993,7 @@ namespace rhi
 		assert(argsBuffer);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
-		auto indirectBuffer = checked_cast<BufferVk*>(argsBuffer);
+		auto indirectBuffer = checked_cast<Buffer*>(argsBuffer);
 		if (m_EnableAutoTransition)
 		{
 			transitionBufferState(indirectBuffer, ResourceState::IndirectBuffer);
@@ -1102,7 +1102,7 @@ namespace rhi
 		BufferDesc desc{};
 		desc.access = BufferAccess::CpuWrite;
 		desc.size = AlignUp((std::max)(size, c_DefaultPageSize), c_SizeAlignment);
-		newPage.buffer = checked_cast<BufferVk*>(m_RenderDevice->createBuffer(desc));
+		newPage.buffer = checked_cast<Buffer*>(m_RenderDevice->createBuffer(desc));
 		return newPage;
 	}
 }

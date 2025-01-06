@@ -468,17 +468,6 @@ namespace rhi::vulkan
 		vkDestroyInstance(context.instace, nullptr);
 	}
 
-	void Device::createSwapChain(const SwapChainCreateInfo& swapChainCI)
-	{
-		m_SwapChainFormat = swapChainCI.preferredColorFormat;
-		m_DepthStencilFormat = swapChainCI.preferredDepthStencilFormat;
-		m_SwapChainImageWidth = swapChainCI.initialWidth;
-		m_SwapChainImageHeight = swapChainCI.initialHeight;
-		m_VSyncEnabled = swapChainCI.enableVSync;
-
-		createSurface(swapChainCI.windowHandle);
-		createSwapChainInternal();
-	}
 
 	void Device::waitIdle()
 	{
@@ -527,7 +516,7 @@ namespace rhi::vulkan
 
 	IBuffer* Device::createBuffer(const BufferDesc& desc)
 	{
-		BufferVk* buffer = new BufferVk(context, m_Allocator);
+		Buffer* buffer = new Buffer(context, m_Allocator);
 		buffer->m_Desc = desc;
 		VkBufferCreateInfo bufferCI{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 		bufferCI.size = desc.size;
@@ -623,7 +612,7 @@ namespace rhi::vulkan
 	void* Device::mapBuffer(IBuffer* buffer)
 	{
 		assert(buffer);
-		auto buf = checked_cast<BufferVk*>(buffer);
+		auto buf = checked_cast<Buffer*>(buffer);
 		if (buf->getDesc().access == BufferAccess::GpuOnly)
 		{
 			LOG_ERROR("Could not map gpu only buffer");
@@ -635,7 +624,7 @@ namespace rhi::vulkan
 
 	IBuffer* Device::createBuffer(const BufferDesc& desc, const void* data, size_t dataSize)
 	{
-		BufferVk* buffer = checked_cast<BufferVk*>(createBuffer(desc));
+		Buffer* buffer = checked_cast<Buffer*>(createBuffer(desc));
 		if (buffer->getDesc().access == BufferAccess::GpuOnly)
 		{
 			auto tmpCmdList = std::unique_ptr<CommandList>(checked_cast<CommandList*>(beginCommandList()));
@@ -799,7 +788,7 @@ namespace rhi::vulkan
 		case ShaderResourceType::UniformBuffer:
 		{
 			assert(binding.buffer != nullptr);
-			auto buffer = checked_cast<BufferVk*>(binding.buffer);
+			auto buffer = checked_cast<Buffer*>(binding.buffer);
 
 			auto& descriptorBufferInfo = descriptorBufferInfos.emplace_back();
 			descriptorBufferInfo.buffer = buffer->buffer;
@@ -941,7 +930,7 @@ namespace rhi::vulkan
 				case ShaderResourceType::UniformBuffer:
 				{
 					auto descriptorBufferInfo = const_cast<VkDescriptorBufferInfo*>(setWriter.pBufferInfo);
-					descriptorBufferInfo->buffer = checked_cast<BufferVk*>(binding.buffer)->buffer;
+					descriptorBufferInfo->buffer = checked_cast<Buffer*>(binding.buffer)->buffer;
 					descriptorBufferInfo->offset = binding.bufferOffset;
 					descriptorBufferInfo->range = binding.bufferRange == 0 ? VK_WHOLE_SIZE : binding.bufferRange;
 					break;

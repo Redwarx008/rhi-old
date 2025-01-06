@@ -62,12 +62,10 @@ namespace rhi::vulkan
 			:m_Desc(desc),
 			m_Context(context),
 			m_Allocator(allocator) {}
-		void setState(ResourceState state) { m_State = state; }
-		ResourceState getState() const override { return m_State; }
-		const TextureDesc& getDesc() const override { return m_Desc; }
+
 		ITextureView* getDefaultView() const override { return m_DefaultView; }
 		ITextureView* createView(TextureViewDesc desc) override;
-		Object getNativeObject(NativeObjectType type) const override;
+
 		~TextureVk();
 		
 		void createDefaultView();
@@ -133,28 +131,7 @@ namespace rhi::vulkan
 		const ContextVk& m_Context;
 	};
 
-	class BufferVk : public IBuffer, public MemoryResource
-	{
-	public:
-		explicit BufferVk(BufferDesc desc, const ContextVk& context, const VmaAllocator& allocator)
-			:m_Desc(desc),
-			m_Context(context),
-			m_Allocator(allocator)
-		{}
-		void setState(ResourceState state) { m_State = state; }
-		ResourceState getState() const override { return m_State; }
-		const BufferDesc& getDesc() const override { return m_Desc; }
-		Object getNativeObject(NativeObjectType type) const override;
-		~BufferVk();
 
-		VkBuffer buffer = VK_NULL_HANDLE;
-		VmaAllocationInfo allocaionInfo{};
-	private:
-		BufferDesc m_Desc;
-		const ContextVk& m_Context;
-		const VmaAllocator& m_Allocator;
-		ResourceState m_State = ResourceState::Undefined;
-	};
 
 	// shader
 

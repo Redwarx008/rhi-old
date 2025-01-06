@@ -10,14 +10,14 @@ namespace rhi::vulkan
 {
 	class Device;
 	class TextureVk;
-	class BufferVk;
+	class Buffer;
 	struct ContextVk;
 	struct TextureUpdateInfo;
 	class CommandList;
 
 	struct UploadAllocation
 	{
-		BufferVk* buffer = nullptr;
+		Buffer* buffer = nullptr;
 		uint64_t offset = 0;
 		void* mappedAdress = nullptr;
 	};
@@ -78,7 +78,7 @@ namespace rhi::vulkan
 	private:
 		CommandList() = delete;
 		void transitionResourceSet(IResourceSet* set, ShaderType dstVisibleStages);
-		void setBufferBarrier(BufferVk* buffer, VkPipelineStageFlags2 dstStage, VkAccessFlags2 dstAccess);
+		void setBufferBarrier(Buffer* buffer, VkPipelineStageFlags2 dstStage, VkAccessFlags2 dstAccess);
 		void endRendering();
 
 		bool m_EnableAutoTransition = true;
@@ -104,7 +104,7 @@ namespace rhi::vulkan
 
 		struct BufferBarrier
 		{
-			BufferVk* buffer = nullptr;
+			Buffer* buffer = nullptr;
 			ResourceState stateBefore = ResourceState::Undefined;
 			ResourceState stateAfter = ResourceState::Undefined;
 		};
@@ -137,7 +137,7 @@ namespace rhi::vulkan
 		private:
 			struct UploadPage
 			{
-				BufferVk* buffer = nullptr;
+				Buffer* buffer = nullptr;
 				uint64_t offset = 0;
 				bool inUse = false;
 				bool valid() { return buffer != nullptr; }
