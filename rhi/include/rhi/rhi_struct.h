@@ -17,7 +17,7 @@ namespace rhi
 	class IGraphicsPipeline;
 	class IComputePipeline;
 	class ICommandList;
-	class IRenderDevice;
+	class IDevice;
 	class ISwapChain;
 
 	// resource 
@@ -1039,7 +1039,7 @@ namespace rhi
 	typedef void(_stdcall* DebugMessageCallbackFunc) (MessageSeverity severity, const char* msg);
 	//using DebugMessageCallbackFunc = std::function<void(MessageSeverity severity, const char* msg)>;
 
-	struct RenderDeviceCreateInfo
+	struct DeviceCreateInfo
 	{
 		DebugMessageCallbackFunc messageCallback;
 		bool enableDebugRuntime;
@@ -1056,7 +1056,7 @@ namespace rhi
 
 	struct SwapChainCreateInfo
 	{
-		IRenderDevice* renderDevice;
+		IDevice* renderDevice;
 		void* windowHandle;
 		Format preferredColorFormat = Format::BGRA8_SRGB;
 		// use Format::UNKOWN to create swapChain without depth buffer.

@@ -6,14 +6,14 @@
 #include <memory>
 
 
-namespace rhi
+namespace rhi::vulkan
 {
-	class RenderDeviceVk;
+	class Device;
 	class TextureVk;
 	class BufferVk;
 	struct ContextVk;
 	struct TextureUpdateInfo;
-	class CommandListVk;
+	class CommandList;
 
 	struct UploadAllocation
 	{
@@ -22,11 +22,11 @@ namespace rhi
 		void* mappedAdress = nullptr;
 	};
 
-	class CommandListVk final : public ICommandList
+	class CommandList final : public ICommandList
 	{
 	public:
-		~CommandListVk();
-		explicit CommandListVk(RenderDeviceVk* renderDevice, const ContextVk& context);
+		~CommandList();
+		explicit CommandList(Device* renderDevice, const ContextVk& context);
 		void open() override;
 		void close() override;
 
@@ -76,7 +76,7 @@ namespace rhi
 		uint64_t submitID = 0;
 		uint32_t allocateIndex = 0;
 	private:
-		CommandListVk() = delete;
+		CommandList() = delete;
 		void transitionResourceSet(IResourceSet* set, ShaderType dstVisibleStages);
 		void setBufferBarrier(BufferVk* buffer, VkPipelineStageFlags2 dstStage, VkAccessFlags2 dstAccess);
 		void endRendering();
@@ -116,7 +116,7 @@ namespace rhi
 
 		std::vector<ICommandList*> m_WaitCommandLists;
 
-		RenderDeviceVk* m_RenderDevice;
+		Device* m_RenderDevice;
 		const ContextVk& m_Context;
 
 		// todo: delete it, if vulkan 1.4 is released.
@@ -130,7 +130,7 @@ namespace rhi
 			static constexpr uint64_t c_SizeAlignment = 4096; // GPU page size
 			static constexpr uint64_t c_DefaultPageSize = 64 * 1024;
 		public:
-			explicit UploadAllocator(RenderDeviceVk* renderDevice)
+			explicit UploadAllocator(Device* renderDevice)
 				:m_RenderDevice(renderDevice)
 			{}
 			UploadAllocation allocate(uint64_t dataSize, uint32_t alignment);
@@ -145,7 +145,7 @@ namespace rhi
 
 			UploadPage createNewPage(uint64_t size);
 
-			RenderDeviceVk* m_RenderDevice;
+			Device* m_RenderDevice;
 			UploadPage m_CurrentPage;
 			std::vector<UploadPage> m_UploadPagePool;
 		} m_UploadAllocator;

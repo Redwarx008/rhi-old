@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include "vk_errors.h"
 
-namespace rhi
+namespace rhi::vulkan
 {
 	// texture 
 	struct TexFmtToVkFmtMapping

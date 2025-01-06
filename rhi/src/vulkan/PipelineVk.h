@@ -6,16 +6,16 @@
 #include <vector>
 #include <array>
 
-namespace rhi
+namespace rhi::vulkan
 {
 	struct ContextVk;
 
-	class GraphicsPipelineVk final : public IGraphicsPipeline
+	class GraphicsPipeline final : public IGraphicsPipeline
 	{
 	public:
-		explicit GraphicsPipelineVk(const ContextVk& context)
+		explicit GraphicsPipeline(const ContextVk& context)
 			:m_Context(context){}
-		~GraphicsPipelineVk();
+		~GraphicsPipeline();
 		const GraphicsPipelineDesc& getDesc() const override  { return desc; }
 		bool getPipelineCacheData(void* pData, size_t* pDataSize) const override;
 		Object getNativeObject(NativeObjectType type) const override;
@@ -35,12 +35,12 @@ namespace rhi
 		const ContextVk& m_Context;
 	};
 
-	class ComputePipelineVk final : public IComputePipeline
+	class ComputePipeline final : public IComputePipeline
 	{
 	public:
-		explicit ComputePipelineVk(const ContextVk& contex)
+		explicit ComputePipeline(const ContextVk& contex)
 			:m_Context(contex) {}
-		~ComputePipelineVk();
+		~ComputePipeline();
 		bool getPipelineCacheData(void* pData, size_t* pDataSize) const override;
 		Object getNativeObject(NativeObjectType type) const override;
 

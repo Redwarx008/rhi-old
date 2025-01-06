@@ -11,7 +11,7 @@
 
 namespace rhi
 {
-	CommandListVk::CommandListVk(RenderDeviceVk* renderDevice, const ContextVk& context)
+	CommandList::CommandList(Device* renderDevice, const ContextVk& context)
 		:m_RenderDevice(renderDevice),
 		m_Context(context),
 		m_UploadAllocator(renderDevice)
@@ -26,21 +26,21 @@ namespace rhi
 		}
 	}
 
-	CommandListVk::~CommandListVk()
+	CommandList::~CommandList()
 	{
 
 	}
 
-	void CommandListVk::close()
+	void CommandList::close()
 	{
 		endRendering();
 		commitBarriers();
 		vkEndCommandBuffer(commandBuffer);
 	}
 
-	void CommandListVk::waitCommandList(ICommandList* other)
+	void CommandList::waitCommandList(ICommandList* other)
 	{
-		auto otherCmdList = checked_cast<CommandListVk*>(other);
+		auto otherCmdList = checked_cast<CommandList*>(other);
 		if (queueType == otherCmdList->queueType)
 		{
 			return; // The order of commandlists on the same queue is implicitly guaranteed.
@@ -48,7 +48,7 @@ namespace rhi
 		m_WaitCommandLists.push_back(other);
 	}
 
-	void CommandListVk::endRendering()
+	void CommandList::endRendering()
 	{
 		if (m_RenderingStarted)
 		{
@@ -57,7 +57,7 @@ namespace rhi
 		}
 	}
 
-	void CommandListVk::setResourceAutoTransition(bool enable)
+	void CommandList::setResourceAutoTransition(bool enable)
 	{
 		m_EnableAutoTransition = enable;
 	}
@@ -73,7 +73,7 @@ namespace rhi
 		return (state & writeAccessStates) == state;
 	}
 
-	void CommandListVk::transitionFromSubmmitedState(ITexture* texture, ResourceState newState)
+	void CommandList::transitionFromSubmmitedState(ITexture* texture, ResourceState newState)
 	{
 		assert(texture);
 		auto textureVk = checked_cast<TextureVk*>(texture);
@@ -95,7 +95,7 @@ namespace rhi
 		textureVk->setState(newState);
 	}
 
-	void CommandListVk::updateSubmittedState()
+	void CommandList::updateSubmittedState()
 	{
 		for (auto texture : m_TrackingSubmittedStates)
 		{
@@ -104,7 +104,7 @@ namespace rhi
 		m_TrackingSubmittedStates.clear();
 	}
 
-	void CommandListVk::transitionTextureState(ITexture* texture, ResourceState newState)
+	void CommandList::transitionTextureState(ITexture* texture, ResourceState newState)
 	{
 		assert(texture);
 		auto textureVk = checked_cast<TextureVk*>(texture);
@@ -127,7 +127,7 @@ namespace rhi
 		textureVk->setState(newState);
 	}
 
-	void CommandListVk::transitionBufferState(IBuffer* buffer, ResourceState newState)
+	void CommandList::transitionBufferState(IBuffer* buffer, ResourceState newState)
 	{
 		assert(buffer);
 		auto bufferVk = checked_cast<BufferVk*>(buffer);
@@ -168,7 +168,7 @@ namespace rhi
 		bufferVk->setState(newState);
 	}
 
-	void CommandListVk::commitBarriers()
+	void CommandList::commitBarriers()
 	{
 		if (m_BufferBarriers.empty() && m_TextureBarriers.empty())
 		{
@@ -259,7 +259,7 @@ namespace rhi
 		m_VkImageMemoryBarriers.clear();
 	}
 
-	void CommandListVk::setBufferBarrier(BufferVk* buffer, VkPipelineStageFlags2 dstStage, VkAccessFlags2 dstAccess)
+	void CommandList::setBufferBarrier(BufferVk* buffer, VkPipelineStageFlags2 dstStage, VkAccessFlags2 dstAccess)
 	{
 		assert(buffer);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
@@ -283,7 +283,7 @@ namespace rhi
 		vkCmdPipelineBarrier2(m_CurrentCmdBuf->vkCmdBuf, &dependencyInfo);
 	}
 
-	void CommandListVk::clearColorTexture(ITextureView* textureView, const ClearColor& color)
+	void CommandList::clearColorTexture(ITextureView* textureView, const ClearColor& color)
 	{
 		assert(textureView);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
@@ -336,7 +336,7 @@ namespace rhi
 		}
 	}
 
-	void CommandListVk::clearDepthStencil(ITextureView* textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal)
+	void CommandList::clearDepthStencil(ITextureView* textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal)
 	{
 		assert(textureView);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
@@ -398,7 +398,7 @@ namespace rhi
 		}
 	}
 
-	void CommandListVk::clearBuffer(IBuffer* buffer, uint32_t value, uint64_t offset, uint64_t size)
+	void CommandList::clearBuffer(IBuffer* buffer, uint32_t value, uint64_t offset, uint64_t size)
 	{
 		assert(buffer);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
@@ -414,7 +414,7 @@ namespace rhi
 		vkCmdFillBuffer(m_CurrentCmdBuf->vkCmdBuf, buf->buffer, offset, size, value);
 	}
 
-	void CommandListVk::copyBuffer(IBuffer* srcBuffer, uint64_t srcOffset, IBuffer* dstBuffer, uint64_t dstOffset, uint64_t dataSize)
+	void CommandList::copyBuffer(IBuffer* srcBuffer, uint64_t srcOffset, IBuffer* dstBuffer, uint64_t dstOffset, uint64_t dataSize)
 	{
 		assert(srcBuffer && dstBuffer);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
@@ -439,7 +439,7 @@ namespace rhi
 		vkCmdCopyBuffer(m_CurrentCmdBuf->vkCmdBuf, srcBuf->buffer, dstBuf->buffer, 1, &copyRegion);
 	}
 
-	void CommandListVk::updateBuffer(IBuffer* buffer, const void* data, uint64_t dataSize, uint64_t offset)
+	void CommandList::updateBuffer(IBuffer* buffer, const void* data, uint64_t dataSize, uint64_t offset)
 	{
 		assert(buffer);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
@@ -480,7 +480,7 @@ namespace rhi
 		}
 	}
 
-	void* CommandListVk::mapBuffer(IBuffer* buffer, MapMode usage)
+	void* CommandList::mapBuffer(IBuffer* buffer, MapMode usage)
 	{
 		assert(buffer);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
@@ -499,7 +499,7 @@ namespace rhi
 		return buf->allocaionInfo.pMappedData;
 	}
 
-	void CommandListVk::updateTexture(ITexture* texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo)
+	void CommandList::updateTexture(ITexture* texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo)
 	{
 		assert(texture);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
@@ -554,7 +554,7 @@ namespace rhi
 		vkCmdCopyBufferToImage(m_CurrentCmdBuf->vkCmdBuf, stageBuffer->buffer, tex->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferCopyRegion);
 	}
 
-	void CommandListVk::transitionResourceSet(IResourceSet* set, ShaderType dstVisibleStages)
+	void CommandList::transitionResourceSet(IResourceSet* set, ShaderType dstVisibleStages)
 	{
 		assert(set);
 		auto resourceSet = checked_cast<ResourceSetVk*>(set);
@@ -603,30 +603,30 @@ namespace rhi
 		}
 	}
 
-	void CommandListVk::transitionResourceSet(IResourceSet* resourceSet)
+	void CommandList::transitionResourceSet(IResourceSet* resourceSet)
 	{
 		assert(resourceSet);
 
 		switch (m_LastPipelineType)
 		{
-		case rhi::CommandListVk::PipelineType::Graphics:
+		case rhi::CommandList::PipelineType::Graphics:
 		{
 			constexpr ShaderType graphicsStages = ShaderType::Vertex | ShaderType::Fragment |
 				ShaderType::Geometry | ShaderType::TessellationControl | ShaderType::TessellationEvaluation;
 			transitionResourceSet(resourceSet, graphicsStages);
 			break;
 		}
-		case rhi::CommandListVk::PipelineType::Compute:
+		case rhi::CommandList::PipelineType::Compute:
 			transitionResourceSet(resourceSet, ShaderType::Compute);
 			break;
-		case rhi::CommandListVk::PipelineType::Unknown:
+		case rhi::CommandList::PipelineType::Unknown:
 		default:
 			LOG_ERROR("Must set pipelineState before transition resourceSet.");
 			break;
 		}
 	}
 
-	void CommandListVk::commitShaderResources(IResourceSet* resourceSet, uint32_t dstSet)
+	void CommandList::commitShaderResources(IResourceSet* resourceSet, uint32_t dstSet)
 	{
 		assert(resourceSet);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
@@ -637,7 +637,7 @@ namespace rhi
 
 		switch (m_LastPipelineType)
 		{
-		case rhi::CommandListVk::PipelineType::Graphics:
+		case rhi::CommandList::PipelineType::Graphics:
 		{
 			if (m_EnableAutoTransition)
 			{
@@ -652,7 +652,7 @@ namespace rhi
 
 			break;
 		}
-		case rhi::CommandListVk::PipelineType::Compute:
+		case rhi::CommandList::PipelineType::Compute:
 		{
 			if (m_EnableAutoTransition)
 			{
@@ -721,7 +721,7 @@ namespace rhi
 		renderingInfo.viewMask = 0;
 	}
 
-	void CommandListVk::setPipeline(const GraphicsState& state)
+	void CommandList::setPipeline(const GraphicsState& state)
 	{
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
@@ -826,7 +826,7 @@ namespace rhi
 		m_LastGraphicsState = state;
 	}
 
-	void CommandListVk::setScissors(const Rect* scissors, uint32_t scissorCount)
+	void CommandList::setScissors(const Rect* scissors, uint32_t scissorCount)
 	{
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 		ASSERT_MSG(m_LastGraphicsState.pipeline, "set GraphicsState before set scissors");
@@ -843,7 +843,7 @@ namespace rhi
 		vkCmdSetScissor(m_CurrentCmdBuf->vkCmdBuf, 0, scissorCount, rects);
 	}
 
-	void CommandListVk::setPushConstant(ShaderType stages, const void* data)
+	void CommandList::setPushConstant(ShaderType stages, const void* data)
 	{
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 		ASSERT_MSG(m_LastGraphicsState.pipeline || m_LastComputeState.pipeline, "Must set PipelineState before push constant.");
@@ -876,7 +876,7 @@ namespace rhi
 		}
 	}
 
-	void CommandListVk::draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
+	void CommandList::draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
 	{
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
@@ -894,7 +894,7 @@ namespace rhi
 		vkCmdDraw(m_CurrentCmdBuf->vkCmdBuf, vertexCount, instanceCount, firstVertex, firstInstance);
 	}
 
-	void CommandListVk::drawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance)
+	void CommandList::drawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance)
 	{
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
@@ -912,7 +912,7 @@ namespace rhi
 		vkCmdDrawIndexed(m_CurrentCmdBuf->vkCmdBuf, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
 	}
 
-	void CommandListVk::drawIndirect(IBuffer* argsBuffer, uint64_t offset, uint32_t drawCount)
+	void CommandList::drawIndirect(IBuffer* argsBuffer, uint64_t offset, uint32_t drawCount)
 	{
 		assert(argsBuffer);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
@@ -938,7 +938,7 @@ namespace rhi
 		vkCmdDrawIndirect(m_CurrentCmdBuf->vkCmdBuf, indirectBuffer->buffer, offset, drawCount, sizeof(DrawIndirectCommand));
 	}
 
-	void CommandListVk::drawIndexedIndirect(IBuffer* argsBuffer, uint64_t offset, uint32_t drawCount)
+	void CommandList::drawIndexedIndirect(IBuffer* argsBuffer, uint64_t offset, uint32_t drawCount)
 	{
 		assert(argsBuffer);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
@@ -964,7 +964,7 @@ namespace rhi
 		vkCmdDrawIndexedIndirect(m_CurrentCmdBuf->vkCmdBuf, indirectBuffer->buffer, offset, drawCount, sizeof(DrawIndexedIndirectCommand));
 	}
 
-	void CommandListVk::setPipeline(const ComputeState& state)
+	void CommandList::setPipeline(const ComputeState& state)
 	{
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
@@ -981,14 +981,14 @@ namespace rhi
 		m_LastComputeState = state;
 	}
 
-	void CommandListVk::dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
+	void CommandList::dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
 	{
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
 		vkCmdDispatch(m_CurrentCmdBuf->vkCmdBuf, groupCountX, groupCountY, groupCountZ);
 	}
 
-	void CommandListVk::dispatchIndirect(IBuffer* argsBuffer, uint64_t offset)
+	void CommandList::dispatchIndirect(IBuffer* argsBuffer, uint64_t offset)
 	{
 		assert(argsBuffer);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
@@ -1003,7 +1003,7 @@ namespace rhi
 		vkCmdDispatchIndirect(m_CurrentCmdBuf->vkCmdBuf, indirectBuffer->buffer, offset);
 	}
 
-	void CommandListVk::beginDebugLabel(const char* labelName, Color color)
+	void CommandList::beginDebugLabel(const char* labelName, Color color)
 	{
 		assert(labelName);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
@@ -1019,7 +1019,7 @@ namespace rhi
 		}
 	}
 
-	void CommandListVk::endDebugLabel()
+	void CommandList::endDebugLabel()
 	{
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
@@ -1029,7 +1029,7 @@ namespace rhi
 		}
 	}
 
-	Object CommandListVk::getNativeObject(NativeObjectType type) const
+	Object CommandList::getNativeObject(NativeObjectType type) const
 	{
 		if (type == NativeObjectType::VK_CommandBuffer)
 		{
@@ -1038,12 +1038,12 @@ namespace rhi
 		return nullptr;
 	}
 
-	bool CommandListVk::hasPresentTexture()
+	bool CommandList::hasPresentTexture()
 	{
 		
 	}
 
-	UploadAllocation CommandListVk::UploadAllocator::allocate(uint64_t dataSize, uint32_t alignment)
+	UploadAllocation CommandList::UploadAllocator::allocate(uint64_t dataSize, uint32_t alignment)
 	{
 		UploadAllocation allocation;
 		UploadPage pageToRetire;
@@ -1096,7 +1096,7 @@ namespace rhi
 		return allocation;
 	}
 
-	CommandListVk::UploadAllocator::UploadPage CommandListVk::UploadAllocator::createNewPage(uint64_t size)
+	CommandList::UploadAllocator::UploadPage CommandList::UploadAllocator::createNewPage(uint64_t size)
 	{
 		UploadPage newPage{};
 		BufferDesc desc{};

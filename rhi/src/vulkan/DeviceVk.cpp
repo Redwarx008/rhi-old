@@ -1,11 +1,14 @@
-#include "vk_render_device.h"
+#include "DeviceVk.h"
 
-#include "vk_swap_chain.h"
-#include "vk_command_list.h"
-#include "vk_errors.h"
-#include "vk_pipeline.h"
-#include "vk_resource.h"
-#include "vk_command_queue.h"
+#include "rhi/common/Error.h"
+
+#include "SwapChainVk.h"
+#include "CommandListVk.h"
+#include "CommandQueueVk.h"
+#include "PipelineVk.h"
+#include "ResourceVk.h"
+#include "ErrorsVk.h"
+#include "../Ref.hpp"
 
 #include <string>
 #include <sstream>
@@ -13,7 +16,8 @@
 #include <unordered_map>
 #include <algorithm>
 
-namespace rhi
+
+namespace rhi::vulkan
 {
 	static VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessageCallback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -21,7 +25,7 @@ namespace rhi
 		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
 		void* pUserData)
 	{
-		//RenderDeviceVk* rd = reinterpret_cast<RenderDeviceVk*>(pUserData);
+		//Device* rd = reinterpret_cast<Device*>(pUserData);
 
 		MessageSeverity serverity = MessageSeverity::Info;
 
@@ -82,7 +86,7 @@ namespace rhi
 		return VK_FALSE;
 	}
 
-	bool RenderDeviceVk::createInstance(bool enableDebugRuntime)
+	bool Device::createInstance(bool enableDebugRuntime)
 	{
 		std::vector<const char*> instanceExtensions = { VK_KHR_SURFACE_EXTENSION_NAME };
 
@@ -197,7 +201,7 @@ namespace rhi
 	}
 
 
-	bool RenderDeviceVk::pickPhysicalDevice()
+	bool Device::pickPhysicalDevice()
 	{
 		assert(m_Context.instace != VK_NULL_HANDLE);
 
@@ -232,7 +236,7 @@ namespace rhi
 		return true;
 	}
 
-	bool RenderDeviceVk::createDevice(const RenderDeviceCreateInfo& desc)
+	bool Device::createDevice(const DeviceCreateInfo& desc)
 	{
 		assert(m_Context.physicalDevice != VK_NULL_HANDLE);
 		// find queue family
@@ -362,291 +366,8 @@ namespace rhi
 		return true;
 	}
 
-	void RenderDeviceVk::createSurface(void* platformWindow)
-	{
-		VkResult err = VK_SUCCESS;
 
-		VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = {};
-		surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-		surfaceCreateInfo.hinstance = (HINSTANCE)GetModuleHandle(nullptr);
-		surfaceCreateInfo.hwnd = (HWND)platformWindow;
-		err = vkCreateWin32SurfaceKHR(m_Context.instace, &surfaceCreateInfo, nullptr, &m_WindowSurface);
-
-		CHECK_VK_RESULT(err, "Could not create surface!");
-
-		VkBool32 isGraphicsSupportPresent;
-		vkGetPhysicalDeviceSurfaceSupportKHR(m_Context.physicalDevice, m_Queues[static_cast<uint32_t>(QueueType::Graphics)]->queueFamilyIndex, m_WindowSurface, &isGraphicsSupportPresent);
-		if (!isGraphicsSupportPresent)
-		{
-			LOG_ERROR("Could not support present!");
-		}
-	}
-
-	void RenderDeviceVk::createSwapChainInternal()
-	{
-		// Get list of supported surface formats
-		uint32_t formatCount;
-		vkGetPhysicalDeviceSurfaceFormatsKHR(m_Context.physicalDevice, m_WindowSurface, &formatCount, NULL);
-		assert(formatCount > 0);
-
-		std::vector<VkSurfaceFormatKHR> surfaceFormats(formatCount);
-		vkGetPhysicalDeviceSurfaceFormatsKHR(m_Context.physicalDevice, m_WindowSurface, &formatCount, surfaceFormats.data());
-
-		VkSurfaceFormatKHR selectedFormat = surfaceFormats[0];
-		std::vector<VkFormat> preferredImageFormats = {
-			rhi::formatToVkFormat(m_SwapChainFormat),
-			VK_FORMAT_R8G8B8A8_SRGB,
-			VK_FORMAT_B8G8R8A8_UNORM,
-			VK_FORMAT_R8G8B8A8_UNORM,
-		};
-
-		for (auto& availableFormat : surfaceFormats)
-		{
-			for (uint32_t i = 0; i < preferredImageFormats.size(); ++i)
-			{
-				if (preferredImageFormats[i] == availableFormat.format)
-				{
-					selectedFormat = availableFormat;
-					break;
-				}
-			}
-		}
-
-		if (selectedFormat.format != rhi::formatToVkFormat(m_SwapChainFormat))
-		{
-			std::stringstream ss;
-			ss << "Requested color format is not supported and will be replaced by " << getFormatInfo(vkFormatToFormat(selectedFormat.format)).name;
-			logMsg(MessageSeverity::Warning, __FUNCTION__, __LINE__, ss.str().c_str());
-			m_SwapChainFormat = vkFormatToFormat(selectedFormat.format);
-		}
-
-		// Store the current swap chain handle so we can use it later on to ease up recreation
-		VkSwapchainKHR oldSwapchain = m_SwapChain;
-
-		// Get physical device surface properties and formats
-		VkSurfaceCapabilitiesKHR surfCaps;
-		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_Context.physicalDevice, m_WindowSurface, &surfCaps);
-
-		// Get available present modes
-		uint32_t presentModeCount;
-		vkGetPhysicalDeviceSurfacePresentModesKHR(m_Context.physicalDevice, m_WindowSurface, &presentModeCount, NULL);
-		assert(presentModeCount > 0);
-
-		std::vector<VkPresentModeKHR> presentModes(presentModeCount);
-		vkGetPhysicalDeviceSurfacePresentModesKHR(m_Context.physicalDevice, m_WindowSurface, &presentModeCount, presentModes.data());
-
-		VkExtent2D swapchainExtent = {};
-		// If width (and height) equals the special value 0xFFFFFFFF, the size of the surface will be set by the swapchain
-		if (surfCaps.currentExtent.width == (uint32_t)-1)
-		{
-			// If the surface size is undefined, the size is set to
-			// the size of the images requested.
-			swapchainExtent.width = std::clamp(m_SwapChainImageWidth, surfCaps.minImageExtent.width, surfCaps.maxImageExtent.width);
-			swapchainExtent.height = std::clamp(m_SwapChainImageHeight, surfCaps.minImageExtent.height, surfCaps.maxImageExtent.height);
-		}
-		else
-		{
-			// If the surface size is defined, the swap chain size must match
-			swapchainExtent = surfCaps.currentExtent;
-		}
-
-		// Select a present mode for the swapchain
-
-		// The VK_PRESENT_MODE_FIFO_KHR mode must always be present as per spec
-		// This mode waits for the vertical blank ("v-sync")
-		VkPresentModeKHR swapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
-
-		// If v-sync is not requested, try to find a mailbox mode
-		// It's the lowest latency non-tearing present mode available
-		if (!m_VSyncEnabled)
-		{
-			for (size_t i = 0; i < presentModeCount; i++)
-			{
-				if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR)
-				{
-					swapchainPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-					break;
-				}
-				if (presentModes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR)
-				{
-					swapchainPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
-				}
-			}
-		}
-
-		// Determine the number of images
-		uint32_t desiredNumberOfSwapchainImages = surfCaps.minImageCount + 1;
-		if ((surfCaps.maxImageCount > 0) && (desiredNumberOfSwapchainImages > surfCaps.maxImageCount))
-		{
-			desiredNumberOfSwapchainImages = surfCaps.maxImageCount;
-		}
-
-		// Find the transformation of the surface
-		VkSurfaceTransformFlagsKHR preTransform;
-		if (surfCaps.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
-		{
-			// We prefer a non-rotated transform
-			preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
-		}
-		else
-		{
-			preTransform = surfCaps.currentTransform;
-		}
-
-		// Find a supported composite alpha format (not all devices support alpha opaque)
-		VkCompositeAlphaFlagBitsKHR compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-		// Simply select the first composite alpha format available
-		std::vector<VkCompositeAlphaFlagBitsKHR> compositeAlphaFlags = {
-			VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-			VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
-			VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
-			VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
-		};
-		for (auto& compositeAlphaFlag : compositeAlphaFlags) {
-			if (surfCaps.supportedCompositeAlpha & compositeAlphaFlag) {
-				compositeAlpha = compositeAlphaFlag;
-				break;
-			};
-		}
-
-		VkSwapchainCreateInfoKHR swapchainCI = {};
-		swapchainCI.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-		swapchainCI.surface = m_WindowSurface;
-		swapchainCI.minImageCount = desiredNumberOfSwapchainImages;
-		swapchainCI.imageFormat = selectedFormat.format;
-		swapchainCI.imageColorSpace = selectedFormat.colorSpace;
-		swapchainCI.imageExtent = { swapchainExtent.width, swapchainExtent.height };
-		swapchainCI.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-		swapchainCI.preTransform = (VkSurfaceTransformFlagBitsKHR)preTransform;
-		swapchainCI.imageArrayLayers = 1;
-		swapchainCI.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		swapchainCI.queueFamilyIndexCount = 0;
-		swapchainCI.presentMode = swapchainPresentMode;
-		// Setting oldSwapChain to the saved handle of the previous swapchain aids in resource reuse and makes sure that we can still present already acquired images
-		swapchainCI.oldSwapchain = oldSwapchain;
-		// Setting clipped to VK_TRUE allows the implementation to discard rendering outside of the surface area
-		swapchainCI.clipped = VK_TRUE;
-		swapchainCI.compositeAlpha = compositeAlpha;
-
-		// Enable transfer source on swap chain images if supported
-		if (surfCaps.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) {
-			swapchainCI.imageUsage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-		}
-
-		// Enable transfer destination on swap chain images if supported
-		if (surfCaps.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT) {
-			swapchainCI.imageUsage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-		}
-
-		VkResult err = vkCreateSwapchainKHR(m_Context.device, &swapchainCI, nullptr, &m_SwapChain);
-
-		CHECK_VK_RESULT(err, "Could not create swapchain!");
-
-		// If an existing swap chain is re-created, destroy the old swap chain
-		// This also cleans up all the presentable images
-		if (oldSwapchain != VK_NULL_HANDLE)
-		{
-			m_ColorAttachments.clear();
-			vkDestroySwapchainKHR(m_Context.device, oldSwapchain, nullptr);
-			oldSwapchain = VK_NULL_HANDLE;
-		}
-
-		uint32_t imageCount;
-		vkGetSwapchainImagesKHR(m_Context.device, m_SwapChain, &imageCount, NULL);
-		std::vector<VkImage> images{ imageCount };
-		err = vkGetSwapchainImagesKHR(m_Context.device, m_SwapChain, &imageCount, images.data());
-		CHECK_VK_RESULT(err, "Failed to get swap chain images");
-
-		m_ColorAttachments.resize(imageCount);
-
-		TextureDesc colorTextureDesc;
-		colorTextureDesc.dimension = TextureDimension::Texture2D;
-		colorTextureDesc.width = swapchainExtent.width;
-		colorTextureDesc.height = swapchainExtent.height;
-		colorTextureDesc.format = m_SwapChainFormat;
-		colorTextureDesc.usage = TextureUsage::RenderTarget;
-		for (int i = 0; i < m_ColorAttachments.size(); ++i)
-		{
-			TextureVk* colorTex = createRenderTarget(colorTextureDesc, images[i]);
-			m_ColorAttachments[i] = std::unique_ptr<TextureVk>(colorTex);
-		}
-
-		if (m_DepthStencilFormat != Format::UNKNOWN)
-		{
-			TextureDesc depthStencilDesc;
-			depthStencilDesc.width = swapchainExtent.width;
-			depthStencilDesc.height = swapchainExtent.height;
-			depthStencilDesc.format = m_DepthStencilFormat;
-			depthStencilDesc.usage = TextureUsage::DepthStencil;
-			depthStencilDesc.dimension = TextureDimension::Texture2D;
-			TextureVk* depthStencilTex = static_cast<TextureVk*>(createTexture(depthStencilDesc));
-			m_DepthStencilAttachments = std::unique_ptr<TextureVk>(depthStencilTex);
-		}
-
-		// The semaphores need to be rebuilt
-		for (auto& semaphore : m_ImageAvailableSemaphores)
-		{
-			if (semaphore != VK_NULL_HANDLE)
-			{
-				vkDestroySemaphore(m_Context.device, semaphore, nullptr);
-			}
-		}
-
-		for (auto& semaphore : m_RenderCompleteSemaphores)
-		{
-			if (semaphore != VK_NULL_HANDLE)
-			{
-				vkDestroySemaphore(m_Context.device, semaphore, nullptr);
-			}
-		}
-
-		VkSemaphoreCreateInfo semaphoreCI{ VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
-		for (auto& semaphore : m_ImageAvailableSemaphores)
-		{
-			vkCreateSemaphore(m_Context.device, &semaphoreCI, nullptr, &semaphore);
-		}
-
-		for (auto& semaphore : m_RenderCompleteSemaphores)
-		{
-			vkCreateSemaphore(m_Context.device, &semaphoreCI, nullptr, &semaphore);
-		}
-	}
-
-	void RenderDeviceVk::recreateSwapChain()
-	{
-		waitIdle();
-		createSwapChainInternal();
-	}
-
-	void RenderDeviceVk::destroySwapChain()
-	{
-		for (auto& semaphore : m_ImageAvailableSemaphores)
-		{
-			vkDestroySemaphore(m_Context.device, semaphore, nullptr);
-		}
-
-		for (auto& semaphore : m_RenderCompleteSemaphores)
-		{
-			vkDestroySemaphore(m_Context.device, semaphore, nullptr);
-		}
-
-		vkDestroySwapchainKHR(m_Context.device, m_SwapChain, nullptr);
-		vkDestroySurfaceKHR(m_Context.instace, m_WindowSurface, nullptr);
-		m_ColorAttachments.clear();
-		m_DepthStencilAttachments = nullptr;
-	}
-
-	ITextureView* RenderDeviceVk::getCurrentRenderTargetView()
-	{
-		return m_ColorAttachments[m_SwapChainImageIndex]->getDefaultView();
-	}
-
-	ITextureView* RenderDeviceVk::getDepthStencilView()
-	{
-		return m_DepthStencilAttachments->getDefaultView();
-	}
-
-	void RenderDeviceVk::destroyDebugUtilsMessenger()
+	void Device::destroyDebugUtilsMessenger()
 	{
 		assert(context.instace);
 
@@ -658,9 +379,9 @@ namespace rhi
 		}
 	}
 
-	RenderDeviceVk* RenderDeviceVk::create(const RenderDeviceCreateInfo& createInfo)
+	Device* Device::create(const DeviceCreateInfo& createInfo)
 	{
-		auto renderDevice = new RenderDeviceVk();
+		auto renderDevice = new Device();
 		renderDevice->createInfo = createInfo;
 
 		g_DebugMessageCallback = createInfo.messageCallback;
@@ -730,7 +451,7 @@ namespace rhi
 		return renderDevice;
 	}
 
-	RenderDeviceVk::~RenderDeviceVk()
+	Device::~Device()
 	{
 		waitIdle();
 
@@ -747,7 +468,7 @@ namespace rhi
 		vkDestroyInstance(context.instace, nullptr);
 	}
 
-	void RenderDeviceVk::createSwapChain(const SwapChainCreateInfo& swapChainCI)
+	void Device::createSwapChain(const SwapChainCreateInfo& swapChainCI)
 	{
 		m_SwapChainFormat = swapChainCI.preferredColorFormat;
 		m_DepthStencilFormat = swapChainCI.preferredDepthStencilFormat;
@@ -759,12 +480,12 @@ namespace rhi
 		createSwapChainInternal();
 	}
 
-	void RenderDeviceVk::waitIdle()
+	void Device::waitIdle()
 	{
 		vkDeviceWaitIdle(m_Context.device);
 	}
 
-	ITexture* RenderDeviceVk::createTexture(const TextureDesc& desc)
+	ITexture* Device::createTexture(const TextureDesc& desc)
 	{
 		assert(desc.format != Format::UNKNOWN);
 		assert(desc.dimension != TextureDimension::Undefined);
@@ -804,7 +525,7 @@ namespace rhi
 		return tex;
 	}
 
-	IBuffer* RenderDeviceVk::createBuffer(const BufferDesc& desc)
+	IBuffer* Device::createBuffer(const BufferDesc& desc)
 	{
 		BufferVk* buffer = new BufferVk(context, m_Allocator);
 		buffer->m_Desc = desc;
@@ -869,7 +590,7 @@ namespace rhi
 		return buffer;
 	}
 
-	ISampler* RenderDeviceVk::createSampler(const SamplerDesc& desc)
+	ISampler* Device::createSampler(const SamplerDesc& desc)
 	{
 		SamplerVk* sampler = new SamplerVk(context);
 
@@ -899,7 +620,7 @@ namespace rhi
 		return sampler;
 	}
 
-	void* RenderDeviceVk::mapBuffer(IBuffer* buffer)
+	void* Device::mapBuffer(IBuffer* buffer)
 	{
 		assert(buffer);
 		auto buf = checked_cast<BufferVk*>(buffer);
@@ -912,12 +633,12 @@ namespace rhi
 		return buf->allocaionInfo.pMappedData;
 	}
 
-	IBuffer* RenderDeviceVk::createBuffer(const BufferDesc& desc, const void* data, size_t dataSize)
+	IBuffer* Device::createBuffer(const BufferDesc& desc, const void* data, size_t dataSize)
 	{
 		BufferVk* buffer = checked_cast<BufferVk*>(createBuffer(desc));
 		if (buffer->getDesc().access == BufferAccess::GpuOnly)
 		{
-			auto tmpCmdList = std::unique_ptr<CommandListVk>(checked_cast<CommandListVk*>(beginCommandList()));
+			auto tmpCmdList = std::unique_ptr<CommandList>(checked_cast<CommandList*>(beginCommandList()));
 			tmpCmdList->open();
 			tmpCmdList->updateBuffer(buffer, data, dataSize, 0);
 			tmpCmdList->close();
@@ -933,7 +654,7 @@ namespace rhi
 		return buffer;
 	}
 
-	IShader* RenderDeviceVk::createShader(const ShaderCreateInfo& shaderCI, const uint32_t* pCode, size_t codeSize)
+	IShader* Device::createShader(const ShaderCreateInfo& shaderCI, const uint32_t* pCode, size_t codeSize)
 	{
 		assert(pCode != nullptr && codeSize != 0);
 
@@ -960,7 +681,7 @@ namespace rhi
 		return shader;
 	}
 
-	IResourceSetLayout* RenderDeviceVk::createResourceSetLayout(const ResourceSetLayoutBinding* bindings, uint32_t bindingCount)
+	IResourceSetLayout* Device::createResourceSetLayout(const ResourceSetLayoutBinding* bindings, uint32_t bindingCount)
 	{
 		assert(bindings != nullptr && bindingCount != 0);
 		ASSERT_MSG(bindingCount <= maxPushDescriptors, "A set can have a maximum of 32 descriptors.");
@@ -1129,7 +850,7 @@ namespace rhi
 		}
 	}
 
-	IResourceSet* RenderDeviceVk::createResourceSet(const IResourceSetLayout* layout, const ResourceSetBinding* bindings, uint32_t bindingCount)
+	IResourceSet* Device::createResourceSet(const IResourceSetLayout* layout, const ResourceSetBinding* bindings, uint32_t bindingCount)
 	{
 		assert(layout);
 		const auto setLayout = checked_cast<const ResourceSetLayoutVk*>(layout);
@@ -1172,7 +893,7 @@ namespace rhi
 		return resourceSet;
 	}
 
-	void RenderDeviceVk::updateResourceSet(IResourceSet* set, const ResourceSetBinding* bindings, uint32_t bindingCount)
+	void Device::updateResourceSet(IResourceSet* set, const ResourceSetBinding* bindings, uint32_t bindingCount)
 	{
 		assert(set);
 		assert(bindings != nullptr && bindingCount != 0);
@@ -1386,7 +1107,7 @@ namespace rhi
 		return desc;
 	}
 
-	IGraphicsPipeline* RenderDeviceVk::createGraphicsPipeline(const GraphicsPipelineCreateInfo& pipelineCI)
+	IGraphicsPipeline* Device::createGraphicsPipeline(const GraphicsPipelineCreateInfo& pipelineCI)
 	{
 		auto pipeline = new GraphicsPipelineVk(m_Context);
 
@@ -1618,7 +1339,7 @@ namespace rhi
 		return pipeline;
 	}
 
-	IComputePipeline* RenderDeviceVk::createComputePipeline(const ComputePipelineCreateInfo& pipelineCI)
+	IComputePipeline* Device::createComputePipeline(const ComputePipelineCreateInfo& pipelineCI)
 	{
 		auto pipeline = new ComputePipelineVk(context);
 
@@ -1693,7 +1414,7 @@ namespace rhi
 		return pipeline;
 	}
 
-	TextureVk* RenderDeviceVk::createRenderTarget(const TextureDesc& desc, VkImage image)
+	TextureVk* Device::createRenderTarget(const TextureDesc& desc, VkImage image)
 	{
 		assert(desc.format != Format::UNKNOWN);
 		assert(desc.dimension != TextureDimension::Undefined);
@@ -1709,19 +1430,19 @@ namespace rhi
 		return tex;
 	}
 
-	void RenderDeviceVk::setSwapChainImageAvailableSeamaphore(const VkSemaphore& semaophore)
+	void Device::setSwapChainImageAvailableSeamaphore(const VkSemaphore& semaophore)
 	{
 		m_SwapChainImgAvailableSemaphore = semaophore;
 	}
 
-	void RenderDeviceVk::setRenderCompleteSemaphore(const VkSemaphore& semaphore)
+	void Device::setRenderCompleteSemaphore(const VkSemaphore& semaphore)
 	{
 		m_RenderCompleteSemaphore = semaphore;
 	}
 
-	ICommandList* RenderDeviceVk::beginCommandList(QueueType queueType)
+	ICommandList* Device::beginCommandList(QueueType queueType)
 	{
-		CommandListVk* cmdList = m_Queues[static_cast<uint32_t>(queueType)]->getValidCommandList();
+		CommandList* cmdList = m_Queues[static_cast<uint32_t>(queueType)]->getValidCommandList();
 
 		VkCommandBufferBeginInfo cmdBufferBeginInfo{};
 		cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1731,7 +1452,7 @@ namespace rhi
 		return cmdList;
 	}
 
-	uint64_t RenderDeviceVk::executeCommandLists(ICommandList** cmdLists, size_t numCmdLists)
+	uint64_t Device::executeCommandLists(ICommandList** cmdLists, size_t numCmdLists)
 	{
 		++lastSubmittedID;
 		bool hasGraphicPipeline = false;
@@ -1739,7 +1460,7 @@ namespace rhi
 		for (int i = 0; i < numCmdLists; ++i)
 		{
 			assert(cmdLists[i] != nullptr);
-			auto cmdList = checked_cast<CommandListVk*>(cmdLists[i]);
+			auto cmdList = checked_cast<CommandList*>(cmdLists[i]);
 			cmdList->updateSubmittedState();
 			hasGraphicPipeline = cmdList->hasPresentTexture();
 
@@ -1787,7 +1508,7 @@ namespace rhi
 		return lastSubmittedID;
 	}
 
-	void RenderDeviceVk::waitForExecution(uint64_t executeID, uint64_t timeout)
+	void Device::waitForExecution(uint64_t executeID, uint64_t timeout)
 	{
 		uint64_t lastFinishedID;
 		VkResult err = vkGetSemaphoreCounterValue(context.device, m_TrackingSubmittedSemaphore, &lastFinishedID);
@@ -1807,7 +1528,7 @@ namespace rhi
 		CHECK_VK_RESULT(err);
 	}
 
-	void RenderDeviceVk::recycleCommandBuffers()
+	void Device::recycleCommandBuffers()
 	{
 		std::vector<CommandBuffer*> submittedCmdBuf = std::move(m_CommandBufferInFlight);
 
@@ -1830,11 +1551,11 @@ namespace rhi
 		}
 	}
 
-	void RenderDeviceVk::executePresentCommandList(ICommandList* cmdList)
+	void Device::executePresentCommandList(ICommandList* cmdList)
 	{
 		++lastSubmittedID;
 
-		auto commandList = checked_cast<CommandListVk*>(cmdList);
+		auto commandList = checked_cast<CommandList*>(cmdList);
 		commandList->updateSubmittedState();
 		CommandBuffer* cmdBuffer = commandList->getCommandBuffer();
 		cmdBuffer->submitID = lastSubmittedID;
@@ -1883,6 +1604,6 @@ namespace rhi
 		m_RenderCompleteSemaphore = VK_NULL_HANDLE;
 	}
 
-	void RenderDeviceVk::createSwapChain(const SwapChainCreateInfo& swapChainCI)
+	void Device::createSwapChain(const SwapChainCreateInfo& swapChainCI)
 
 }

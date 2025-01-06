@@ -7,7 +7,7 @@
 
 #include <vector>
 
-namespace rhi
+namespace rhi::vulkan
 {
 	class MemoryResource
 	{

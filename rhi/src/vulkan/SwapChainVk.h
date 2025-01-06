@@ -8,26 +8,31 @@
 #include <queue>
 #include <memory>
 
-namespace rhi
+//#include "../Ref.hpp"
+
+namespace rhi::vulkan
 {
 	static constexpr uint32_t g_MaxConcurrentFrames = 2;
 
 	class TextureVk;
-	class RenderDeviceVk;
-	class CommandListVk;
-	class SwapChainVk
+	class Device;
+	class CommandList;
+	class SwapChain final : public ISwapChain
 	{
 	public:
-		~SwapChainVk();
-		SwapChainVk(RenderDeviceVk* renderDevice);
+		~SwapChain();
+		SwapChain(Device* device);
 
-
-		ITextureView* getCurrentRenderTargetView() override;
-		ITextureView* getDepthStencilView() override;
-		Format getRenderTargetFormat() override { return m_SwapChainFormat; }
-		Format getDepthStencilFormat() override { return m_DepthStencilFormat; }
+		//ITextureView* getCurrentRenderTargetView() override;
+		//ITextureView* getDepthStencilView() override;
+		//Format getRenderTargetFormat() override { return m_SwapChainFormat; }
+		//Format getDepthStencilFormat() override { return m_DepthStencilFormat; }
 
 	private:
+		void createSurface(void* platformWindow);
+		void createSwapChainInternal();
+		void destroySwapChain();
+
 		uint32_t m_SwapChainImageWidth = 0;
 		uint32_t m_SwapChainImageHeight = 0;
 
@@ -49,5 +54,7 @@ namespace rhi
 
 		std::vector<std::unique_ptr<TextureVk>> m_ColorAttachments;
 		std::unique_ptr<TextureVk> m_DepthStencilAttachments;
+
+		Ref<Device> mDevice;
 	};
 }

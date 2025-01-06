@@ -75,18 +75,45 @@ namespace rhi
 
 	void UploadAllocator::RingBuffer::Deallocate(uint64_t lastCompletedSerialID)
 	{
+		std::vector<Request>::iterator lastCompletedRequestIter;
+
 		for (auto iter = mInflightRequests.begin(); iter != mInflightRequests.end(); ++iter)
 		{
+			// serialID is incrementing within the array
 			if (iter->serialID <= lastCompletedSerialID)
 			{
 				mUsedStartOffset = iter->endOffset;
 				mUsedSize -= iter->size;
+
+				lastCompletedRequestIter = iter;
 			}
-			else
-			{
-				mInflightRequests.erase(mInflightRequests.begin(), iter - 1);
-				break;
-			}
+		}
+
+		mInflightRequests.erase(mInflightRequests.begin(), lastCompletedRequestIter);
+	}
+
+	uint64_t UploadAllocator::RingBuffer::GetSize() const
+	{
+		return mMaxBlockSize;
+	}
+
+	uint64_t UploadAllocator::RingBuffer::GetUsedSize() const
+	{
+		return mUsedSize;
+	}
+
+	bool UploadAllocator::RingBuffer::Empty() const
+	{
+		return mInflightRequests.empty();
+	}
+
+	UploadAllocator::UploadAllocator(IDevice* device) : mDevice(device) {}
+
+	UploadAllocation UploadAllocator::Allocate(uint64_t allocationSize, uint64_t serialID, uint64_t offsetAlignment)
+	{
+		if (allocationSize > cRingBufferSize)
+		{
+
 		}
 	}
 }

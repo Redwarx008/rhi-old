@@ -88,30 +88,35 @@ set(interface_rhi
 set(common_rhi
 	"include/rhi/common/Error.h"
 	"include/rhi/common/Utils.h"
-	 "include/rhi/common/RefCounted.h")
+	"include/rhi/common/RefCounted.h")
 
+set(src_common
+	"src/Ref.hpp"
+	"src/UploadAllocator.h"
+	"src/UploadAllocator.cpp")
 set(src_vk
-	"src/vk_vma.cpp"
-	"src/vk_render_device.h"
-	"src/vk_render_device.cpp"
-	"src/vk_resource.h"
-	"src/vk_resource.cpp"
-	"src/vk_swap_chain.h"
-	"src/vk_swap_chain.cpp"
-	"src/vk_rhi.cpp"
-	"src/vk_errors.h"
-	"src/vk_command_list.h"
-	"src/vk_command_list.cpp"
-	"src/vk_pipeline.h"
-	"src/vk_pipeline.cpp"  
-	"src/vk_command_queue.h"
-	"src/vk_command_queue.cpp" "src/Ref.hpp" "src/UploadAllocator.h" "src/UploadAllocator.cpp")
+	"src/vulkan/VMA.cpp"
+	"src/vulkan/DeviceVk.h"
+	"src/vulkan/DeviceVk.cpp"
+	"src/vulkan/ResourceVk.h"
+	"src/vulkan/ResourceVk.cpp"
+	"src/vulkan/SwapChainVk.h"
+	"src/vulkan/SwapChainVk.cpp"
+	"src/RHI.cpp"
+	"src/vulkan/ErrorsVk.h"
+	"src/vulkan/CommandListVk.h"
+	"src/vulkan/CommandListVk.cpp"
+	"src/vulkan/PipelineVk.h"
+	"src/vulkan/PipelineVk.cpp"  
+	"src/vulkan/CommandQueueVk.h"
+	"src/vulkan/CommandQueueVk.cpp"    )
 
 add_library(rhi "")
 
 target_sources(rhi	PRIVATE
 				${interface_rhi}
 				${common_rhi}
+				${src_common}
 				${src_vk} )
 
 target_include_directories(rhi PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> )

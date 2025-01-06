@@ -3,7 +3,7 @@
 #include <atomic>
 #include <cstdint>
 #include "rhi/common/Utils.h"
-#include "rhi/common/Object.h"
+#include "rhi/common/RefCounted.h"
 #include "rhi_struct.h"
 
 namespace rhi
@@ -42,6 +42,7 @@ namespace rhi
 	public:
 		virtual ~IBuffer() = default;
 		virtual BufferUsage GetUsage() const = 0;
+		virtual uint64_t GetSize() const = 0;
 		virtual void MapAsync(MapMode mode,
 			size_t offset,
 			size_t size,
@@ -57,7 +58,7 @@ namespace rhi
 		virtual ITexture* getTexture() const = 0;
 	};
 
-	class ITexture : public IResource
+	class ITexture : public RefCounted
 	{
 	public:
 		virtual ~ITexture() = default;
@@ -156,10 +157,10 @@ namespace rhi
 		virtual void endDebugLabel() = 0;
 	};
 
-	class IRenderDevice
+	class IDevice
 	{
 	public:
-		virtual ~IRenderDevice() = default;
+		virtual ~IDevice() = default;
 		virtual void present() = 0;
 		virtual void resizeSwapChain() = 0;
 		virtual ITextureView* getCurrentRenderTargetView() = 0;
@@ -186,5 +187,12 @@ namespace rhi
 	};
 
 
-    IRenderDevice* createRenderDevice(const RenderDeviceCreateInfo& createInfo);
+    IDevice* createDevice(const DeviceCreateInfo& createInfo);
+
+	class ISwapChain
+	{
+	public:
+		virtual ~ISwapChain() = default;
+
+	};
 }

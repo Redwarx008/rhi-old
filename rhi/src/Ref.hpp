@@ -86,7 +86,13 @@ namespace rhi
             return ptr;
         }
 
-
+        template<typename Other, typename = typename std::is_convertible<Other, T>::type>
+        Ref<Other> Cast()&&
+        {
+            Ref<Other> res;
+            res->Attach(static_cast<Other>(this->Attach()));
+            return res;
+        }
     private:
         T* mValue;
     };

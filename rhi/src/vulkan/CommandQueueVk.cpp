@@ -7,7 +7,7 @@
 
 namespace rhi
 {
-	CommandQueue::CommandQueue(RenderDeviceVk* rd, const ContextVk& context)
+	CommandQueue::CommandQueue(Device* rd, const ContextVk& context)
 		:m_RenderDevice(rd),
 		m_Context(context)
 	{
@@ -30,12 +30,12 @@ namespace rhi
 	}
 
 
-	CommandListVk* CommandQueue::getValidCommandList()
+	CommandList* CommandQueue::getValidCommandList()
 	{
-		CommandListVk* cmdList;
+		CommandList* cmdList;
 		if (m_CommandListPool.empty())
 		{
-			cmdList = new CommandListVk(m_RenderDevice);
+			cmdList = new CommandList(m_RenderDevice);
 			VkCommandPoolCreateInfo commandPoolCI{};
 			commandPoolCI.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 			commandPoolCI.queueFamilyIndex = queueFamilyIndex;
@@ -76,7 +76,7 @@ namespace rhi
 		m_SingalSemaphoreValuesForSubmit.push_back(value);
 	}
 
-	uint64_t CommandQueue::submit(CommandListVk* commandList)
+	uint64_t CommandQueue::submit(CommandList* commandList)
 	{
 		assert(commandList->queueType == type);
 

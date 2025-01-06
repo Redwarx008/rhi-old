@@ -96,10 +96,10 @@ public:
 		glfwSetKeyCallback(m_Window, &GLFW_KeyCallback);
 		glfwSetCursorPosCallback(m_Window, &GLFW_CursorPosCallback);
 
-		RenderDeviceCreateInfo rdCI{};
+		DeviceCreateInfo rdCI{};
 		rdCI.enableDebugRuntime = true;
 		
-		m_RenderDevice = std::unique_ptr<IRenderDevice>(createRenderDevice(rdCI));
+		m_RenderDevice = std::unique_ptr<IDevice>(createDevice(rdCI));
 
 		SwapChainCreateInfo spCI{};
 		spCI.initialWidth = m_windowWidth;
@@ -266,7 +266,7 @@ private:
 	GraphicsState m_GraphicState{};
 
 	std::unique_ptr<ISwapChain> m_SwapChain;
-	std::unique_ptr<IRenderDevice> m_RenderDevice;
+	std::unique_ptr<IDevice> m_RenderDevice;
 
 	static void GLFW_KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 	{

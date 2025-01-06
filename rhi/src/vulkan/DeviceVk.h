@@ -5,28 +5,37 @@
 #include <mutex>
 #endif
 #include <vk_mem_alloc.h>
-#include "vk_resource.h"
 
 #include <array>
 
-namespace rhi
+namespace rhi::vulkan
 {
 	class CommandBuffer;
 	class CommandQueue;
 
-	class RenderDeviceVk final : public IRenderDevice
+	//template <typename T>
+	//class Ref;
+
+
+	class Device final : public IDevice
 	{
 	public:
-		~RenderDeviceVk();
+		~Device();
 		// Internal methodsd
-		static RenderDeviceVk* create(const RenderDeviceCreateInfo& desc);
+		static Device* create(const DeviceCreateInfo& desc);
+
+		Ref<ITexture> createTextureImpl(const TextureDesc& desc);
+		Ref<IBuffer> createBufferImpl(const BufferDesc& desc);
+		Ref<IBuffer> createBufferImpl(const BufferDesc& desc, const void* data, size_t dataSize);
+		Ref<IShader> createShaderImpl(const ShaderCreateInfo& shaderCI, const uint32_t* pCode, size_t codeSize);
+		Ref<ISampler> createSamplerImpl(const SamplerDesc& desc);
 
 		void setSwapChainImageAvailableSeamaphore(const VkSemaphore& semaphore);
 		void setRenderCompleteSemaphore(const VkSemaphore& semaphore);
 		void recycleCommandBuffers();
 		void executePresentCommandList(ICommandList* cmdList);
 
-		RenderDeviceCreateInfo createInfo{};
+		DeviceCreateInfo createInfo{};
 		VkPhysicalDeviceProperties physicalDeviceProperties{};
 		uint32_t maxPushDescriptors = 0;
 
@@ -59,14 +68,12 @@ namespace rhi
 		void updateResourceSet(IResourceSet* set, const ResourceSetBinding* bindings, uint32_t bindingCount) override;
 
 	private:
-		RenderDeviceVk() = default;
+		Device() = default;
 		TextureVk* createRenderTarget(const TextureDesc& desc, VkImage image);
 		bool createInstance(bool enableDebugRuntime);
 		bool pickPhysicalDevice();
-		bool createDevice(const RenderDeviceCreateInfo& desc);
-		void createSurface(void* platformWindow);
-		void createSwapChainInternal();
-		void destroySwapChain();
+		bool createDevice(const DeviceCreateInfo& desc);
+
 		void destroyDebugUtilsMessenger();
 #if defined RHI_ENABLE_THREAD_RECORDING
 		std::mutex m_Mutex;
