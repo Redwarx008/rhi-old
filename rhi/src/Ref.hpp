@@ -2,7 +2,7 @@
 
 namespace rhi
 {
-
+    // Just copy from dawn :D.
     template <typename T, typename Traits>
     class RefBase {
     public:
@@ -162,4 +162,11 @@ namespace rhi
     public:
         using RefBase<T*, RefCountedTraits<T>>::RefBase;
     };
+
+    template <typename T>
+    Ref<T> AcquireRef(T* pointee) {
+        Ref<T> ref;
+        ref.Acquire(pointee);
+        return ref;
+    }
 }

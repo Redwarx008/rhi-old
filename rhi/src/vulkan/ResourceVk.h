@@ -61,7 +61,7 @@ namespace rhi::vulkan
 		explicit TextureVk(TextureDesc desc, const ContextVk& context, const VmaAllocator& allocator)
 			:m_Desc(desc),
 			m_Context(context),
-			m_Allocator(allocator) {}
+			mMemoryAllocator(allocator) {}
 
 		ITextureView* getDefaultView() const override { return m_DefaultView; }
 		ITextureView* createView(TextureViewDesc desc) override;
@@ -76,7 +76,7 @@ namespace rhi::vulkan
 		TextureVk() = default;
 		TextureDesc m_Desc;
 		const ContextVk& m_Context;
-		const VmaAllocator& m_Allocator;
+		const VmaAllocator& mMemoryAllocator;
 		ResourceState m_State = ResourceState::Undefined;
 		ITextureView* m_DefaultView = nullptr;
 	};

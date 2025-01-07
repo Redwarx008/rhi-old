@@ -379,7 +379,7 @@ namespace rhi::vulkan
 		}
 	}
 
-	Device* Device::create(const DeviceCreateInfo& createInfo)
+	Device* Device::Create(const DeviceCreateInfo& createInfo)
 	{
 		auto renderDevice = new Device();
 		renderDevice->createInfo = createInfo;
@@ -440,7 +440,7 @@ namespace rhi::vulkan
 		allocatorCreateInfo.physicalDevice = renderDevice->context.physicalDevice;
 		allocatorCreateInfo.device = renderDevice->context.device;
 		allocatorCreateInfo.instance = renderDevice->context.instace;
-		VkResult err = vmaCreateAllocator(&allocatorCreateInfo, &renderDevice->m_Allocator);
+		VkResult err = vmaCreateAllocator(&allocatorCreateInfo, &renderDevice->mMemoryAllocator);
 
 		CHECK_VK_RESULT(err);
 		if (err != VK_SUCCESS)
@@ -456,7 +456,7 @@ namespace rhi::vulkan
 		waitIdle();
 
 		destroyDebugUtilsMessenger();
-		vmaDestroyAllocator(m_Allocator);
+		vmaDestroyAllocator(mMemoryAllocator);
 
 		for (auto commandBuffer : m_AllCommandBuffers)
 		{
@@ -468,6 +468,10 @@ namespace rhi::vulkan
 		vkDestroyInstance(context.instace, nullptr);
 	}
 
+	VmaAllocator Device::GetMemoryAllocator() const
+	{
+		return mMemoryAllocator;
+	}
 
 	void Device::waitIdle()
 	{
@@ -478,7 +482,7 @@ namespace rhi::vulkan
 	{
 		assert(desc.format != Format::UNKNOWN);
 		assert(desc.dimension != TextureDimension::Undefined);
-		TextureVk* tex = new TextureVk(context, m_Allocator);
+		TextureVk* tex = new TextureVk(context, mMemoryAllocator);
 		tex->format = formatToVkFormat(desc.format);
 		tex->m_Desc = desc;
 
@@ -501,7 +505,7 @@ namespace rhi::vulkan
 		allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
 		allocCreateInfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 		allocCreateInfo.priority = 1.0f;
-		VkResult err = vmaCreateImage(m_Allocator, &imageCreateInfo, &allocCreateInfo, &tex->image, &tex->allocation, nullptr);
+		VkResult err = vmaCreateImage(mMemoryAllocator, &imageCreateInfo, &allocCreateInfo, &tex->image, &tex->allocation, nullptr);
 		CHECK_VK_RESULT(err, "Could not to create vkImage");
 		if (err != VK_SUCCESS)
 		{
@@ -516,7 +520,7 @@ namespace rhi::vulkan
 
 	IBuffer* Device::createBuffer(const BufferDesc& desc)
 	{
-		Buffer* buffer = new Buffer(context, m_Allocator);
+		Buffer* buffer = new Buffer(context, mMemoryAllocator);
 		buffer->m_Desc = desc;
 		VkBufferCreateInfo bufferCI{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 		bufferCI.size = desc.size;
@@ -567,7 +571,7 @@ namespace rhi::vulkan
 			break;
 		}
 
-		VkResult err = vmaCreateBuffer(m_Allocator, &bufferCI, &allocCI, &buffer->buffer, &buffer->allocation, &buffer->allocaionInfo);
+		VkResult err = vmaCreateBuffer(mMemoryAllocator, &bufferCI, &allocCI, &buffer->buffer, &buffer->allocation, &buffer->allocaionInfo);
 		CHECK_VK_RESULT(err, "Could not create buffer");
 
 		if (err != VK_SUCCESS)
@@ -637,7 +641,7 @@ namespace rhi::vulkan
 		}
 		else
 		{
-			vmaCopyMemoryToAllocation(m_Allocator, data, buffer->allocation, 0, dataSize);
+			vmaCopyMemoryToAllocation(mMemoryAllocator, data, buffer->allocation, 0, dataSize);
 		}
 
 		return buffer;
@@ -1408,7 +1412,7 @@ namespace rhi::vulkan
 		assert(desc.format != Format::UNKNOWN);
 		assert(desc.dimension != TextureDimension::Undefined);
 
-		auto tex = new TextureVk{ context, m_Allocator };
+		auto tex = new TextureVk{ context, mMemoryAllocator };
 		tex->image = image;
 		tex->managed = false;
 		tex->format = formatToVkFormat(desc.format);

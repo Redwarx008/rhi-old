@@ -72,8 +72,6 @@ namespace rhi
 		VK_Micromap
 	};
 
-
-
 	// buffer
 	enum class MapMode : uint8_t
 	{
@@ -90,7 +88,7 @@ namespace rhi
 		SizeOutOfRange,
 	};
 
-	using BufferMapCallback = void (*)(BufferMapAsyncStatus status, void* userdata);
+	using BufferMapCallback = void (*)(BufferMapAsyncStatus status, void* mappedAdress, void* userdata);
 
 	//enum class BufferAccess : uint8_t
 	//{

@@ -40,14 +40,11 @@ namespace rhi
 	class IBuffer : public RefCounted
 	{
 	public:
-		virtual ~IBuffer() = default;
 		virtual BufferUsage GetUsage() const = 0;
 		virtual uint64_t GetSize() const = 0;
-		virtual void MapAsync(MapMode mode,
-			size_t offset,
-			size_t size,
-			BufferMapCallback callback,
-			void* userData) = 0;
+		virtual void MapAsync(MapMode mode, BufferMapCallback callback, void* userData) = 0;
+	protected:
+		virtual ~IBuffer() = default;
 	};
 
 	class ITextureView : public IObject

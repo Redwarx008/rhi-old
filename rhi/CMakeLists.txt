@@ -109,7 +109,7 @@ set(src_vk
 	"src/vulkan/PipelineVk.h"
 	"src/vulkan/PipelineVk.cpp"  
 	"src/vulkan/CommandQueueVk.h"
-	"src/vulkan/CommandQueueVk.cpp"     "src/vulkan/BufferVk.h")
+	"src/vulkan/CommandQueueVk.cpp"     "src/vulkan/BufferVk.h" "src/vulkan/BufferVk.cpp")
 
 add_library(rhi "")
 

@@ -438,7 +438,7 @@ namespace rhi::vulkan
 	{
 		if (managed && image)
 		{
-			vmaDestroyImage(m_Allocator, image, allocation);
+			vmaDestroyImage(mMemoryAllocator, image, allocation);
 		}
 
 		if (m_DefaultView)
@@ -515,7 +515,7 @@ namespace rhi::vulkan
 	Buffer::~Buffer()
 	{
 		assert(buffer != VK_NULL_HANDLE);
-		vmaDestroyBuffer(m_Allocator, buffer, allocation);
+		vmaDestroyBuffer(mMemoryAllocator, buffer, allocation);
 	}
 
 	Object Buffer::getNativeObject(NativeObjectType type) const

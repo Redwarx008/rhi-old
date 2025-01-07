@@ -24,13 +24,9 @@ namespace rhi::vulkan
 	public:
 		~Device();
 		// Internal methodsd
-		static Ref<Device> create(const DeviceCreateInfo& desc);
+		static Ref<Device> Create(const DeviceCreateInfo& desc);
 
-		Ref<ITexture> createTextureInternal(const TextureDesc& desc);
-		Ref<IBuffer> createBufferInternal(const BufferDesc& desc);
-		Ref<IBuffer> createBufferInternal(const BufferDesc& desc, const void* data, size_t dataSize);
-		Ref<IShader> createShaderInternal(const ShaderCreateInfo& shaderCI, const uint32_t* pCode, size_t codeSize);
-		Ref<ISampler> createSamplerInternal(const SamplerDesc& desc);
+		VmaAllocator GetMemoryAllocator() const;
 
 		void setSwapChainImageAvailableSeamaphore(const VkSemaphore& semaphore);
 		void setRenderCompleteSemaphore(const VkSemaphore& semaphore);
@@ -81,7 +77,7 @@ namespace rhi::vulkan
 #endif
 
 		ContextVk m_Context = {};
-		VmaAllocator m_Allocator = VK_NULL_HANDLE;
+		VmaAllocator mMemoryAllocator = VK_NULL_HANDLE;
 
 		VkDebugUtilsMessengerEXT m_DebugUtilsMessenger = VK_NULL_HANDLE;
 

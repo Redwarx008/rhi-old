@@ -125,29 +125,5 @@ namespace rhi::vulkan
 		PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT = nullptr;
 		PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabelEXT = nullptr;
 
-		class UploadAllocator
-		{
-			static constexpr uint64_t c_SizeAlignment = 4096; // GPU page size
-			static constexpr uint64_t c_DefaultPageSize = 64 * 1024;
-		public:
-			explicit UploadAllocator(Device* renderDevice)
-				:m_RenderDevice(renderDevice)
-			{}
-			UploadAllocation allocate(uint64_t dataSize, uint32_t alignment);
-		private:
-			struct UploadPage
-			{
-				Buffer* buffer = nullptr;
-				uint64_t offset = 0;
-				bool inUse = false;
-				bool valid() { return buffer != nullptr; }
-			};
-
-			UploadPage createNewPage(uint64_t size);
-
-			Device* m_RenderDevice;
-			UploadPage m_CurrentPage;
-			std::vector<UploadPage> m_UploadPagePool;
-		} m_UploadAllocator;
 	};
 }
