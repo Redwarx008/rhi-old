@@ -137,7 +137,7 @@ namespace rhi
 		virtual void setPipeline(const IGraphicsPipeline* pipeline) = 0;
 		virtual void setPipeline(const IComputePipeline* pipeline) = 0;
 
-		virtual void setPushConstant(ShaderType stages, const void* data) = 0;
+		virtual void setPushConstant(ShaderStage stages, const void* data) = 0;
 		virtual void setVertexBuffer(uint32_t startSlot, uint32_t bufferCount, IBuffer* buffers, uint64_t* offsets) = 0;
 		virtual void setIndexBuffer(IBuffer* indexBuffer, uint64_t offset, Format indexFormat) = 0;
 		virtual void setScissors(const Rect* scissors, uint32_t scissorCount) = 0;

@@ -554,7 +554,7 @@ namespace rhi
 		vkCmdCopyBufferToImage(m_CurrentCmdBuf->vkCmdBuf, stageBuffer->buffer, tex->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferCopyRegion);
 	}
 
-	void CommandList::transitionResourceSet(IResourceSet* set, ShaderType dstVisibleStages)
+	void CommandList::transitionResourceSet(IResourceSet* set, ShaderStage dstVisibleStages)
 	{
 		assert(set);
 		auto resourceSet = checked_cast<ResourceSetVk*>(set);
@@ -611,15 +611,15 @@ namespace rhi
 		{
 		case rhi::CommandList::PipelineType::Graphics:
 		{
-			constexpr ShaderType graphicsStages = ShaderType::Vertex | ShaderType::Fragment |
-				ShaderType::Geometry | ShaderType::TessellationControl | ShaderType::TessellationEvaluation;
+			constexpr ShaderStage graphicsStages = ShaderStage::Vertex | ShaderStage::Fragment |
+				ShaderStage::Geometry | ShaderStage::TessellationControl | ShaderStage::TessellationEvaluation;
 			transitionResourceSet(resourceSet, graphicsStages);
 			break;
 		}
 		case rhi::CommandList::PipelineType::Compute:
-			transitionResourceSet(resourceSet, ShaderType::Compute);
+			transitionResourceSet(resourceSet, ShaderStage::Compute);
 			break;
-		case rhi::CommandList::PipelineType::Unknown:
+		case rhi::CommandList::PipelineType::None:
 		default:
 			LOG_ERROR("Must set pipelineState before transition resourceSet.");
 			break;
@@ -641,8 +641,8 @@ namespace rhi
 		{
 			if (m_EnableAutoTransition)
 			{
-				constexpr ShaderType graphicsStages = ShaderType::Vertex | ShaderType::Fragment |
-					ShaderType::Geometry | ShaderType::TessellationControl | ShaderType::TessellationEvaluation;
+				constexpr ShaderStage graphicsStages = ShaderStage::Vertex | ShaderStage::Fragment |
+					ShaderStage::Geometry | ShaderStage::TessellationControl | ShaderStage::TessellationEvaluation;
 				transitionResourceSet(resourceSet, graphicsStages);
 			}
 
@@ -656,7 +656,7 @@ namespace rhi
 		{
 			if (m_EnableAutoTransition)
 			{
-				transitionResourceSet(resourceSet, ShaderType::Compute);
+				transitionResourceSet(resourceSet, ShaderStage::Compute);
 			}
 
 			auto pipeline = checked_cast<ComputePipelineVk*>(m_LastComputeState.pipeline);
@@ -843,7 +843,7 @@ namespace rhi
 		vkCmdSetScissor(m_CurrentCmdBuf->vkCmdBuf, 0, scissorCount, rects);
 	}
 
-	void CommandList::setPushConstant(ShaderType stages, const void* data)
+	void CommandList::setPushConstant(ShaderStage stages, const void* data)
 	{
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 		ASSERT_MSG(m_LastGraphicsState.pipeline || m_LastComputeState.pipeline, "Must set PipelineState before push constant.");

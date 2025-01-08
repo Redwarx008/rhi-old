@@ -110,11 +110,11 @@ public:
 		m_SwapChain = std::unique_ptr<ISwapChain>(createSwapChain(spCI));
 		// create shader 
 		ShaderCreateInfo shaderCI{};
-		shaderCI.type = ShaderType::Vertex;
+		shaderCI.type = ShaderStage::Vertex;
 		shaderCI.entry = "main";
 		std::vector<uint32_t> buffer = loadShaderData("triangle.vert.spv");
 		auto vertexShader = m_RenderDevice->createShader(shaderCI, buffer.data(), buffer.size() * sizeof(uint32_t));
-		shaderCI.type = ShaderType::Fragment;
+		shaderCI.type = ShaderStage::Fragment;
 		buffer = loadShaderData("triangle.frag.spv");
 		auto fragmentShader = m_RenderDevice->createShader(shaderCI, buffer.data(), buffer.size() * sizeof(uint32_t));
 
@@ -142,7 +142,7 @@ public:
 		};
 
 		// create resouce set and layout
-		ResourceSetLayoutBinding layoutBindings[] = { ResourceSetLayoutBinding::UniformBuffer(ShaderType::Vertex, 0) };
+		ResourceSetLayoutBinding layoutBindings[] = { ResourceSetLayoutBinding::UniformBuffer(ShaderStage::Vertex, 0) };
 
 		ResourceSetBinding bindings[] = { ResourceSetBinding::UniformBuffer(m_UniformBuffer, 0) };
 

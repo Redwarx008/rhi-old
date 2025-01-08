@@ -48,7 +48,7 @@ namespace rhi::vulkan
 
 		void commitShaderResources(IResourceSet* resourceSet, uint32_t dstSet = 0) override;
 
-		void setPushConstant(ShaderType stages, const void* data) override;
+		void setPushConstant(ShaderStage stages, const void* data) override;
 		void setScissors(const Rect* scissors, uint32_t scissorCount) override;
 		void setPipeline(const GraphicsState& state) override;
 
@@ -77,7 +77,7 @@ namespace rhi::vulkan
 		uint32_t allocateIndex = 0;
 	private:
 		CommandList() = delete;
-		void transitionResourceSet(IResourceSet* set, ShaderType dstVisibleStages);
+		void transitionResourceSet(IResourceSet* set, ShaderStage dstVisibleStages);
 		void setBufferBarrier(Buffer* buffer, VkPipelineStageFlags2 dstStage, VkAccessFlags2 dstAccess);
 		void endRendering();
 
@@ -87,11 +87,11 @@ namespace rhi::vulkan
 
 		enum class PipelineType
 		{
-			Unknown,
+			None,
 			Graphics,
 			Compute,
 		};
-		PipelineType m_LastPipelineType = PipelineType::Unknown;
+		PipelineType m_LastPipelineType = PipelineType::None;
 		GraphicsState m_LastGraphicsState;
 		ComputeState m_LastComputeState;
 

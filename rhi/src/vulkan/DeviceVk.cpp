@@ -858,7 +858,7 @@ namespace rhi::vulkan
 		{
 			const ResourceSetBinding& binding = bindings[i];
 
-			ShaderType bindingVisibleStages;
+			ShaderStage bindingVisibleStages;
 
 			auto checkValidBinding = [&](const ResourceSetLayoutBinding& layoutBinding)->bool
 				{
@@ -952,7 +952,7 @@ namespace rhi::vulkan
 			}
 			else
 			{
-				ShaderType bindingVisibleStages;
+				ShaderStage bindingVisibleStages;
 
 				auto checkValidBinding = [&](const ResourceSetLayoutBinding& layoutBinding)->bool
 					{
@@ -1114,7 +1114,7 @@ namespace rhi::vulkan
 
 		std::vector<VkPushConstantRange> pushConstantRanges(pipelineCI.pushConstantCount);
 		pipeline->pushConstantInfos.resize(pushConstantRanges.size());
-		ShaderType usedStages = ShaderType::Unknown;
+		ShaderStage usedStages = ShaderStage::None;
 		uint32_t offset = 0;
 		for (uint32_t i = 0; i < pushConstantRanges.size(); ++i)
 		{
@@ -1346,7 +1346,7 @@ namespace rhi::vulkan
 
 		std::vector<VkPushConstantRange> pushConstantRanges(pipelineCI.pushConstantCount);
 		pipeline->pushConstantInfos.resize(pushConstantRanges.size());
-		ShaderType usedStages = ShaderType::Unknown;
+		ShaderStage usedStages = ShaderStage::None;
 		uint32_t offset = 0;
 		for (uint32_t i = 0; i < pushConstantRanges.size(); ++i)
 		{

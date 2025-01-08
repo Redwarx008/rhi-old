@@ -82,7 +82,7 @@ namespace rhi
 	enum class BufferMapAsyncStatus
 	{
 		Success,
-		Unknown,
+		None,
 		DeviceLost,
 		OffsetOutOfRange,
 		SizeOutOfRange,
@@ -217,7 +217,7 @@ namespace rhi
 
 	enum class TextureUsage : uint8_t
 	{
-		Unknown = 0 << 0,
+		None = 0 << 0,
 		ShaderResource = 1 << 0,
 		UnorderedAccess = 1 << 1,
 		RenderTarget = 1 << 2,
@@ -280,7 +280,7 @@ namespace rhi
 		uint32_t mipLevels = 1;
 		Format format = Format::UNKNOWN;
 
-		TextureUsage usage = TextureUsage::Unknown;
+		TextureUsage usage = TextureUsage::None;
 
 		constexpr TextureDesc& setWidth(uint32_t value) { width = value; return *this; }
 		constexpr TextureDesc& setHeight(uint32_t value) { height = value; return *this; }
@@ -340,7 +340,7 @@ namespace rhi
 
 	enum class ShaderResourceType : uint8_t
 	{
-		Unknown,
+		None,
 		SampledTexture, //SRV
 		StorageTexture, //URV
 		UniformBuffer, // CBV
@@ -351,9 +351,9 @@ namespace rhi
 		TextureWithSampler // Combined texture and sampler
 	};
 
-	enum class ShaderType : uint32_t
+	enum class ShaderStage : uint32_t
 	{
-		Unknown = (0 << 0),
+		None = (0 << 0),
 		Vertex = (1 << 0),
 		TessellationControl = (1 << 1),
 		TessellationEvaluation = (1 << 2),
@@ -365,21 +365,7 @@ namespace rhi
 		AllGraphics = Vertex | TessellationControl | TessellationEvaluation | Geometry | Fragment,
 		All = Vertex | TessellationControl | TessellationEvaluation | Geometry | Fragment | Task | Mesh | Compute
 	};
-	inline constexpr ShaderType operator | (ShaderType a, ShaderType b) {
-		return ShaderType(uint32_t(a) | uint32_t(b));
-	} inline constexpr ShaderType operator |= (ShaderType a, ShaderType b) {
-		return ShaderType(a = a | b);
-	} inline constexpr ShaderType operator & (ShaderType a, ShaderType b) {
-		return ShaderType(uint32_t(a) & uint32_t(b));
-	} inline constexpr ShaderType operator ~ (ShaderType a) {
-		return ShaderType(~uint32_t(a));
-	} inline constexpr bool operator !(ShaderType a) {
-		return uint32_t(a) == 0;
-	} inline constexpr bool operator ==(ShaderType a, uint32_t b) {
-		return uint32_t(a) == b;
-	} inline constexpr bool operator !=(ShaderType a, uint32_t b) {
-		return uint32_t(a) != b;
-	};
+	ENUM_CLASS_FLAG_OPERATORS(ShaderStage);
 
 	struct SpecializationConstant
 	{
@@ -415,7 +401,7 @@ namespace rhi
 
 	struct ShaderCreateInfo
 	{
-		ShaderType type = ShaderType::Unknown;
+		ShaderStage type = ShaderStage::None;
 		const char* entry = nullptr;
 		const SpecializationConstant* specializationConstants;
 		uint32_t specializationConstantCount = 0;
@@ -423,7 +409,7 @@ namespace rhi
 
 	struct ShaderDesc
 	{
-		ShaderType type = ShaderType::Unknown;
+		ShaderStage type = ShaderStage::None;
 		const char* entry = nullptr;
 	};
 
@@ -431,12 +417,12 @@ namespace rhi
 
 	struct ResourceSetLayoutBinding
 	{
-		ShaderType visibleStages = ShaderType::Unknown;
-		ShaderResourceType type = ShaderResourceType::Unknown;
+		ShaderStage visibleStages = ShaderStage::None;
+		ShaderResourceType type = ShaderResourceType::None;
 		uint32_t bindingSlot = 0;
 		uint32_t arrayElementCount = 1;
 
-		static ResourceSetLayoutBinding SampledTexture(ShaderType stage, uint32_t bindingSlot, uint32_t arrayElementCount = 1)
+		static ResourceSetLayoutBinding SampledTexture(ShaderStage stage, uint32_t bindingSlot, uint32_t arrayElementCount = 1)
 		{
 			ResourceSetLayoutBinding binding{};
 			binding.visibleStages = stage;
@@ -445,7 +431,7 @@ namespace rhi
 			binding.arrayElementCount = arrayElementCount;
 			return binding;
 		}
-		static ResourceSetLayoutBinding StorageTexture(ShaderType stage, uint32_t bindingSlot, uint32_t arrayElementCount = 1)
+		static ResourceSetLayoutBinding StorageTexture(ShaderStage stage, uint32_t bindingSlot, uint32_t arrayElementCount = 1)
 		{
 			ResourceSetLayoutBinding binding{};
 			binding.visibleStages = stage;
@@ -454,7 +440,7 @@ namespace rhi
 			binding.arrayElementCount = arrayElementCount;
 			return binding;
 		}
-		static ResourceSetLayoutBinding UniformBuffer(ShaderType stage, uint32_t bindingSlot, uint32_t arrayElementCount = 1)
+		static ResourceSetLayoutBinding UniformBuffer(ShaderStage stage, uint32_t bindingSlot, uint32_t arrayElementCount = 1)
 		{
 			ResourceSetLayoutBinding binding{};
 			binding.visibleStages = stage;
@@ -463,7 +449,7 @@ namespace rhi
 			binding.arrayElementCount = arrayElementCount;
 			return binding;
 		}
-		static ResourceSetLayoutBinding StorageBuffer(ShaderType stage, uint32_t bindingSlot, uint32_t arrayElementCount = 1)
+		static ResourceSetLayoutBinding StorageBuffer(ShaderStage stage, uint32_t bindingSlot, uint32_t arrayElementCount = 1)
 		{
 			ResourceSetLayoutBinding binding{};
 			binding.visibleStages = stage;
@@ -472,7 +458,7 @@ namespace rhi
 			binding.arrayElementCount = arrayElementCount;
 			return binding;
 		}
-		static ResourceSetLayoutBinding Sampler(ShaderType stage, uint32_t bindingSlot, uint32_t arrayElementCount = 1)
+		static ResourceSetLayoutBinding Sampler(ShaderStage stage, uint32_t bindingSlot, uint32_t arrayElementCount = 1)
 		{
 			ResourceSetLayoutBinding binding{};
 			binding.visibleStages = stage;
@@ -481,7 +467,7 @@ namespace rhi
 			binding.arrayElementCount = arrayElementCount;
 			return binding;
 		}
-		static ResourceSetLayoutBinding TextureWithSampler(ShaderType stage, uint32_t bindingSlot, uint32_t arrayElementCount = 1)
+		static ResourceSetLayoutBinding TextureWithSampler(ShaderStage stage, uint32_t bindingSlot, uint32_t arrayElementCount = 1)
 		{
 			ResourceSetLayoutBinding binding{};
 			binding.visibleStages = stage;
@@ -494,7 +480,7 @@ namespace rhi
 
 	struct ResourceSetBinding
 	{
-		ShaderResourceType type = ShaderResourceType::Unknown;
+		ShaderResourceType type = ShaderResourceType::None;
 
 		uint32_t bindingSlot = 0;
 		uint32_t arrayElementIndex = 0;
@@ -847,7 +833,7 @@ namespace rhi
 
 	struct PushConstantDesc
 	{
-		ShaderType stage = ShaderType::Unknown;
+		ShaderStage stage = ShaderStage::None;
 		uint32_t size = 0;
 	};
 

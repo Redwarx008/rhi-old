@@ -692,20 +692,20 @@ namespace rhi::vulkan
 		vkDestroyShaderModule(m_Context.device, shaderModule, nullptr);
 	}
 
-	VkShaderStageFlagBits shaderTypeToVkShaderStageFlagBits(ShaderType shaderType)
+	VkShaderStageFlagBits shaderTypeToVkShaderStageFlagBits(ShaderStage shaderType)
 	{
-		assert(shaderType != ShaderType::Unknown);
+		assert(shaderType != ShaderStage::None);
 
 		uint32_t result = 0;
 		// clang-format off
-		if ((shaderType & ShaderType::Compute) != 0)                result |= uint32_t(VK_SHADER_STAGE_COMPUTE_BIT);
-		if ((shaderType & ShaderType::Vertex) != 0)                 result |= uint32_t(VK_SHADER_STAGE_VERTEX_BIT);
-		if ((shaderType & ShaderType::TessellationControl) != 0)    result |= uint32_t(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-		if ((shaderType & ShaderType::TessellationEvaluation) != 0) result |= uint32_t(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
-		if ((shaderType & ShaderType::Geometry) != 0)               result |= uint32_t(VK_SHADER_STAGE_GEOMETRY_BIT);
-		if ((shaderType & ShaderType::Fragment) != 0)               result |= uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT);
-		if ((shaderType & ShaderType::Mesh) != 0)                   result |= uint32_t(VK_SHADER_STAGE_MESH_BIT_EXT);
-		if ((shaderType & ShaderType::Task) != 0)                   result |= uint32_t(VK_SHADER_STAGE_TASK_BIT_EXT);
+		if ((shaderType & ShaderStage::Compute) != 0)                result |= uint32_t(VK_SHADER_STAGE_COMPUTE_BIT);
+		if ((shaderType & ShaderStage::Vertex) != 0)                 result |= uint32_t(VK_SHADER_STAGE_VERTEX_BIT);
+		if ((shaderType & ShaderStage::TessellationControl) != 0)    result |= uint32_t(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+		if ((shaderType & ShaderStage::TessellationEvaluation) != 0) result |= uint32_t(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		if ((shaderType & ShaderStage::Geometry) != 0)               result |= uint32_t(VK_SHADER_STAGE_GEOMETRY_BIT);
+		if ((shaderType & ShaderStage::Fragment) != 0)               result |= uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT);
+		if ((shaderType & ShaderStage::Mesh) != 0)                   result |= uint32_t(VK_SHADER_STAGE_MESH_BIT_EXT);
+		if ((shaderType & ShaderStage::Task) != 0)                   result |= uint32_t(VK_SHADER_STAGE_TASK_BIT_EXT);
 		// clang-format on
 		return VkShaderStageFlagBits(result);
 	}
@@ -739,7 +739,7 @@ namespace rhi::vulkan
 		case ShaderResourceType::StorageTexelBuffer:
 			descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
 			break;
-		case ShaderResourceType::Unknown:
+		case ShaderResourceType::None:
 		default:
 			assert(!"unknown ShaderResourceType");
 			break;

@@ -192,7 +192,7 @@ namespace rhi::vulkan
 	VkImageLayout resourceStateToVkImageLayout(ResourceState state);
 
 
-	VkShaderStageFlagBits shaderTypeToVkShaderStageFlagBits(ShaderType type);
+	VkShaderStageFlagBits shaderTypeToVkShaderStageFlagBits(ShaderStage type);
 
 	VkDescriptorType shaderResourceTypeToVkDescriptorType(ShaderResourceType type);
 
