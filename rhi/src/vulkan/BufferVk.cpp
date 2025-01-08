@@ -2,6 +2,8 @@
 
 #include "DeviceVk.h"
 #include "ErrorsVk.h"
+#include "CommandListVk.h"
+#include "../Utils.h"
 
 namespace rhi::vulkan
 {
@@ -103,5 +105,63 @@ namespace rhi::vulkan
 		return mSize;
 	}
 
+	VkBuffer Buffer::GetHandle() const
+	{
+		return mHandle;
+	}
 
+	void Buffer::MarkUsedInPendingCommandList()
+	{
+		uint64_t serialID = mDevice->GetQueue(QueueType::Graphics);
+		assert(serialID >= mLastUsageSerialID);
+		mLastUsageSerialID = serialID;
+	}
+
+	void Buffer::TransitionUsageNow(CommandList* commandList, BufferUsage usage, ShaderStage stage)
+	{
+		TrackUsageAndGetResourceBarrier(commandList, usage, stage);
+		commandList->EmitBufferBarriers(mDevice.Get());
+	}
+
+	void Buffer::TrackUsageAndGetResourceBarrier(CommandList* commandList, BufferUsage usage, ShaderStage shaderStage)
+	{
+		constexpr BufferUsage shaderBufferUsages =
+			BufferUsage::Uniform | BufferUsage::Storage;
+		constexpr BufferUsage mappableBufferUsages =
+			BufferUsage::MapRead | BufferUsage::MapWrite;
+		constexpr BufferUsage readOnlyBufferUsages =
+			BufferUsage::MapRead | BufferUsage::CopySrc | BufferUsage::Index |
+			BufferUsage::Vertex | BufferUsage::Uniform;
+
+		if (shaderStage == ShaderStage::None)
+		{
+			// If the buffer isn't used in any shader stages, ignore shader usages. Eg. ignore a uniform
+			// buffer that isn't actually read in any shader.
+			usage &= ~shaderBufferUsages;
+		}
+
+		const bool isMapUsage = (usage & mappableBufferUsages) != 0;
+		if (!isMapUsage)
+		{
+			// Request non CPU usage, so assume the buffer will be used in pending commands.
+			MarkUsedInPendingCommandList();
+		}
+
+		if (!isMapUsage && (mInternalUsage & mappableBufferUsages) != 0)
+		{
+			// The buffer is mappable and the requested usage is not map usage, we need to add it
+			// into mappableBuffersForEagerTransition, so the buffer can be transitioned back to map
+			// usages at end of the submit.
+			commandList->GetMappableBuffersForTransition().insert(this);
+		}
+
+		const bool readOnly = IsSubset(usage, readOnlyBufferUsages);
+		VkAccessFlags srcAccess = 0;
+		VkPipelineStageFlags srcStage = 0;
+
+		if (readOnly)
+		{
+
+		}
+	}
 }

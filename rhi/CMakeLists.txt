@@ -86,8 +86,8 @@ set(interface_rhi
 	"include/rhi/rhi.h"
 	"include/rhi/rhi_struct.h")
 set(common_rhi
-	"include/rhi/common/Error.h"
-	"include/rhi/common/Utils.h"
+	
+	"src/Utils.h"
 	"include/rhi/common/RefCounted.h")
 
 set(src_common
@@ -109,7 +109,7 @@ set(src_vk
 	"src/vulkan/PipelineVk.h"
 	"src/vulkan/PipelineVk.cpp"  
 	"src/vulkan/CommandQueueVk.h"
-	"src/vulkan/CommandQueueVk.cpp"     "src/vulkan/BufferVk.h" "src/vulkan/BufferVk.cpp")
+	"src/vulkan/CommandQueueVk.cpp"     "src/vulkan/BufferVk.h" "src/vulkan/BufferVk.cpp" )
 
 add_library(rhi "")
 

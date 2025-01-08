@@ -25,6 +25,7 @@ namespace rhi::vulkan
 	private:
 		explicit Buffer(Device* device, const BufferDesc& desc);
 		bool Initialize();
+		void MarkUsedInPendingCommandList();
 		const BufferUsage mUsage = BufferUsage::None;
 		const BufferUsage mInternalUsage = BufferUsage::None;
 		const uint64_t mSize = 0;
@@ -34,6 +35,7 @@ namespace rhi::vulkan
 		VmaAllocation mAllocation;
 		VkBuffer mHandle = VK_NULL_HANDLE;
 		QueueType mLastUsedQueue = QueueType::Graphics;
+		uint64_t mLastUsageSerialID = 0;
 
 		// Track which usage was the last to write to the buffer.
 		BufferUsage mLastWriteUsage = BufferUsage::None;

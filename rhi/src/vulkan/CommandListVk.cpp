@@ -1,20 +1,19 @@
-#include "vk_command_list.h"
+#include "CommandListVk.h"
 
-#include "vk_pipeline.h"
-#include "vk_render_device.h"
-#include "vk_resource.h"
-#include "vk_errors.h"
+#include "PipelineVk.h"
+#include "DeviceVk.h"
+#include "BufferVk.h"
+#include "ErrorsVk.h"
 #include "rhi/common/Error.h"
 
 #include <array>
 #include <optional>
 
-namespace rhi
+namespace rhi::vulkan
 {
 	CommandList::CommandList(Device* renderDevice, const ContextVk& context)
 		:m_RenderDevice(renderDevice),
 		m_Context(context),
-		m_UploadAllocator(renderDevice)
 	{
 		// to do: delete it, if vulkan 1.4 is released.
 		vkCmdPushDescriptorSetKHR = (PFN_vkCmdPushDescriptorSetKHR)vkGetDeviceProcAddr(m_Context.device, "vkCmdPushDescriptorSetKHR");
@@ -31,11 +30,16 @@ namespace rhi
 
 	}
 
+	std::unordered_set<Ref<Buffer>>& CommandList::GetMappableBuffersForTransition()
+	{
+		return mMappableBuffersForTransition;
+	}
+
 	void CommandList::close()
 	{
 		endRendering();
 		commitBarriers();
-		vkEndCommandBuffer(commandBuffer);
+		vkEndCommandBuffer(mCommandBuffer);
 	}
 
 	void CommandList::waitCommandList(ICommandList* other)

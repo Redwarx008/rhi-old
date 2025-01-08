@@ -1,10 +1,7 @@
 #pragma once
-#include <cstdint>
-#include <iostream>
-#include <sstream>
 
-#include "rhi/rhi.h"
-#include "rhi/common/Utils.h"
+#include "rhi/rhi_struct.h"
+
 namespace rhi
 {
 
@@ -63,7 +60,7 @@ namespace rhi
 
 
 #ifdef NDEBUG
-	#define ASSERT_MSG(EXPR, ...) ((void)0)
+#define ASSERT_MSG(EXPR, ...) ((void)0)
 #else
 #define ASSERT_MSG(EXPR, ...)   \
 			do					\

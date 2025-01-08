@@ -458,10 +458,10 @@ namespace rhi::vulkan
 		destroyDebugUtilsMessenger();
 		vmaDestroyAllocator(mMemoryAllocator);
 
-		for (auto commandBuffer : m_AllCommandBuffers)
+		for (auto mCommandBuffer : m_AllCommandBuffers)
 		{
-			delete commandBuffer;
-			commandBuffer = nullptr;
+			delete mCommandBuffer;
+			mCommandBuffer = nullptr;
 		}
 
 		vkDestroyDevice(context.device, nullptr);
@@ -1440,7 +1440,7 @@ namespace rhi::vulkan
 		VkCommandBufferBeginInfo cmdBufferBeginInfo{};
 		cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		vkBeginCommandBuffer(cmdList->commandBuffer, &cmdBufferBeginInfo);
+		vkBeginCommandBuffer(cmdList->mCommandBuffer, &cmdBufferBeginInfo);
 
 		return cmdList;
 	}
@@ -1462,7 +1462,7 @@ namespace rhi::vulkan
 			m_CommandBufferInFlight.push_back(cmdBuffer);
 
 			m_CmdBufSubmitInfos[i].sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-			m_CmdBufSubmitInfos[i].commandBuffer = cmdBuffer->vkCmdBuf;
+			m_CmdBufSubmitInfos[i].mCommandBuffer = cmdBuffer->vkCmdBuf;
 		}
 
 		VkSubmitInfo2 submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO_2 };
@@ -1529,17 +1529,17 @@ namespace rhi::vulkan
 		VkResult err = vkGetSemaphoreCounterValue(context.device, m_TrackingSubmittedSemaphore, &lastFinishedID);
 		CHECK_VK_RESULT(err);
 
-		for (auto commandBuffer : submittedCmdBuf)
+		for (auto mCommandBuffer : submittedCmdBuf)
 		{
-			if (commandBuffer->submitID <= lastFinishedID)
+			if (mCommandBuffer->submitID <= lastFinishedID)
 			{
-				commandBuffer->referencedInternalStageBuffer.clear();
-				commandBuffer->submitID = 0;
-				m_CommandBufferPool.push_back(commandBuffer);
+				mCommandBuffer->referencedInternalStageBuffer.clear();
+				mCommandBuffer->submitID = 0;
+				m_CommandBufferPool.push_back(mCommandBuffer);
 			}
 			else
 			{
-				m_CommandBufferInFlight.push_back(commandBuffer);
+				m_CommandBufferInFlight.push_back(mCommandBuffer);
 			}
 		}
 	}
@@ -1556,7 +1556,7 @@ namespace rhi::vulkan
 
 		VkCommandBufferSubmitInfo cmdBufferSubmitInfo{};
 		cmdBufferSubmitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-		cmdBufferSubmitInfo.commandBuffer = cmdBuffer->vkCmdBuf;
+		cmdBufferSubmitInfo.mCommandBuffer = cmdBuffer->vkCmdBuf;
 
 
 		VkSubmitInfo2 submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO_2 };

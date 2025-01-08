@@ -1,11 +1,11 @@
-#include "vk_command_queue.h"
+#include "CommandListVk.h"
 
 #include "rhi/common/Error.h"
-#include "vk_errors.h"
-#include "vk_command_list.h"
-#include "vk_render_device.h"
+#include "ErrorsVk.h"
+#include "CommandListVk.h"
+#include "DeviceVk.h"
 
-namespace rhi
+namespace rhi::vulkan
 {
 	CommandQueue::CommandQueue(Device* rd, const ContextVk& context)
 		:m_RenderDevice(rd),
@@ -41,16 +41,16 @@ namespace rhi
 			commandPoolCI.queueFamilyIndex = queueFamilyIndex;
 			commandPoolCI.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-			VkResult err = vkCreateCommandPool(m_Context.device, &commandPoolCI, nullptr, &cmdList->commandPool);
+			VkResult err = vkCreateCommandPool(m_Context.device, &commandPoolCI, nullptr, &cmdList->mCommandPool);
 			CHECK_VK_RESULT(err, "Could not create vkCommandPool");
 
 			VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
 			commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-			commandBufferAllocateInfo.commandPool = cmdList->commandPool;
+			commandBufferAllocateInfo.mCommandPool = cmdList->mCommandPool;
 			commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 			commandBufferAllocateInfo.commandBufferCount = 1;
 
-			err = vkAllocateCommandBuffers(m_Context.device, &commandBufferAllocateInfo, &cmdList->commandBuffer);
+			err = vkAllocateCommandBuffers(m_Context.device, &commandBufferAllocateInfo, &cmdList->mCommandBuffer);
 			CHECK_VK_RESULT(err, "Could not create vkCommandBuffer");
 			cmdList->queueType = type;
 		}
@@ -87,10 +87,15 @@ namespace rhi
 			m_ActiveCommandLists[i]->submitID = lastSubmitID;
 
 			m_VkCmdBufSubmitInfos[i].sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-			m_VkCmdBufSubmitInfos[i].commandBuffer = m_ActiveCommandLists[i]->commandBuffer;
+			m_VkCmdBufSubmitInfos[i].mCommandBuffer = m_ActiveCommandLists[i]->mCommandBuffer;
 		}
 
 		VkSubmitInfo2 submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO_2 };
 
+	}
+
+	uint64_t GetPendingCommandSerialID() const
+	{
+		return mLastSubmittedSerial.load(std::memory_order_acquire) + 1);
 	}
 }

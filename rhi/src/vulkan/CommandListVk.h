@@ -1,10 +1,11 @@
 #pragma once
 
 #include "rhi/rhi.h"
+#include "../Ref.hpp"
 #include <vulkan/vulkan.h>
 #include <vector>
 #include <memory>
-
+#include <unordered_set>
 
 namespace rhi::vulkan
 {
@@ -27,16 +28,8 @@ namespace rhi::vulkan
 	public:
 		~CommandList();
 		explicit CommandList(Device* renderDevice, const ContextVk& context);
-		void open() override;
-		void close() override;
 
-		void waitCommandList(ICommandList* other) override;
-
-		void setResourceAutoTransition(bool enable) override;
-		void commitBarriers() override;
-		void transitionTextureState(ITexture* texture, ResourceState newState) override;
-		void transitionBufferState(IBuffer* buffer, ResourceState newState) override;
-		void transitionResourceSet(IResourceSet* resourceSet) override;
+		void waitQueue(QueueType queue) override;
 
 		void clearColorTexture(ITextureView* textureView, const ClearColor& color) override;
 		void clearDepthStencil(ITextureView* textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal) override;
@@ -70,51 +63,44 @@ namespace rhi::vulkan
 		void updateSubmittedState();
 		bool hasPresentTexture() const;
 
-		VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
-		VkCommandPool commandPool = VK_NULL_HANDLE;
+
 		QueueType queueType = QueueType::Graphics;
 		uint64_t submitID = 0;
 		uint32_t allocateIndex = 0;
+
+		std::unordered_set<Ref<Buffer>>& GetMappableBuffersForTransition();
+		void AddBufferBarrier(VkAccessFlags srcAccessMask,
+			VkAccessFlags dstAccessMask,
+			VkPipelineStageFlags srcStages,
+			VkPipelineStageFlags dstStages);
+		void EmitBufferBarriers(Device* device);
 	private:
 		CommandList() = delete;
 		void transitionResourceSet(IResourceSet* set, ShaderStage dstVisibleStages);
 		void setBufferBarrier(Buffer* buffer, VkPipelineStageFlags2 dstStage, VkAccessFlags2 dstAccess);
 		void endRendering();
 
-		bool m_EnableAutoTransition = true;
+		VkCommandBuffer mCommandBuffer = VK_NULL_HANDLE;
+		VkCommandPool mCommandPool = VK_NULL_HANDLE;
+
 		bool m_RenderingStarted = false;
 		QueueType m_QueueType;
 
-		enum class PipelineType
-		{
-			None,
-			Graphics,
-			Compute,
-		};
-		PipelineType m_LastPipelineType = PipelineType::None;
-		GraphicsState m_LastGraphicsState;
-		ComputeState m_LastComputeState;
-
-		struct TextureBarrier
-		{
-			TextureVk* texture = nullptr;
-			ResourceState stateBefore = ResourceState::Undefined;
-			ResourceState stateAfter = ResourceState::Undefined;
+		struct BufferBarrier {
+			VkAccessFlags bufferSrcAccessMask = 0;
+			VkAccessFlags bufferDstAccessMask = 0;
+			VkPipelineStageFlags bufferSrcStages = 0;
+			VkPipelineStageFlags bufferDstStages = 0;
 		};
 
-		struct BufferBarrier
-		{
-			Buffer* buffer = nullptr;
-			ResourceState stateBefore = ResourceState::Undefined;
-			ResourceState stateAfter = ResourceState::Undefined;
-		};
-		std::vector<TextureBarrier> m_TextureBarriers;
-		std::vector<BufferBarrier> m_BufferBarriers;
+		BufferBarrier mVertexBufferBarrier;
+		BufferBarrier mNonVertexBufferBarrier;
 
 		std::vector<VkImageMemoryBarrier2> m_VkImageMemoryBarriers;
 		std::vector<VkBufferMemoryBarrier2> m_VkBufferMemoryBarriers;
 
 		std::vector<ICommandList*> m_WaitCommandLists;
+		std::unordered_set<Ref<Buffer>> mMappableBuffersForTransition;
 
 		Device* m_RenderDevice;
 		const ContextVk& m_Context;

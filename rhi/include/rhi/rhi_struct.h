@@ -1,9 +1,18 @@
 #pragma once
 #include <cstdint>
-#include "rhi/common/Utils.h"
 
 namespace rhi
 {
+#define ENUM_CLASS_FLAG_OPERATORS(T) \
+    inline constexpr T operator | (T a, T b) { return T(uint32_t(a) | uint32_t(b)); } \
+	inline constexpr T operator |= (T a, T b) {return T(a = a | b);}\
+    inline constexpr T operator & (T a, T b) { return T(uint32_t(a) & uint32_t(b)); } /* NOLINT(bugprone-macro-parentheses) */ \
+	inline constexpr T operator &= (T a, T b) {return T(a = a & b);}\
+    inline constexpr T operator ~ (T a) { return T(~uint32_t(a)); } /* NOLINT(bugprone-macro-parentheses) */ \
+    inline constexpr bool operator !(T a) { return uint32_t(a) == 0; } \
+    inline constexpr bool operator ==(T a, uint32_t b) { return uint32_t(a) == b; } \
+    inline constexpr bool operator !=(T a, uint32_t b) { return uint32_t(a) != b; }	\
+
 	class IObject;
 	class IResource;
 	class IBuffer;
@@ -111,7 +120,9 @@ namespace rhi
 		Uniform = 1 << 3,
 		Storage = 1 << 4,
 		MapRead = 1 << 5,
-		MapWrite = 1 << 6
+		MapWrite = 1 << 6,
+		CopySrc = 1 << 7,
+		CopyDest = 1 << 8
 	};
 	ENUM_CLASS_FLAG_OPERATORS(BufferUsage);
 

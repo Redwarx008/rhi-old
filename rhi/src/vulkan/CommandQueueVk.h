@@ -28,6 +28,8 @@ namespace rhi::vulkan
 		VkQueue queue = VK_NULL_HANDLE;
 		uint64_t lastSubmitID = 0;
 		uint32_t queueFamilyIndex = UINT32_MAX;
+
+		uint64_t GetPendingCommandSerialID() const;
 	private:
 		Device* m_RenderDevice;
 		const ContextVk& m_Context;
@@ -41,7 +43,8 @@ namespace rhi::vulkan
 		std::vector<VkSemaphore> m_SingalSemaphoreForSubmit;
 		std::vector<uint64_t> m_SingalSemaphoreValuesForSubmit;
 
-
+		std::atomic<uint64_t> mCompletedSerialID = 0;
+		std::atomic<uint64_t> mLastSubmittedSerial = 0;
 	};
 }
 

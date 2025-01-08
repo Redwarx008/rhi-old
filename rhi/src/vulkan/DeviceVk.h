@@ -27,7 +27,7 @@ namespace rhi::vulkan
 		static Ref<Device> Create(const DeviceCreateInfo& desc);
 
 		VmaAllocator GetMemoryAllocator() const;
-
+		CommandQueue GetQueue(QueueType queueType) const;
 		void setSwapChainImageAvailableSeamaphore(const VkSemaphore& semaphore);
 		void setRenderCompleteSemaphore(const VkSemaphore& semaphore);
 		void recycleCommandBuffers();

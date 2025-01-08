@@ -2,7 +2,6 @@
 
 #include <atomic>
 #include <cstdint>
-#include "rhi/common/Utils.h"
 #include "rhi/common/RefCounted.h"
 #include "rhi_struct.h"
 
@@ -28,15 +27,6 @@ namespace rhi
 		};
 	};
 
-
-
-	class IObject
-	{
-	public:
-		virtual ~IObject() = default;
-		virtual Object getNativeObject(NativeObjectType type) const = 0;
-	};
-
 	class IBuffer : public RefCounted
 	{
 	public:
@@ -47,7 +37,7 @@ namespace rhi
 		virtual ~IBuffer() = default;
 	};
 
-	class ITextureView : public IObject
+	class ITextureView : public RefCounted
 	{
 	public:
 		virtual ~ITextureView() = default;
@@ -88,7 +78,7 @@ namespace rhi
 		virtual void bindTextureWithSampler(ITextureView* textrueView, ISampler* sampler, uint32_t slot, uint32_t set = 0) = 0;
 	};
 
-	class IPipeline : public IObject
+	class IPipeline : public RefCounted
 	{
 	public:
 		virtual ~IPipeline() = default;
@@ -109,7 +99,7 @@ namespace rhi
 		~IComputePipeline() = default;
 	};
 
-	class ICommandList : public IObject
+	class ICommandList 
 	{
 	public:
 		virtual ~ICommandList() = default;
@@ -117,12 +107,7 @@ namespace rhi
 		virtual void open() = 0;
 		virtual void close() = 0;
 
-		virtual void waitCommandList(ICommandList* other) = 0;
-
-		virtual void setResourceAutoTransition(bool enable) = 0;
-		virtual void commitBarriers() = 0;
-		virtual void transitionTextureState(ITexture* texture, ResourceState newState) = 0;
-		virtual void transitionBufferState(IBuffer* buffer, ResourceState newState) = 0;
+		virtual void waitQueue(QueueType queue) = 0;
 
 		virtual void clearColorTexture(ITextureView* textureView, const ClearColor& color) = 0;
 		virtual void clearDepthStencil(ITextureView* textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal) = 0;
@@ -154,7 +139,7 @@ namespace rhi
 		virtual void endDebugLabel() = 0;
 	};
 
-	class IDevice
+	class IDevice : public RefCounted
 	{
 	public:
 		virtual ~IDevice() = default;
