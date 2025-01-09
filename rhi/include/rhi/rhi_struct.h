@@ -44,7 +44,7 @@ namespace rhi
 		RenderTarget = 1 << 7,
 		DepthWrite = 1 << 8,
 		DepthRead = 1 << 9,
-		CopyDest = 1 << 10,
+		CopyDst = 1 << 10,
 		CopySource = 1 << 11,
 		ResolveDest = 1 << 12,
 		ResolveSource = 1 << 13,
@@ -122,7 +122,7 @@ namespace rhi
 		MapRead = 1 << 5,
 		MapWrite = 1 << 6,
 		CopySrc = 1 << 7,
-		CopyDest = 1 << 8
+		CopyDst = 1 << 8
 	};
 	ENUM_CLASS_FLAG_OPERATORS(BufferUsage);
 

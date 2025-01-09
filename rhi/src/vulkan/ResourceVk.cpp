@@ -554,7 +554,7 @@ namespace rhi::vulkan
 		case ResourceState::DepthRead:			return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
 		case ResourceState::DepthWrite:			return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 		case ResourceState::CopySource:			return VK_ACCESS_2_TRANSFER_READ_BIT;
-		case ResourceState::CopyDest:		    return VK_ACCESS_2_TRANSFER_WRITE_BIT;
+		case ResourceState::CopyDst:		    return VK_ACCESS_2_TRANSFER_WRITE_BIT;
 		case ResourceState::ResolveSource:      return VK_ACCESS_2_TRANSFER_READ_BIT;
 		case ResourceState::ResolveDest:	    return VK_ACCESS_2_TRANSFER_WRITE_BIT;
 		case ResourceState::InitialRenderTarget:return VK_ACCESS_2_NONE;
@@ -586,7 +586,7 @@ namespace rhi::vulkan
 		case ResourceState::DepthRead:			return VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
 		case ResourceState::DepthWrite:			return VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
 		case ResourceState::CopySource:			return VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-		case ResourceState::CopyDest:		    return VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+		case ResourceState::CopyDst:		    return VK_PIPELINE_STAGE_2_TRANSFER_BIT;
 		case ResourceState::ResolveSource:      return VK_PIPELINE_STAGE_2_TRANSFER_BIT;
 		case ResourceState::ResolveDest:	    return VK_PIPELINE_STAGE_2_TRANSFER_BIT;
 		case ResourceState::InitialRenderTarget:return VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -653,7 +653,7 @@ namespace rhi::vulkan
 		case ResourceState::DepthRead:			return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 		case ResourceState::DepthWrite:			return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 		case ResourceState::CopySource:			return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-		case ResourceState::CopyDest:		    return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		case ResourceState::CopyDst:		    return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 		case ResourceState::ResolveSource:      return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 		case ResourceState::ResolveDest:	    return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 		case ResourceState::InitialRenderTarget:return VK_IMAGE_LAYOUT_UNDEFINED;

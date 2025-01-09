@@ -521,8 +521,8 @@ namespace rhi::vulkan
 
 	IBuffer* Device::createBuffer(const BufferDesc& desc)
 	{
-		ASSERT_MSG(HasFlag(BufferUsage::MapWrite, desc.usage) && !HasFlag(desc.usage, BufferUsage::CopyDest),
-			"The BufferUsage::MapWrite flag is not compatible with BufferUsage::CopyDest.");
+		ASSERT_MSG(HasFlag(BufferUsage::MapWrite, desc.usage) && !HasFlag(desc.usage, BufferUsage::CopyDst),
+			"The BufferUsage::MapWrite flag is not compatible with BufferUsage::CopyDst.");
 		ASSERT_MSG(HasFlag(BufferUsage::MapRead, desc.usage) && !HasFlag(desc.usage, BufferUsage::CopySrc),
 			"The BufferUsage::MapRead flag is not compatible with BufferUsage::CopySrc.");
 

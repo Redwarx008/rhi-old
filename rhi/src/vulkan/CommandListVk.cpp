@@ -72,7 +72,7 @@ namespace rhi::vulkan
 			ResourceState::RenderTarget |
 			ResourceState::DepthWrite |
 			ResourceState::UnorderedAccess |
-			ResourceState::CopyDest |
+			ResourceState::CopyDst |
 			ResourceState::ResolveDest;
 		return (state & writeAccessStates) == state;
 	}
@@ -325,7 +325,7 @@ namespace rhi::vulkan
 		{
 			if (m_EnableAutoTransition)
 			{
-				transitionTextureState(tv->getTexture(), ResourceState::CopyDest);
+				transitionTextureState(tv->getTexture(), ResourceState::CopyDst);
 			}
 			commitBarriers();
 
@@ -376,7 +376,7 @@ namespace rhi::vulkan
 		{
 			if (m_EnableAutoTransition)
 			{
-				transitionTextureState(texture, ResourceState::CopyDest);
+				transitionTextureState(texture, ResourceState::CopyDst);
 			}
 			commitBarriers();
 
@@ -411,7 +411,7 @@ namespace rhi::vulkan
 
 		if (m_EnableAutoTransition)
 		{
-			transitionBufferState(buffer, ResourceState::CopyDest);
+			transitionBufferState(buffer, ResourceState::CopyDst);
 		}
 		commitBarriers();
 
@@ -432,7 +432,7 @@ namespace rhi::vulkan
 		if (m_EnableAutoTransition)
 		{
 			transitionBufferState(srcBuffer, ResourceState::CopySource);
-			transitionBufferState(dstBuffer, ResourceState::CopyDest);
+			transitionBufferState(dstBuffer, ResourceState::CopyDst);
 		}
 		commitBarriers();
 
@@ -464,7 +464,7 @@ namespace rhi::vulkan
 
 			if (m_EnableAutoTransition)
 			{
-				transitionBufferState(buf, ResourceState::CopyDest);
+				transitionBufferState(buf, ResourceState::CopyDst);
 			}
 			commitBarriers();
 
@@ -551,7 +551,7 @@ namespace rhi::vulkan
 
 		if (m_EnableAutoTransition)
 		{
-			transitionTextureState(tex, ResourceState::CopyDest);
+			transitionTextureState(tex, ResourceState::CopyDst);
 		}
 		commitBarriers();
 

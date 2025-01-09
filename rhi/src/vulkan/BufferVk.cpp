@@ -38,7 +38,7 @@ namespace rhi::vulkan
 		{
 			flags |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 		}
-		if (HasFlag(usage, BufferUsage::CopyDest))
+		if (HasFlag(usage, BufferUsage::CopyDst))
 		{
 			flags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 		}
@@ -56,11 +56,12 @@ namespace rhi::vulkan
 		{
 			flags |= VK_ACCESS_2_HOST_WRITE_BIT;
 		}
-		if (usage & (wgpu::BufferUsage::CopySrc | kInternalCopySrcBuffer)) {
-			flags |= VK_ACCESS_TRANSFER_READ_BIT;
+		if (HasFlag(usage, BufferUsage::CopySrc)) {
+			flags |= VK_ACCESS_2_TRANSFER_READ_BIT;
 		}
-		if (usage & wgpu::BufferUsage::CopyDst) {
-			flags |= VK_ACCESS_TRANSFER_WRITE_BIT;
+		if (HasFlag(usage, BufferUsage::CopyDst) 
+		{
+			flags |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
 		}
 		if (usage & wgpu::BufferUsage::Index) {
 			flags |= VK_ACCESS_INDEX_READ_BIT;
@@ -111,7 +112,7 @@ namespace rhi::vulkan
 		// Vulkan requires the size to be non-zero.
 		uint64_t toAllocatedSize = (std::max)(mSize, 4ull);
 
-		ASSERT_MSG(toAllocatedSize & (3ull << 62ull),
+		ASSERT_MSG(!(toAllocatedSize & (3ull << 62ull)),
 			"Buffer size is HUGE and could cause overflows");
 
 		VkBufferCreateInfo bufferCI{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
@@ -132,8 +133,12 @@ namespace rhi::vulkan
 		}
 		else
 		{
-			// device visible memory
-			allocCI.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+			// No CPU access
+			constexpr uint64_t bigSize = 4ull * 1024ull * 1024ull;
+			if (toAllocatedSize >= bigSize)
+			{
+				allocCI.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+			}
 		}
 
 		VkResult err = vmaCreateBuffer(mDevice->GetMemoryAllocator(), &bufferCI, &allocCI, &mHandle, &mAllocation, &mAllocationInfo);
