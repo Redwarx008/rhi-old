@@ -12,6 +12,13 @@ namespace rhi::vulkan
 	class CommandList;
 	class Buffer final : public IBuffer
 	{
+		BufferUsage shaderBufferUsages =
+			BufferUsage::Uniform | BufferUsage::Storage;
+		BufferUsage mappableBufferUsages =
+			BufferUsage::MapRead | BufferUsage::MapWrite;
+		BufferUsage readOnlyBufferUsages =
+			BufferUsage::MapRead | BufferUsage::CopySrc | BufferUsage::Index |
+			BufferUsage::Vertex | BufferUsage::Uniform;
 	public:
 		static Ref<Buffer> Create(Device* device, const BufferDesc& desc);
 		~Buffer();
@@ -21,6 +28,7 @@ namespace rhi::vulkan
 
 		BufferUsage GetUsage() const override;
 		uint64_t GetSize() const override;
+		uint64_t GetAllocatedSize() const;
 		void MapAsync(MapMode mode, BufferMapCallback callback, void* userData) override;
 	private:
 		explicit Buffer(Device* device, const BufferDesc& desc);

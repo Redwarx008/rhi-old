@@ -1,20 +1,21 @@
 #include "DeviceVk.h"
-
-#include "rhi/common/Error.h"
-
 #include "SwapChainVk.h"
 #include "CommandListVk.h"
 #include "CommandQueueVk.h"
 #include "PipelineVk.h"
-#include "ResourceVk.h"
+#include "BufferVk.h"
 #include "ErrorsVk.h"
 #include "../Ref.hpp"
+#include "../Error.h"
+#include "../Utils.h"
 
 #include <string>
 #include <sstream>
 #include <memory>
 #include <unordered_map>
 #include <algorithm>
+#include <iostream>
+
 
 
 namespace rhi::vulkan
@@ -520,67 +521,13 @@ namespace rhi::vulkan
 
 	IBuffer* Device::createBuffer(const BufferDesc& desc)
 	{
-		Buffer* buffer = new Buffer(context, mMemoryAllocator);
-		buffer->m_Desc = desc;
-		VkBufferCreateInfo bufferCI{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-		bufferCI.size = desc.size;
-		bufferCI.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		ASSERT_MSG(HasFlag(BufferUsage::MapWrite, desc.usage) && !HasFlag(desc.usage, BufferUsage::CopyDest),
+			"The BufferUsage::MapWrite flag is not compatible with BufferUsage::CopyDest.");
+		ASSERT_MSG(HasFlag(BufferUsage::MapRead, desc.usage) && !HasFlag(desc.usage, BufferUsage::CopySrc),
+			"The BufferUsage::MapRead flag is not compatible with BufferUsage::CopySrc.");
 
-		if ((desc.usage & BufferUsage::VertexBuffer) != 0)
-		{
-			bufferCI.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-		}
-		if ((desc.usage & BufferUsage::IndexBuffer) != 0)
-		{
-			bufferCI.usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-		}
-		if ((desc.usage & BufferUsage::IndirectBuffer) != 0)
-		{
-			bufferCI.usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
-		}
-		if ((desc.usage & BufferUsage::UniformBuffer) != 0)
-		{
-			bufferCI.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-		}
-		if ((desc.usage & BufferUsage::StorageBuffer) != 0)
-		{
-			bufferCI.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-		}
-		if ((desc.usage & BufferUsage::UniformTexelBuffer) != 0)
-		{
-			bufferCI.usage |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
-		}
-		if ((desc.usage & BufferUsage::StorageTexelBuffer) != 0)
-		{
-			bufferCI.usage |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
-		}
-
-		VmaAllocationCreateInfo allocCI{};
-		allocCI.usage = VMA_MEMORY_USAGE_AUTO;
-		allocCI.priority = 1.0f;
-		switch (desc.access)
-		{
-		case BufferAccess::GpuOnly:
-			allocCI.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
-			break;
-		case BufferAccess::CpuWrite:
-			allocCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
-			break;
-		case BufferAccess::CpuRead:
-			allocCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
-			break;
-		}
-
-		VkResult err = vmaCreateBuffer(mMemoryAllocator, &bufferCI, &allocCI, &buffer->buffer, &buffer->allocation, &buffer->allocaionInfo);
-		CHECK_VK_RESULT(err, "Could not create buffer");
-
-		if (err != VK_SUCCESS)
-		{
-			delete buffer;
-			buffer = nullptr;
-		}
-
-		return buffer;
+		Ref<Buffer> buffer = Buffer::Create(this, desc);
+		return buffer.Detach();
 	}
 
 	ISampler* Device::createSampler(const SamplerDesc& desc)

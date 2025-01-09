@@ -88,4 +88,12 @@ namespace rhi
 		T2 bitsAlsoInSet = subset & set;
 		return bitsAlsoInSet == subset;
 	}
+
+	template <typename T1,
+		typename T2,
+		typename Enable = typename std::enable_if<sizeof(T1) == sizeof(T2)>::type>
+	constexpr bool HasFlag(T1 set, T2 flag)
+	{
+		return (flag & set) != 0;
+	}
 }

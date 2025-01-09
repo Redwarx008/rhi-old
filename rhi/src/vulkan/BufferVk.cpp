@@ -4,6 +4,9 @@
 #include "ErrorsVk.h"
 #include "CommandListVk.h"
 #include "../Utils.h"
+#include "../Error.h"
+
+#include <algorithm>
 
 namespace rhi::vulkan
 {
@@ -11,26 +14,76 @@ namespace rhi::vulkan
 	{
 		VkBufferUsageFlags flags = 0;
 
-		if ((usage & BufferUsage::Vertex) != 0)
+		if (HasFlag(usage, BufferUsage::Vertex))
 		{
 			flags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 		}
-		if ((usage & BufferUsage::Index) != 0)
+		if (HasFlag(usage, BufferUsage::Index))
 		{
 			flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 		}
-		if ((usage & BufferUsage::Indirect) != 0)
+		if (HasFlag(usage, BufferUsage::Indirect))
 		{
 			flags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
 		}
-		if ((usage & BufferUsage::Uniform) != 0)
+		if (HasFlag(usage, BufferUsage::Uniform))
 		{
 			flags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 		}
-		if ((usage & BufferUsage::Storage) != 0)
+		if (HasFlag(usage, BufferUsage::Storage))
 		{
 			flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 		}
+		if (HasFlag(usage, BufferUsage::CopySrc))
+		{
+			flags |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		}
+		if (HasFlag(usage, BufferUsage::CopyDest))
+		{
+			flags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		}
+		return flags;
+	}
+
+	VkAccessFlagBits2 AccessFlagsConvert(BufferUsage usage) {
+		VkAccessFlagBits2 flags = 0;
+
+		if (HasFlag(usage, BufferUsage::MapRead)) 
+		{
+			flags |= VK_ACCESS_2_HOST_READ_BIT;
+		}
+		if (HasFlag(usage, BufferUsage::MapWrite))
+		{
+			flags |= VK_ACCESS_2_HOST_WRITE_BIT;
+		}
+		if (usage & (wgpu::BufferUsage::CopySrc | kInternalCopySrcBuffer)) {
+			flags |= VK_ACCESS_TRANSFER_READ_BIT;
+		}
+		if (usage & wgpu::BufferUsage::CopyDst) {
+			flags |= VK_ACCESS_TRANSFER_WRITE_BIT;
+		}
+		if (usage & wgpu::BufferUsage::Index) {
+			flags |= VK_ACCESS_INDEX_READ_BIT;
+		}
+		if (usage & wgpu::BufferUsage::Vertex) {
+			flags |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+		}
+		if (usage & wgpu::BufferUsage::Uniform) {
+			flags |= VK_ACCESS_UNIFORM_READ_BIT;
+		}
+		if (usage & (wgpu::BufferUsage::Storage | kInternalStorageBuffer)) {
+			flags |= VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+		}
+		if (usage & kReadOnlyStorageBuffer) {
+			flags |= VK_ACCESS_SHADER_READ_BIT;
+		}
+		if (usage & kIndirectBufferForBackendResourceTracking) {
+			flags |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+		}
+		if (usage & wgpu::BufferUsage::QueryResolve) {
+			flags |= VK_ACCESS_TRANSFER_WRITE_BIT;
+		}
+
 		return flags;
 	}
 
@@ -55,13 +108,16 @@ namespace rhi::vulkan
 
 	bool Buffer::Initialize()
 	{
-		VkBufferCreateInfo bufferCI{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-		bufferCI.size = mSize;
-		bufferCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		// Vulkan requires the size to be non-zero.
+		uint64_t toAllocatedSize = (std::max)(mSize, 4ull);
 
-		bufferCI.usage = BufferUsageConvert(mInternalUsage) | 
-			VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
-			VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		ASSERT_MSG(toAllocatedSize & (3ull << 62ull),
+			"Buffer size is HUGE and could cause overflows");
+
+		VkBufferCreateInfo bufferCI{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+		bufferCI.size = toAllocatedSize;
+		bufferCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		bufferCI.usage = BufferUsageConvert(mInternalUsage);
 
 		VmaAllocationCreateInfo allocCI{};
 		allocCI.usage = VMA_MEMORY_USAGE_AUTO;
@@ -105,6 +161,11 @@ namespace rhi::vulkan
 		return mSize;
 	}
 
+	uint64_t Buffer::GetAllocatedSize() const
+	{
+		return mAllocationInfo.size;
+	}
+
 	VkBuffer Buffer::GetHandle() const
 	{
 		return mHandle;
@@ -125,13 +186,7 @@ namespace rhi::vulkan
 
 	void Buffer::TrackUsageAndGetResourceBarrier(CommandList* commandList, BufferUsage usage, ShaderStage shaderStage)
 	{
-		constexpr BufferUsage shaderBufferUsages =
-			BufferUsage::Uniform | BufferUsage::Storage;
-		constexpr BufferUsage mappableBufferUsages =
-			BufferUsage::MapRead | BufferUsage::MapWrite;
-		constexpr BufferUsage readOnlyBufferUsages =
-			BufferUsage::MapRead | BufferUsage::CopySrc | BufferUsage::Index |
-			BufferUsage::Vertex | BufferUsage::Uniform;
+
 
 		if (shaderStage == ShaderStage::None)
 		{
@@ -161,7 +216,32 @@ namespace rhi::vulkan
 
 		if (readOnly)
 		{
+			if ((shaderStage & ShaderStage::Fragment) != 0 &&
+				(mReadShaderStages & ShaderStage::Vertex) != 0)
+			{
+				// There is an implicit vertex->fragment dependency, so if the vertex stage has already
+				// waited, there is no need for fragment to wait. Add the fragment usage so we know to
+				// wait for it before the next write.
+				mReadShaderStages |= ShaderStage::Fragment;
+			}
 
+			if (IsSubset(usage, mReadUsage) && IsSubset(shaderStage, mReadShaderStages))
+			{
+				// This usage and shader stage has already waited for the last write.
+				// No need for another barrier.
+				return;
+			}
+
+			mReadUsage |= usage;
+			mReadShaderStages |= shaderStage;
+
+			if (mLastWriteUsage == BufferUsage::None)
+			{
+				// Read dependency with no prior writes. No barrier needed.
+				return;
+			}
+			// Write -> read barrier.
+			srcAccess = VulkanAccessFlags(mLastWriteUsage);
 		}
 	}
 }
