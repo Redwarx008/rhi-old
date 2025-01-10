@@ -122,7 +122,8 @@ namespace rhi
 		MapRead = 1 << 5,
 		MapWrite = 1 << 6,
 		CopySrc = 1 << 7,
-		CopyDst = 1 << 8
+		CopyDst = 1 << 8,
+		QueryResolve = 1 << 9
 	};
 	ENUM_CLASS_FLAG_OPERATORS(BufferUsage);
 

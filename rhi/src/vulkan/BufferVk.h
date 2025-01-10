@@ -12,13 +12,6 @@ namespace rhi::vulkan
 	class CommandList;
 	class Buffer final : public IBuffer
 	{
-		BufferUsage shaderBufferUsages =
-			BufferUsage::Uniform | BufferUsage::Storage;
-		BufferUsage mappableBufferUsages =
-			BufferUsage::MapRead | BufferUsage::MapWrite;
-		BufferUsage readOnlyBufferUsages =
-			BufferUsage::MapRead | BufferUsage::CopySrc | BufferUsage::Index |
-			BufferUsage::Vertex | BufferUsage::Uniform;
 	public:
 		static Ref<Buffer> Create(Device* device, const BufferDesc& desc);
 		~Buffer();

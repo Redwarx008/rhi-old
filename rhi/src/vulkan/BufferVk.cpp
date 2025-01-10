@@ -10,6 +10,14 @@
 
 namespace rhi::vulkan
 {
+	constexpr BufferUsage cShaderBufferUsages =
+		BufferUsage::Uniform | BufferUsage::Storage;
+	constexpr BufferUsage cMappableBufferUsages =
+		BufferUsage::MapRead | BufferUsage::MapWrite;
+	constexpr BufferUsage cReadOnlyBufferUsages =
+		BufferUsage::MapRead | BufferUsage::CopySrc | BufferUsage::Index |
+		BufferUsage::Vertex | BufferUsage::Uniform;
+
 	VkBufferUsageFlags BufferUsageConvert(BufferUsage usage)
 	{
 		VkBufferUsageFlags flags = 0;
@@ -56,37 +64,76 @@ namespace rhi::vulkan
 		{
 			flags |= VK_ACCESS_2_HOST_WRITE_BIT;
 		}
-		if (HasFlag(usage, BufferUsage::CopySrc)) {
+		if (HasFlag(usage, BufferUsage::CopySrc))
+		{
 			flags |= VK_ACCESS_2_TRANSFER_READ_BIT;
 		}
-		if (HasFlag(usage, BufferUsage::CopyDst) 
+		if (HasFlag(usage, BufferUsage::CopyDst))
 		{
 			flags |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
 		}
-		if (usage & wgpu::BufferUsage::Index) {
-			flags |= VK_ACCESS_INDEX_READ_BIT;
+		if (HasFlag(usage, BufferUsage::Index))
+		{
+			flags |= VK_ACCESS_2_INDEX_READ_BIT;
 		}
-		if (usage & wgpu::BufferUsage::Vertex) {
-			flags |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+		if (HasFlag(usage, BufferUsage::Vertex))
+		{
+			flags |= VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
 		}
-		if (usage & wgpu::BufferUsage::Uniform) {
-			flags |= VK_ACCESS_UNIFORM_READ_BIT;
+		if (HasFlag(usage, BufferUsage::Uniform))
+		{
+			flags |= VK_ACCESS_2_UNIFORM_READ_BIT;
 		}
-		if (usage & (wgpu::BufferUsage::Storage | kInternalStorageBuffer)) {
-			flags |= VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+		if (HasFlag(usage, BufferUsage::Storage))
+		{
+			flags |= VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
 		}
-		if (usage & kReadOnlyStorageBuffer) {
-			flags |= VK_ACCESS_SHADER_READ_BIT;
-		}
-		if (usage & kIndirectBufferForBackendResourceTracking) {
-			flags |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
-		}
-		if (usage & wgpu::BufferUsage::QueryResolve) {
-			flags |= VK_ACCESS_TRANSFER_WRITE_BIT;
+		if (HasFlag(usage, BufferUsage::QueryResolve))
+		{
+			flags |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
 		}
 
 		return flags;
 	}
+
+	VkPipelineStageFlags2 PipelineStageConvert(BufferUsage usage, ShaderStage shaderStage) {
+		VkPipelineStageFlags2 flags = 0;
+
+		if (HasFlag(usage, cMappableBufferUsages))
+		{
+			flags |= VK_PIPELINE_STAGE_2_HOST_BIT;
+		}
+		if (HasFlag(usage, (BufferUsage::CopySrc | BufferUsage::CopyDst)))
+		{
+			flags |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+		}
+		if (HasFlag(usage, (BufferUsage::Index | BufferUsage::Vertex)))
+		{
+			flags |= VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
+		}
+		if (HasFlag(usage, cShaderBufferUsages))
+		{
+			if (HasFlag(shaderStage, ShaderStage::Vertex))
+			{
+				flags |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
+			}
+			if (HasFlag(shaderStage, ShaderStage::Fragment))
+			{
+				flags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+			}
+			if (HasFlag(shaderStage, ShaderStage::Compute))
+			{
+				flags |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+			}
+		}
+		if (HasFlag(usage, BufferUsage::QueryResolve))
+		{
+			flags |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+		}
+
+		return flags;
+	}
+
 
 	Ref<Buffer> Buffer::Create(Device* device, const BufferDesc& desc)
 	{
@@ -197,17 +244,17 @@ namespace rhi::vulkan
 		{
 			// If the buffer isn't used in any shader stages, ignore shader usages. Eg. ignore a uniform
 			// buffer that isn't actually read in any shader.
-			usage &= ~shaderBufferUsages;
+			usage &= ~cShaderBufferUsages;
 		}
 
-		const bool isMapUsage = (usage & mappableBufferUsages) != 0;
+		const bool isMapUsage = (usage & cMappableBufferUsages) != 0;
 		if (!isMapUsage)
 		{
 			// Request non CPU usage, so assume the buffer will be used in pending commands.
 			MarkUsedInPendingCommandList();
 		}
 
-		if (!isMapUsage && (mInternalUsage & mappableBufferUsages) != 0)
+		if (!isMapUsage && (mInternalUsage & cMappableBufferUsages) != 0)
 		{
 			// The buffer is mappable and the requested usage is not map usage, we need to add it
 			// into mappableBuffersForEagerTransition, so the buffer can be transitioned back to map
@@ -215,7 +262,7 @@ namespace rhi::vulkan
 			commandList->GetMappableBuffersForTransition().insert(this);
 		}
 
-		const bool readOnly = IsSubset(usage, readOnlyBufferUsages);
+		const bool readOnly = IsSubset(usage, cReadOnlyBufferUsages);
 		VkAccessFlags srcAccess = 0;
 		VkPipelineStageFlags srcStage = 0;
 
@@ -246,7 +293,14 @@ namespace rhi::vulkan
 				return;
 			}
 			// Write -> read barrier.
-			srcAccess = VulkanAccessFlags(mLastWriteUsage);
+			srcAccess = AccessFlagsConvert(mLastWriteUsage);
+			srcStage = PipelineStageConvert(mLastWriteUsage, mLastWriteShaderStage);
 		}
+		else
+		{
+			bool skipBarrier = false;
+
+		}
+
 	}
 }
