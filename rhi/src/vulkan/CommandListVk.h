@@ -23,7 +23,7 @@ namespace rhi::vulkan
 		void* mappedAdress = nullptr;
 	};
 
-	class CommandList final : public ITransferCommandEncoder
+	class CommandList final : public ICommandEncoder
 	{
 	public:
 		~CommandList();
@@ -97,7 +97,7 @@ namespace rhi::vulkan
 		std::vector<VkImageMemoryBarrier2> m_VkImageMemoryBarriers;
 		std::vector<VkBufferMemoryBarrier2> m_VkBufferMemoryBarriers;
 
-		std::vector<ITransferCommandEncoder*> m_WaitCommandLists;
+		std::vector<ICommandEncoder*> m_WaitCommandLists;
 		std::unordered_set<Ref<Buffer>> mMappableBuffersForTransition;
 
 		Device* m_RenderDevice;

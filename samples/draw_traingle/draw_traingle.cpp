@@ -255,7 +255,7 @@ private:
 	IBuffer* m_VertexBuffer;
 	IBuffer* m_IndexBuffer;
 	IGraphicsPipeline* m_Pipeline;
-	ITransferCommandEncoder* m_CmdList;
+	ICommandEncoder* m_CmdList;
 	IResourceSetLayout* m_ResourceSetLayout;
 	IResourceSet* m_ResourceSet;
 

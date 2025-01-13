@@ -23,10 +23,4 @@ namespace rhi
 	private:
 		std::vector<Command> mCommands{2048};
 	};
-
-	class TransferCommandEncoder final : public ITransferCommandEncoder
-	{
-	public:
-
-	};
 }

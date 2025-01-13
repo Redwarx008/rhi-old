@@ -72,7 +72,7 @@ namespace rhi::vulkan
 		vkEndCommandBuffer(mCommandBuffer);
 	}
 
-	void CommandList::waitCommandList(ITransferCommandEncoder* other)
+	void CommandList::waitCommandList(ICommandEncoder* other)
 	{
 		auto otherCmdList = checked_cast<CommandList*>(other);
 		if (queueType == otherCmdList->queueType)

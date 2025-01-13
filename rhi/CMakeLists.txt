@@ -91,9 +91,16 @@ set(common_rhi
 	"include/rhi/common/RefCounted.h")
 
 set(src_common
+	"src/NoCopyable.h"
 	"src/Ref.hpp"
+	"src/RHI.cpp"
 	"src/UploadAllocator.h"
-	"src/UploadAllocator.cpp" "src/Commands.h" "src/CommandEncoder.h" "src/CommandEncoder.cpp" "src/CommandAllocator.h")
+	"src/UploadAllocator.cpp"
+	"src/Commands.h"
+	"src/CommandEncoder.h"
+	"src/CommandEncoder.cpp"
+	"src/CommandAllocator.h"
+	"src/CommandAllocator.cpp")
 set(src_vk
 	"src/vulkan/VMA.cpp"
 	"src/vulkan/DeviceVk.h"
@@ -102,14 +109,15 @@ set(src_vk
 	"src/vulkan/ResourceVk.cpp"
 	"src/vulkan/SwapChainVk.h"
 	"src/vulkan/SwapChainVk.cpp"
-	"src/RHI.cpp"
 	"src/vulkan/ErrorsVk.h"
 	"src/vulkan/CommandListVk.h"
 	"src/vulkan/CommandListVk.cpp"
 	"src/vulkan/PipelineVk.h"
 	"src/vulkan/PipelineVk.cpp"  
 	"src/vulkan/CommandQueueVk.h"
-	"src/vulkan/CommandQueueVk.cpp"     "src/vulkan/BufferVk.h" "src/vulkan/BufferVk.cpp" )
+	"src/vulkan/CommandQueueVk.cpp"
+	"src/vulkan/BufferVk.h"
+	"src/vulkan/BufferVk.cpp" )
 
 add_library(rhi "")
 

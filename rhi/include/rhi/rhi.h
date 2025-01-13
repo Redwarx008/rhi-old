@@ -110,14 +110,6 @@ namespace rhi
 	class ICommandEncoder : public RefCounted
 	{
 	public:
-		virtual ICommandList* Finish() = 0;
-	protected:
-		~ICommandEncoder() = default;
-	};
-
-	class ITransferCommandEncoder : public ICommandEncoder
-	{
-	public:
 		virtual void clearColorTexture(ITextureView* textureView, const ClearColor& color) = 0;
 		virtual void clearDepthStencil(ITextureView* textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal) = 0;
 		virtual void clearBuffer(IBuffer* buffer, uint32_t value, uint64_t offset = 0, uint64_t size = ~0ull) = 0;
@@ -144,33 +136,19 @@ namespace rhi
 		virtual void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) = 0;
 		virtual void dispatchIndirect(IBuffer* argsBuffer, uint64_t offset) = 0;
 
+		virtual ICommandList* Finish() = 0;
 		virtual void beginDebugLabel(const char* labelName, Color color = Color()) = 0;
 		virtual void endDebugLabel() = 0;
 	protected:
-		virtual ~ITransferCommandEncoder() = default;
-	};
-
-	class IComputeCommandEncoder : public ITransferCommandEncoder
-	{
-	public:
-	protected:
-		~IComputeCommandEncoder() = default;
-	};
-
-	class IRenderCommandEncoder : public IComputeCommandEncoder
-	{
-	public:
-	protected:
-		~IRenderCommandEncoder() = default;
+		virtual ~ICommandEncoder() = default;
 	};
 
 	class IDevice : public RefCounted
 	{
 	public:
 		virtual ~IDevice() = default;
-		virtual ITransferCommandEncoder* CreateTransferCommandEncoder() = 0;
-		virtual IComputeCommandEncoder* CreateComputeCommandEncoder() = 0;
-		virtual IRenderCommandEncoder* CreateRenderCommandEncoder() = 0;
+		virtual ICommandEncoder* CreateCommandEncoder(QueueType queue) = 0;
+
 		virtual void waitIdle() = 0;
 		virtual void createSwapChain(const SwapChainCreateInfo& swapChainCI) = 0;
 		virtual void recreateSwapChain() = 0;
@@ -185,8 +163,8 @@ namespace rhi
 		virtual IShader* createShader(const ShaderCreateInfo& shaderCI, const uint32_t* pCode, size_t codeSize) = 0;
 		virtual ISampler* createSampler(const SamplerDesc& desc) = 0;
 		virtual void* mapBuffer(IBuffer* buffer) = 0;
-		virtual ITransferCommandEncoder* CreateRenderCommandRecorder(QueueType queueType = QueueType::Graphics) = 0;
-		virtual uint64_t executeCommandLists(ITransferCommandEncoder** cmdLists, size_t numCmdLists) = 0;
+		virtual ICommandEncoder* CreateRenderCommandRecorder(QueueType queueType = QueueType::Graphics) = 0;
+		virtual uint64_t executeCommandLists(ICommandEncoder** cmdLists, size_t numCmdLists) = 0;
 		virtual void waitForExecution(uint64_t executeID, uint64_t timeout = UINT64_MAX) = 0;
 	};
 

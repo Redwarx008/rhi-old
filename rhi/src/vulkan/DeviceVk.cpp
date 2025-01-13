@@ -582,7 +582,7 @@ namespace rhi::vulkan
 			tmpCmdList->open();
 			tmpCmdList->updateBuffer(buffer, data, dataSize, 0);
 			tmpCmdList->close();
-			ITransferCommandEncoder* cmdListArr[] = { tmpCmdList.get() };
+			ICommandEncoder* cmdListArr[] = { tmpCmdList.get() };
 			uint64_t submitID = executeCommandLists(cmdListArr, 1);
 			waitForExecution(submitID, UINT64_MAX);
 		}
@@ -1380,7 +1380,7 @@ namespace rhi::vulkan
 		m_RenderCompleteSemaphore = semaphore;
 	}
 
-	ITransferCommandEncoder* Device::CreateCommandRecorder(QueueType queueType)
+	ICommandEncoder* Device::CreateCommandRecorder(QueueType queueType)
 	{
 		CommandList* cmdList = m_Queues[static_cast<uint32_t>(queueType)]->getValidCommandList();
 
@@ -1392,7 +1392,7 @@ namespace rhi::vulkan
 		return cmdList;
 	}
 
-	uint64_t Device::executeCommandLists(ITransferCommandEncoder** cmdLists, size_t numCmdLists)
+	uint64_t Device::executeCommandLists(ICommandEncoder** cmdLists, size_t numCmdLists)
 	{
 		++lastSubmittedID;
 		bool hasGraphicPipeline = false;
@@ -1491,7 +1491,7 @@ namespace rhi::vulkan
 		}
 	}
 
-	void Device::executePresentCommandList(ITransferCommandEncoder* cmdList)
+	void Device::executePresentCommandList(ICommandEncoder* cmdList)
 	{
 		++lastSubmittedID;
 

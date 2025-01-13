@@ -25,7 +25,7 @@ namespace rhi
 	class IPipeline;
 	class IGraphicsPipeline;
 	class IComputePipeline;
-	class ITransferCommandEncoder;
+	class ICommandEncoder;
 	class IDevice;
 	class ISwapChain;
 

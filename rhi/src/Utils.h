@@ -47,7 +47,7 @@ namespace rhi
 	}
 
 	template <typename T>
-	bool isPowerOfTwo(T val)
+	bool IsPowerOfTwo(T val)
 	{
 		return val > 0 && (val & (val - 1)) == 0;
 	}
@@ -57,7 +57,7 @@ namespace rhi
 	{
 		static_assert(std::is_unsigned<T1>::value == std::is_unsigned<T2>::value, "both types must be either signed or unsigned");
 		static_assert(!std::is_pointer<T1>::value && !std::is_pointer<T2>::value, "types must not be pointers");
-		assert(isPowerOfTwo(alignment));
+		assert(IsPowerOfTwo(alignment));
 
 		using ResultType = typename std::conditional<sizeof(T1) >= sizeof(T2), T1, T2>::type;
 		return (static_cast<ResultType>(val) + static_cast<ResultType>(alignment - 1)) & ~static_cast<ResultType>(alignment - 1);
@@ -95,5 +95,18 @@ namespace rhi
 	constexpr bool HasFlag(T1 set, T2 flag)
 	{
 		return (flag & set) != 0;
+	}
+
+	template <typename T>
+	T* AlignPtr(T* ptr, size_t alignment) {
+		assert(IsPowerOfTwo(alignment));
+		return reinterpret_cast<T*>((reinterpret_cast<size_t>(ptr) + (alignment - 1)) &
+			~(alignment - 1));
+	}
+
+	bool IsPtrAligned(const void* ptr, size_t alignment) {
+		assert(IsPowerOfTwo(alignment));
+		assert(alignment != 0);
+		return (reinterpret_cast<size_t>(ptr) & (alignment - 1)) == 0;
 	}
 }
