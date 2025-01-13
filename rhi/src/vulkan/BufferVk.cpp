@@ -238,8 +238,6 @@ namespace rhi::vulkan
 
 	void Buffer::TrackUsageAndGetResourceBarrier(CommandList* commandList, BufferUsage usage, ShaderStage shaderStage)
 	{
-
-
 		if (shaderStage == ShaderStage::None)
 		{
 			// If the buffer isn't used in any shader stages, ignore shader usages. Eg. ignore a uniform
@@ -247,14 +245,14 @@ namespace rhi::vulkan
 			usage &= ~cShaderBufferUsages;
 		}
 
-		const bool isMapUsage = (usage & cMappableBufferUsages) != 0;
+		const bool isMapUsage = HasFlag(usage, cMappableBufferUsages);
 		if (!isMapUsage)
 		{
 			// Request non CPU usage, so assume the buffer will be used in pending commands.
 			MarkUsedInPendingCommandList();
 		}
 
-		if (!isMapUsage && (mInternalUsage & cMappableBufferUsages) != 0)
+		if (!isMapUsage && HasFlag(mInternalUsage, cMappableBufferUsages))
 		{
 			// The buffer is mappable and the requested usage is not map usage, we need to add it
 			// into mappableBuffersForEagerTransition, so the buffer can be transitioned back to map
@@ -300,7 +298,51 @@ namespace rhi::vulkan
 		{
 			bool skipBarrier = false;
 
+			// vkQueueSubmit does an implicit domain and visibility operation. For HOST_COHERENT
+			// memory, we can ignore read (host)->write barriers. However, we can't necessarily
+			// skip the barrier if mReadUsage == MapRead, as we could still need a barrier for
+			// the last write. Instead, pretend the last host read didn't happen.
+			mReadUsage &= ~BufferUsage::MapRead;
+
+			if ((mLastWriteUsage == BufferUsage::None && mReadUsage == BufferUsage::None) ||
+				IsSubset(usage | mLastWriteUsage | mReadUsage, cMappableBufferUsages)) 
+			{
+				// The buffer has never been used before, or the dependency is map->map. We don't need a
+				// barrier.
+				skipBarrier = true;
+			}
+			else if (mReadUsage == BufferUsage::None)
+			{
+				// No reads since the last write.
+				// Write -> write barrier.
+				srcAccess = AccessFlagsConvert(mLastWriteUsage);
+				srcStage = PipelineStageConvert(mLastWriteUsage, mLastWriteShaderStage);
+			}
+			else
+			{
+				// Read -> write barrier.
+				srcAccess = AccessFlagsConvert(mReadUsage);
+				srcStage = PipelineStageConvert(mReadUsage, mReadShaderStages);
+			}
+
+			mLastWriteUsage = usage;
+			mLastWriteShaderStage = shaderStage;
+
+			mReadUsage = BufferUsage::None;
+			mReadShaderStages = ShaderStage::None;
+
+			if (skipBarrier)
+			{
+				return;
+			}
+		}
+		if (isMapUsage) {
+			// CPU usage, but a pipeline barrier is needed, so mark the buffer as used within the
+			// pending commands.
+			MarkUsedInPendingCommandList();
 		}
 
+		commandList->AddBufferBarrier(srcAccess, AccessFlagsConvert(usage),
+			srcStage, PipelineStageConvert(usage, shaderStage));
 	}
 }

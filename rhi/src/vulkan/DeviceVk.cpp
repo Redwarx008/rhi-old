@@ -578,11 +578,11 @@ namespace rhi::vulkan
 		Buffer* buffer = checked_cast<Buffer*>(createBuffer(desc));
 		if (buffer->getDesc().access == BufferAccess::GpuOnly)
 		{
-			auto tmpCmdList = std::unique_ptr<CommandList>(checked_cast<CommandList*>(beginCommandList()));
+			auto tmpCmdList = std::unique_ptr<CommandList>(checked_cast<CommandList*>(CreateCommandRecorder()));
 			tmpCmdList->open();
 			tmpCmdList->updateBuffer(buffer, data, dataSize, 0);
 			tmpCmdList->close();
-			ICommandList* cmdListArr[] = { tmpCmdList.get() };
+			ITransferCommandEncoder* cmdListArr[] = { tmpCmdList.get() };
 			uint64_t submitID = executeCommandLists(cmdListArr, 1);
 			waitForExecution(submitID, UINT64_MAX);
 		}
@@ -1380,7 +1380,7 @@ namespace rhi::vulkan
 		m_RenderCompleteSemaphore = semaphore;
 	}
 
-	ICommandList* Device::beginCommandList(QueueType queueType)
+	ITransferCommandEncoder* Device::CreateCommandRecorder(QueueType queueType)
 	{
 		CommandList* cmdList = m_Queues[static_cast<uint32_t>(queueType)]->getValidCommandList();
 
@@ -1392,7 +1392,7 @@ namespace rhi::vulkan
 		return cmdList;
 	}
 
-	uint64_t Device::executeCommandLists(ICommandList** cmdLists, size_t numCmdLists)
+	uint64_t Device::executeCommandLists(ITransferCommandEncoder** cmdLists, size_t numCmdLists)
 	{
 		++lastSubmittedID;
 		bool hasGraphicPipeline = false;
@@ -1491,7 +1491,7 @@ namespace rhi::vulkan
 		}
 	}
 
-	void Device::executePresentCommandList(ICommandList* cmdList)
+	void Device::executePresentCommandList(ITransferCommandEncoder* cmdList)
 	{
 		++lastSubmittedID;
 

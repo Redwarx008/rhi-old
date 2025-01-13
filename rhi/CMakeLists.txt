@@ -93,7 +93,7 @@ set(common_rhi
 set(src_common
 	"src/Ref.hpp"
 	"src/UploadAllocator.h"
-	"src/UploadAllocator.cpp")
+	"src/UploadAllocator.cpp" "src/Commands.h" "src/CommandEncoder.h" "src/CommandEncoder.cpp" "src/CommandAllocator.h")
 set(src_vk
 	"src/vulkan/VMA.cpp"
 	"src/vulkan/DeviceVk.h"

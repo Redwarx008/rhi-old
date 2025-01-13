@@ -4,13 +4,21 @@
 #include "DeviceVk.h"
 #include "BufferVk.h"
 #include "ErrorsVk.h"
-#include "rhi/common/Error.h"
+#include "../Error.h"
 
 #include <array>
 #include <optional>
 
 namespace rhi::vulkan
 {
+	// Separate barriers with vertex stages in destination stages from all other barriers.
+	// This avoids creating unnecessary fragment->vertex dependencies when merging barriers.
+	// Eg. merging a compute->vertex barrier and a fragment->fragment barrier would create
+	// a compute|fragment->vertex|fragment barrier.
+	constexpr VkPipelineStageFlags vertexStages = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT |
+		VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
+		VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
+
 	CommandList::CommandList(Device* renderDevice, const ContextVk& context)
 		:m_RenderDevice(renderDevice),
 		m_Context(context),
@@ -35,6 +43,28 @@ namespace rhi::vulkan
 		return mMappableBuffersForTransition;
 	}
 
+	void CommandList::AddBufferBarrier(VkAccessFlags2 srcAccessMask,
+		VkAccessFlags2 dstAccessMask,
+		VkPipelineStageFlags2 srcStages,
+		VkPipelineStageFlags2 dstStages)
+	{
+
+		BufferBarrier* barrier = nullptr;
+		if (dstStages & vertexStages) 
+		{
+			barrier = &mVertexBufferBarrier;
+		}
+		else
+		{
+			barrier = &mNonVertexBufferBarrier;
+		}
+
+		barrier->bufferSrcAccessMask |= srcAccessMask;
+		barrier->bufferDstAccessMask |= dstAccessMask;
+		barrier->bufferSrcStages |= srcStages;
+		barrier->bufferDstStages |= dstStages;
+	}
+
 	void CommandList::close()
 	{
 		endRendering();
@@ -42,7 +72,7 @@ namespace rhi::vulkan
 		vkEndCommandBuffer(mCommandBuffer);
 	}
 
-	void CommandList::waitCommandList(ICommandList* other)
+	void CommandList::waitCommandList(ITransferCommandEncoder* other)
 	{
 		auto otherCmdList = checked_cast<CommandList*>(other);
 		if (queueType == otherCmdList->queueType)

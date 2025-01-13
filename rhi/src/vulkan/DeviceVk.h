@@ -31,7 +31,7 @@ namespace rhi::vulkan
 		void setSwapChainImageAvailableSeamaphore(const VkSemaphore& semaphore);
 		void setRenderCompleteSemaphore(const VkSemaphore& semaphore);
 		void recycleCommandBuffers();
-		void executePresentCommandList(ICommandList* cmdList);
+		void executePresentCommandList(ITransferCommandEncoder* cmdList);
 
 		DeviceCreateInfo createInfo{};
 		VkPhysicalDeviceProperties physicalDeviceProperties{};
@@ -43,7 +43,7 @@ namespace rhi::vulkan
 
 		void waitIdle() override;
 
-		ICommandList* beginCommandList(QueueType queueType = QueueType::Graphics) override;
+		ITransferCommandEncoder* CreateCommandRecorder(QueueType queueType = QueueType::Graphics) override;
 
 		ITexture* createTexture(const TextureDesc& desc) override;
 		IBuffer* createBuffer(const BufferDesc& desc) override;
@@ -59,7 +59,7 @@ namespace rhi::vulkan
 
 		void* mapBuffer(IBuffer* buffer) override;
 
-		uint64_t executeCommandLists(ICommandList** cmdLists, size_t numCmdLists) override;
+		uint64_t executeCommandLists(ITransferCommandEncoder** cmdLists, size_t numCmdLists) override;
 		void waitForExecution(uint64_t executeID, uint64_t timeout = UINT64_MAX) override;
 
 		void updateResourceSet(IResourceSet* set, const ResourceSetBinding* bindings, uint32_t bindingCount) override;

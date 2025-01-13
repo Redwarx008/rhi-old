@@ -23,7 +23,7 @@ namespace rhi::vulkan
 		void* mappedAdress = nullptr;
 	};
 
-	class CommandList final : public ICommandList
+	class CommandList final : public ITransferCommandEncoder
 	{
 	public:
 		~CommandList();
@@ -57,8 +57,6 @@ namespace rhi::vulkan
 		void beginDebugLabel(const char* labelName, Color color = Color()) override;
 		void endDebugLabel() override;
 
-		Object getNativeObject(NativeObjectType type) const override;
-
 		void transitionFromSubmmitedState(ITexture* texture, ResourceState newState);
 		void updateSubmittedState();
 		bool hasPresentTexture() const;
@@ -69,10 +67,10 @@ namespace rhi::vulkan
 		uint32_t allocateIndex = 0;
 
 		std::unordered_set<Ref<Buffer>>& GetMappableBuffersForTransition();
-		void AddBufferBarrier(VkAccessFlags srcAccessMask,
-			VkAccessFlags dstAccessMask,
-			VkPipelineStageFlags srcStages,
-			VkPipelineStageFlags dstStages);
+		void AddBufferBarrier(VkAccessFlags2 srcAccessMask,
+			VkAccessFlags2 dstAccessMask,
+			VkPipelineStageFlags2 srcStages,
+			VkPipelineStageFlags2 dstStages);
 		void EmitBufferBarriers(Device* device);
 	private:
 		CommandList() = delete;
@@ -99,7 +97,7 @@ namespace rhi::vulkan
 		std::vector<VkImageMemoryBarrier2> m_VkImageMemoryBarriers;
 		std::vector<VkBufferMemoryBarrier2> m_VkBufferMemoryBarriers;
 
-		std::vector<ICommandList*> m_WaitCommandLists;
+		std::vector<ITransferCommandEncoder*> m_WaitCommandLists;
 		std::unordered_set<Ref<Buffer>> mMappableBuffersForTransition;
 
 		Device* m_RenderDevice;

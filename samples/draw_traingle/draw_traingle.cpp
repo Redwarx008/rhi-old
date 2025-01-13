@@ -170,7 +170,7 @@ public:
 		delete vertexShader;
 		delete fragmentShader;
 
-		m_CmdList = m_RenderDevice->beginCommandList();
+		m_CmdList = m_RenderDevice->CreateCommandRecorder();
 
 		camera.position = glm::vec3(0, 0, 3);
 
@@ -255,7 +255,7 @@ private:
 	IBuffer* m_VertexBuffer;
 	IBuffer* m_IndexBuffer;
 	IGraphicsPipeline* m_Pipeline;
-	ICommandList* m_CmdList;
+	ITransferCommandEncoder* m_CmdList;
 	IResourceSetLayout* m_ResourceSetLayout;
 	IResourceSet* m_ResourceSet;
 
