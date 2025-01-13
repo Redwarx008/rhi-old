@@ -237,6 +237,15 @@ namespace rhi
 	};
 	ENUM_CLASS_FLAG_OPERATORS(TextureUsage);
 
+	enum class Aspect : uint8_t
+	{
+		None = 0 << 0,
+		Color = 1 << 0,
+		Depth = 1 << 1,
+		Stencil = 1 << 2,
+		CombinedDepthStencil = Depth | Stencil
+	};
+
 	struct Region3D
 	{
 		uint32_t minX = 0;
@@ -251,6 +260,13 @@ namespace rhi
 		bool isValid() const { return maxX > minX && maxY > minY && maxZ > minZ; }
 	};
 
+	struct Origin3D
+	{
+		uint32_t x = 0;
+		uint32_t y = 0;
+		uint32_t z = 0;
+	};
+
 	struct TextureUpdateInfo
 	{
 		uint32_t srcRowPitch = 0;
@@ -258,6 +274,19 @@ namespace rhi
 		uint32_t arrayLayer = 0;
 		uint32_t mipLevel = 0;
 		Region3D dstRegion;
+	};
+
+	struct TextureCopyInfo
+	{
+		ITexture* texture;
+		uint32_t mipLevel;
+		Origin3D origin;
+		Aspect aspect;
+	};
+
+	struct BufferCopyInfo
+	{
+
 	};
 
 	struct TextureViewDesc
