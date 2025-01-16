@@ -7,7 +7,9 @@ namespace rhi
 {
     CommandAllocator::CommandAllocator()
     {
-        ResetPtr();
+        mBlocks = std::make_shared<CommandBlocks>();
+        mCurrentPtr = reinterpret_cast<char*>(&mPlaceholderSpace[0]);
+        mEndPtr = reinterpret_cast<char*>(&mPlaceholderSpace[1]); // just get address. no visit
     }
 
     CommandAllocator::~CommandAllocator() = default;
@@ -15,28 +17,19 @@ namespace rhi
     CommandAllocator::CommandAllocator(CommandAllocator&& other)
         : mBlocks(std::move(other.mBlocks)), mLastAllocationSize(other.mLastAllocationSize)
     {
-        other.mBlocks.clear();
-        if (!other.IsEmpty())
-        {
-            mCurrentPtr = other.mCurrentPtr;
-            mEndPtr = other.mEndPtr;
-        }
-        else {
-            ResetPtr();
-        }
-        other.Reset();
+        mCurrentPtr = other.mCurrentPtr;
+        mEndPtr = other.mEndPtr;
+        mCurrentBlock = other.mCurrentBlock;
+        other.Clear();
     }
     CommandAllocator& CommandAllocator::operator=(CommandAllocator&& other)
     {
-        Reset();
-        if (!other.IsEmpty())
-        {
-            std::swap(mBlocks, other.mBlocks);
-            mLastAllocationSize = other.mLastAllocationSize;
-            mCurrentPtr = other.mCurrentPtr;
-            mEndPtr = other.mEndPtr;
-        }
-        other.Reset();
+        Clear();
+        std::swap(mBlocks, other.mBlocks);
+        mLastAllocationSize = other.mLastAllocationSize;
+        mCurrentPtr = other.mCurrentPtr;
+        mEndPtr = other.mEndPtr;
+        other.Clear();
         return *this;
     }
 
@@ -75,32 +68,39 @@ namespace rhi
 
             return commandAlloc;
         }
-        return AllocateInNewBlock(commandId, commandSize, commandAlignment);
-	}
-
-    char* CommandAllocator::AllocateInNewBlock(uint32_t commandId, size_t commandSize, size_t commandAlignment)
-    {
+       
         // When there is not enough space, we signal the kEndOfBlock, so that the iterator knows
         // to move to the next one. kEndOfBlock on the last block means the end of the commands.
         uint32_t* idAlloc = reinterpret_cast<uint32_t*>(mCurrentPtr);
         *idAlloc = detail::cEndOfBlock;
 
-        // We'll request a block that can contain at least the command ID, the command and an
-        // additional ID to contain the kEndOfBlock tag.
-        size_t requestedBlockSize = commandSize + cWorstCaseAdditionalSize;
-
-        // The computation of the request could overflow.
-        if (requestedBlockSize <= commandSize)
+        // We can reuse the allocated memory.
+        if (mBlocks->size() > mCurrentBlock)
         {
-            return nullptr;
+            ++mCurrentBlock;
+            mCurrentPtr = AlignPtr((*mBlocks)[mCurrentBlock].data.get(), alignof(uint32_t));
+            mEndPtr = (*mBlocks)[mCurrentBlock].data.get() + (*mBlocks)[mCurrentBlock].size;
+        }
+        else
+        {
+            // We'll request a block that can contain at least the command ID, the command and an
+            // additional ID to contain the kEndOfBlock tag.
+            size_t requestedBlockSize = commandSize + cWorstCaseAdditionalSize;
+
+            // The computation of the request could overflow.
+            if (requestedBlockSize <= commandSize)
+            {
+                return nullptr;
+            }
+
+            if (!GetNewBlock(requestedBlockSize))
+            {
+                return nullptr;
+            }
         }
 
-        if (!GetNewBlock(requestedBlockSize))
-        {
-            return nullptr;
-        }
         return Allocate(commandId, commandSize, commandAlignment);
-    }
+	}
 
     bool CommandAllocator::GetNewBlock(size_t minimumSize)
     {
@@ -115,29 +115,34 @@ namespace rhi
 
         mCurrentPtr = AlignPtr(block.get(), alignof(uint32_t));
         mEndPtr = block.get() + mLastAllocationSize;
-        mBlocks.push_back({ mLastAllocationSize, std::move(block) });
+        mBlocks->push_back({ mLastAllocationSize, std::move(block) });
         return true;
     }
 
-    void CommandAllocator::ResetPtr()
+    void CommandAllocator::Reset()
     {
-        mCurrentPtr = reinterpret_cast<char*>(&mPlaceholderSpace[0]);
-        mEndPtr = reinterpret_cast<char*>(&mPlaceholderSpace[1]); // just get address. no visit
+        if (!mBlocks->empty())
+        {
+            mCurrentPtr = AlignPtr((*mBlocks)[0].data.get(), alignof(uint32_t));
+            mEndPtr = (*mBlocks)[0].data.get() + (*mBlocks)[0].size;
+        }
+        else
+        {
+            mCurrentPtr = reinterpret_cast<char*>(&mPlaceholderSpace[0]);
+            mEndPtr = reinterpret_cast<char*>(&mPlaceholderSpace[1]); // just get address. no visit
+        }
+
+        mCurrentBlock = 0;
     }
 
-    bool CommandAllocator::Reset()
+    bool CommandAllocator::Clear()
     {
-        ResetPtr();
-        mBlocks.clear();
+        Reset();
+        mBlocks.reset();
         mLastAllocationSize = cDefaultBaseAllocationSize;
     }
 
-    bool CommandAllocator::IsEmpty() const
-    {
-        return mCurrentPtr == reinterpret_cast<const char*>(&mPlaceholderSpace[0]);
-    }
-
-    std::vector<Block>&& CommandAllocator::AcquireBlocks()
+    std::shared_ptr<CommandBlocks> CommandAllocator::AcquireBlocks()
     {
         assert(mCurrentPtr != nullptr && mEndPtr != nullptr);
         assert(IsPtrAligned(mCurrentPtr, alignof(uint32_t)));
@@ -146,7 +151,7 @@ namespace rhi
 
         mCurrentPtr = nullptr;
         mEndPtr = nullptr;
-        return std::move(mBlocks);
+        return mBlocks;
     }
 
 
@@ -157,7 +162,7 @@ namespace rhi
 
     CommandIterator::CommandIterator()
     {
-        Reset();
+        mCurrentPtr = reinterpret_cast<char*>(&mEndOfBlock);
     }
 
     CommandIterator::~CommandIterator() = default;
@@ -189,7 +194,7 @@ namespace rhi
         char* idPtr = AlignPtr(mCurrentPtr, alignof(uint32_t));
         assert(idPtr == reinterpret_cast<char*>(&mEndOfBlock) ||
             idPtr + sizeof(uint32_t) <=
-            mBlocks[mCurrentBlock].block.get() + mBlocks[mCurrentBlock].size);
+            (*mBlocks)[mCurrentBlock].data.get() + (*mBlocks)[mCurrentBlock].size);
 
         uint32_t id = *reinterpret_cast<uint32_t*>(idPtr);
 
@@ -199,18 +204,15 @@ namespace rhi
             *commandId = id;
             return true;
         }
-        return NextCommandIdInNewBlock(commandId);
-    }
 
-    bool CommandIterator::NextCommandIdInNewBlock(uint32_t* commandId)
-    {
         mCurrentBlock++;
-        if (mCurrentBlock >= mBlocks.size()) {
+        if (mCurrentBlock >= mBlocks->size())
+        {
             Reset();
             *commandId = detail::cEndOfBlock;
             return false;
         }
-        mCurrentPtr = AlignPtr(mBlocks[mCurrentBlock].block.get(), alignof(uint32_t));
+        mCurrentPtr = AlignPtr((*mBlocks)[mCurrentBlock].data.get(), alignof(uint32_t));
         return NextCommandId(commandId);
     }
 
@@ -218,7 +220,7 @@ namespace rhi
     {
         mCurrentBlock = 0;
 
-        if (mBlocks.empty())
+        if (mBlocks->empty())
         {
             // This will case the first NextCommandId call to try to move to the next block and stop
             // the iteration immediately, without special casing the initialization.
@@ -226,31 +228,32 @@ namespace rhi
         }
         else
         {
-            mCurrentPtr = AlignPtr(mBlocks[0].block.get(), alignof(uint32_t));
+            mCurrentPtr = AlignPtr((*mBlocks)[0].data.get(), alignof(uint32_t));
         }
     }
 
-    void CommandIterator::clear()
+    void CommandIterator::Clear()
     {
-        if (IsEmpty()) {
+        if (IsEmpty())
+        {
             return;
         }
 
         mCurrentPtr = reinterpret_cast<char*>(&mEndOfBlock);
-        mBlocks.clear();
+        mBlocks.reset();
         Reset();
     }
 
     bool CommandIterator::IsEmpty() const
     {
-        return mBlocks.empty();
+        return mBlocks->empty();
     }
 
     void* CommandIterator::NextCommand(size_t commandSize, size_t commandAlignment)
     {
         char* commandPtr = AlignPtr(mCurrentPtr, commandAlignment);
         assert(commandPtr + sizeof(commandSize) <=
-            mBlocks[mCurrentBlock].block.get() + mBlocks[mCurrentBlock].size);
+            (*mBlocks)[mCurrentBlock].data.get() + (*mBlocks)[mCurrentBlock].size);
 
         mCurrentPtr = commandPtr + commandSize;
         return commandPtr;

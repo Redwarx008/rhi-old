@@ -17,8 +17,10 @@ namespace rhi
 	struct Block
 	{
 		size_t size;
-		std::unique_ptr<char[]> block;
+		std::unique_ptr<char[]> data;
 	};
+
+	using CommandBlocks = std::vector<Block>;
 
 	class CommandAllocator;
 
@@ -50,14 +52,13 @@ namespace rhi
 		// Sets iterator to the beginning of the commands without emptying the list. This method can
 		// be used if iteration was stopped early and the iterator needs to be restarted.
 		void Reset();
-		void clear();
+		void Clear();
 		bool IsEmpty() const;
 	private:
 		bool NextCommandId(uint32_t* commandId);
-		bool NextCommandIdInNewBlock(uint32_t* commandId);
 		void* NextCommand(size_t commandSize, size_t commandAlignment);
 		void* NextData(size_t dataSize, size_t dataAlignment);
-		std::vector<Block> mBlocks;
+		std::shared_ptr<CommandBlocks> mBlocks;
 		// This is an extremely hot pointer during command iteration, but always
 		// points to at least a valid uint32_t, either inside a block, or at mEndOfBlock.
 		char* mCurrentPtr = nullptr;
@@ -74,8 +75,7 @@ namespace rhi
 		~CommandAllocator();
 		CommandAllocator(CommandAllocator&&);
 		CommandAllocator& operator=(CommandAllocator&&);
-		bool Reset();
-		bool IsEmpty() const;
+		bool Clear();
 		template <typename T, typename E>
 		T* Allocate(E commandId) {
 			static_assert(sizeof(E) == sizeof(uint32_t));
@@ -112,17 +112,17 @@ namespace rhi
 		static constexpr uint32_t cDefaultBaseAllocationSize = 2048;
 
 		friend CommandIterator;
-		std::vector<Block>&& AcquireBlocks();
+		std::shared_ptr<CommandBlocks> AcquireBlocks();
 
 		char* Allocate(uint32_t commandId, size_t commandSize, size_t commandAlignment);
-		char* AllocateInNewBlock(uint32_t commandId, size_t commandSize, size_t commandAlignment);
 		char* AllocateData(size_t commandSize, size_t commandAlignment) 
 		{
 			return Allocate(detail::cAdditionalData, commandSize, commandAlignment);
 		}
 		bool GetNewBlock(size_t minimumSize);
-		void ResetPtr();
-		std::vector<Block> mBlocks;
+		void Reset();
+		std::shared_ptr<CommandBlocks> mBlocks;
+		size_t mCurrentBlock = 0;
 		// Data used for the block range at initialization so that the first call to Allocate sees
 		// there is not enough space and calls GetNewBlock. This avoids having to special case the
 		// initialization in Allocate.
