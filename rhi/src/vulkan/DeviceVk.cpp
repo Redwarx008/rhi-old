@@ -580,7 +580,7 @@ namespace rhi::vulkan
 		{
 			auto tmpCmdList = std::unique_ptr<CommandList>(checked_cast<CommandList*>(CreateCommandRecorder()));
 			tmpCmdList->open();
-			tmpCmdList->updateBuffer(buffer, data, dataSize, 0);
+			tmpCmdList->WriteBuffer(buffer, data, dataSize, 0);
 			tmpCmdList->close();
 			ICommandEncoder* cmdListArr[] = { tmpCmdList.get() };
 			uint64_t submitID = executeCommandLists(cmdListArr, 1);
@@ -594,7 +594,7 @@ namespace rhi::vulkan
 		return buffer;
 	}
 
-	IShader* Device::createShader(const ShaderCreateInfo& shaderCI, const uint32_t* pCode, size_t codeSize)
+	IShader* Device::createShader(const ShaderDesc& shaderCI, const uint32_t* pCode, size_t codeSize)
 	{
 		assert(pCode != nullptr && codeSize != 0);
 
@@ -1029,7 +1029,7 @@ namespace rhi::vulkan
 		specializationConstantCount += static_cast<uint32_t>(shader->specializationConstants.size());
 	}
 
-	static GraphicsPipelineDesc getGraphicsPipelineDesc(const GraphicsPipelineCreateInfo& pipelineCI)
+	static GraphicsPipelineDesc getGraphicsPipelineDesc(const GraphicsPipelineDesc& pipelineCI)
 	{
 		GraphicsPipelineDesc desc;
 		desc.blendState = pipelineCI.blendState;
@@ -1047,7 +1047,7 @@ namespace rhi::vulkan
 		return desc;
 	}
 
-	IGraphicsPipeline* Device::createGraphicsPipeline(const GraphicsPipelineCreateInfo& pipelineCI)
+	IGraphicsPipeline* Device::createGraphicsPipeline(const GraphicsPipelineDesc& pipelineCI)
 	{
 		auto pipeline = new GraphicsPipelineVk(m_Context);
 

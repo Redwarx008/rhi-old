@@ -3,7 +3,11 @@
 #include "Utils.h"
 namespace rhi
 {
-	CommandList::CommandList(std::vector<Command>&& commands) : mCommands(std::move(commands)) {}
+	CommandList::CommandList(CommandEncoder* encoder)
+		:mCommandIter(encoder->)
+	{
+
+	}
 
 	void CommandList::Wait(ICommandList* other)
 	{

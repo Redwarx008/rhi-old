@@ -328,7 +328,7 @@ namespace rhi::vulkan
 
 		// Check if the textureView is one of the currently bound renderTargetView
 		int rendetTargetIndex = -1;
-		for (uint32_t i = 0; i < m_LastGraphicsState.renderTargetCount; ++i)
+		for (uint32_t i = 0; i < m_LastGraphicsState.colorAttachmentCount; ++i)
 		{
 			if (m_LastGraphicsState.renderTargetViews[i] == textureView)
 			{
@@ -473,7 +473,7 @@ namespace rhi::vulkan
 		vkCmdCopyBuffer(m_CurrentCmdBuf->vkCmdBuf, srcBuf->buffer, dstBuf->buffer, 1, &copyRegion);
 	}
 
-	void CommandList::updateBuffer(IBuffer* buffer, const void* data, uint64_t dataSize, uint64_t offset)
+	void CommandList::WriteBuffer(IBuffer* buffer, const void* data, uint64_t dataSize, uint64_t offset)
 	{
 		assert(buffer);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
@@ -533,7 +533,7 @@ namespace rhi::vulkan
 		return buf->allocaionInfo.pMappedData;
 	}
 
-	void CommandList::updateTexture(ITexture* texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo)
+	void CommandList::WriteTexture(ITexture* texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo)
 	{
 		assert(texture);
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
@@ -707,11 +707,11 @@ namespace rhi::vulkan
 		commitBarriers();
 	}
 
-	static inline void fillVkRenderingInfo(const GraphicsState& state, VkRenderingInfo& renderingInfo,
+	static inline void fillVkRenderingInfo(const RenderPassDesc& state, VkRenderingInfo& renderingInfo,
 		std::array<VkRenderingAttachmentInfo, g_MaxColorAttachments>& colorAttachments, 
 		VkRenderingAttachmentInfo& depthStencilAttachment)
 	{
-		if (state.renderTargetCount > 0)
+		if (state.colorAttachmentCount > 0)
 		{
 			auto rtv = checked_cast<TextureViewVk*>(state.renderTargetViews[0]);
 			auto texture = checked_cast<TextureVk*>(rtv->getTexture());
@@ -725,7 +725,7 @@ namespace rhi::vulkan
 		}
 		renderingInfo.layerCount = 1;
 
-		for (uint32_t i = 0; i < state.renderTargetCount; ++i)
+		for (uint32_t i = 0; i < state.colorAttachmentCount; ++i)
 		{
 			auto rtv = checked_cast<TextureViewVk*>(state.renderTargetViews[i]);
 			auto& colorAttachment = colorAttachments[i];
@@ -748,14 +748,14 @@ namespace rhi::vulkan
 
 		renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
 		renderingInfo.pNext = nullptr;
-		renderingInfo.colorAttachmentCount = state.renderTargetCount;
+		renderingInfo.colorAttachmentCount = state.colorAttachmentCount;
 		renderingInfo.pColorAttachments = colorAttachments.data();
 		renderingInfo.pDepthAttachment = &depthStencilAttachment;
 		renderingInfo.pStencilAttachment = &depthStencilAttachment;
 		renderingInfo.viewMask = 0;
 	}
 
-	void CommandList::setPipeline(const GraphicsState& state)
+	void CommandList::setPipeline(const RenderPassDesc& state)
 	{
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
 
@@ -781,8 +781,8 @@ namespace rhi::vulkan
 			}
 		}
 
-		assert(state.renderTargetCount > 0 || state.depthStencilView != nullptr);
-		for (uint32_t i = 0; i < state.renderTargetCount; ++i)
+		assert(state.colorAttachmentCount > 0 || state.depthStencilView != nullptr);
+		for (uint32_t i = 0; i < state.colorAttachmentCount; ++i)
 		{
 			assert(state.renderTargetViews[i] != nullptr);
 			auto rtv = checked_cast<TextureViewVk*>(state.renderTargetViews[i]);
@@ -863,7 +863,7 @@ namespace rhi::vulkan
 	void CommandList::setScissors(const Rect* scissors, uint32_t scissorCount)
 	{
 		ASSERT_MSG(m_CurrentCmdBuf, "Must call CommandList::open() before this method.");
-		ASSERT_MSG(m_LastGraphicsState.pipeline, "set GraphicsState before set scissors");
+		ASSERT_MSG(m_LastGraphicsState.pipeline, "set RenderPassDesc before set scissors");
 		ASSERT_MSG(scissorCount == checked_cast<GraphicsPipelineVk*>(m_LastGraphicsState.pipeline)->getDesc().viewportCount,
 			"The number of scissors must be the same as the number of viewports.");
 

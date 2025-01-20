@@ -113,16 +113,16 @@ namespace rhi
 		virtual void clearColorTexture(ITextureView* textureView, const ClearColor& color) = 0;
 		virtual void clearDepthStencil(ITextureView* textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal) = 0;
 		virtual void clearBuffer(IBuffer* buffer, uint32_t value, uint64_t offset = 0, uint64_t size = ~0ull) = 0;
-		virtual void updateBuffer(IBuffer* buffer, const void* data, uint64_t dataSize, uint64_t offset) = 0;
 		virtual void copyBuffer(IBuffer* srcBuffer, uint64_t srcOffset, IBuffer* dstBuffer, uint64_t dstOffset, uint64_t dataSize) = 0;
 		virtual void* mapBuffer(IBuffer* buffer, MapMode usage) = 0;
-		virtual void updateTexture(ITexture* texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo) = 0;
-		virtual void CopyTextureToBuffer()
+		virtual void CopyTextureToBuffer();
 
 		virtual void commitShaderResources(IShaderResourceBinding* shaderResourceBinding) = 0;
 
 		virtual void setPipeline(const IGraphicsPipeline* pipeline) = 0;
 		virtual void setPipeline(const IComputePipeline* pipeline) = 0;
+
+		virtual void BeginRenderPass(const )
 
 		virtual void setPushConstant(ShaderStage stages, const void* data) = 0;
 		virtual void setVertexBuffer(uint32_t startSlot, uint32_t bufferCount, IBuffer* buffers, uint64_t* offsets) = 0;
@@ -144,16 +144,24 @@ namespace rhi
 		virtual ~ICommandEncoder() = default;
 	};
 
+	class IQueue
+	{
+	public:
+		virtual ~IQueue() = default;
+		virtual ICommandEncoder* CreateCommandEncoder() = 0;
+		virtual void WriteBuffer(IBuffer* buffer, const void* data, uint64_t dataSize, uint64_t offset) = 0;
+		virtual void WriteTexture(ITexture* texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo) = 0;
+	};
+
 	class IDevice : public RefCounted
 	{
 	public:
 		virtual ~IDevice() = default;
-		virtual ICommandEncoder* CreateCommandEncoder(QueueType queue) = 0;
-
+		virtual IQueue* GetQueue(QueueType queueType) = 0;
 		virtual void waitIdle() = 0;
 		virtual void createSwapChain(const SwapChainCreateInfo& swapChainCI) = 0;
 		virtual void recreateSwapChain() = 0;
-		virtual IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineCreateInfo& pipelineCI) = 0;
+		virtual IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineDesc& pipelineCI) = 0;
 		virtual IComputePipeline* createComputePipeline(const ComputePipelineCreateInfo& pipelineCI) = 0;
 		virtual IResourceSetLayout* createResourceSetLayout(const ResourceSetLayoutBinding* bindings, uint32_t bindingCount) = 0;
 		virtual IResourceSet* createResourceSet(const IResourceSetLayout* layout, const ResourceSetBinding* bindings, uint32_t bindingCount) = 0;
@@ -161,10 +169,9 @@ namespace rhi
 		virtual ITexture* createTexture(const TextureDesc& desc) = 0;
 		virtual IBuffer* createBuffer(const BufferDesc& desc) = 0;
 		virtual IBuffer* createBuffer(const BufferDesc& desc, const void* data, uint64_t dataSize) = 0;
-		virtual IShader* createShader(const ShaderCreateInfo& shaderCI, const uint32_t* pCode, size_t codeSize) = 0;
+		virtual IShader* createShader(const ShaderDesc& shaderCI, const uint32_t* pCode, size_t codeSize) = 0;
 		virtual ISampler* createSampler(const SamplerDesc& desc) = 0;
-		virtual void* mapBuffer(IBuffer* buffer) = 0;
-		virtual ICommandEncoder* CreateRenderCommandRecorder(QueueType queueType = QueueType::Graphics) = 0;
+		virtual 
 		virtual uint64_t executeCommandLists(ICommandEncoder** cmdLists, size_t numCmdLists) = 0;
 		virtual void waitForExecution(uint64_t executeID, uint64_t timeout = UINT64_MAX) = 0;
 	};

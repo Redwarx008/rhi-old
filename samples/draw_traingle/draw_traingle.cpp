@@ -109,7 +109,7 @@ public:
 		spCI.enableVSync = true;
 		m_SwapChain = std::unique_ptr<ISwapChain>(createSwapChain(spCI));
 		// create shader 
-		ShaderCreateInfo shaderCI{};
+		ShaderDesc shaderCI{};
 		shaderCI.type = ShaderStage::Vertex;
 		shaderCI.entry = "main";
 		std::vector<uint32_t> buffer = loadShaderData("triangle.vert.spv");
@@ -150,7 +150,7 @@ public:
 		m_ResourceSet = m_RenderDevice->createResourceSet(m_ResourceSetLayout, bindings, 1);
 
 		// create pipeline
-		GraphicsPipelineCreateInfo pipelineCI{};
+		GraphicsPipelineDesc pipelineCI{};
 		pipelineCI.primType = PrimitiveType::TriangleList;
 		pipelineCI.vertexInputAttributes = vertexInputs;
 		pipelineCI.vertexInputAttributeCount = 2;
@@ -175,7 +175,7 @@ public:
 		camera.position = glm::vec3(0, 0, 3);
 
 		m_GraphicState.pipeline = m_Pipeline;
-		m_GraphicState.renderTargetCount = 1;
+		m_GraphicState.colorAttachmentCount = 1;
 		m_GraphicState.indexBuffer = IndexBufferBinding().setBuffer(m_IndexBuffer).setFormat(Format::R32_UINT).setOffset(0);
 		m_GraphicState.vertexBufferCount = 1;
 		m_GraphicState.vertexBuffers[0] = VertexBufferBinding().setBuffer(m_VertexBuffer).setSlot(0).setOffset(0);
@@ -218,7 +218,7 @@ public:
 		Rect scissor{ (int)m_windowWidth / 4 * 3, (int)m_windowHeight / 4 * 3 };
 
 		m_CmdList->open();
-		m_CmdList->updateBuffer(m_UniformBuffer, &shaderData, sizeof(ShaderData), 0);
+		m_CmdList->WriteBuffer(m_UniformBuffer, &shaderData, sizeof(ShaderData), 0);
 		m_CmdList->setPipeline(m_GraphicState);
 		m_CmdList->commitShaderResources(m_ResourceSet);
 		//m_CmdList->setScissors(&scissor, 1);
@@ -263,7 +263,7 @@ private:
 	uint32_t m_windowHeight = 768;
 	GLFWwindow* m_Window;
 
-	GraphicsState m_GraphicState{};
+	RenderPassDesc m_GraphicState{};
 
 	std::unique_ptr<ISwapChain> m_SwapChain;
 	std::unique_ptr<IDevice> m_RenderDevice;

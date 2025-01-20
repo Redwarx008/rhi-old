@@ -29,6 +29,8 @@ namespace rhi
 	class IDevice;
 	class ISwapChain;
 
+	struct Region3D;
+
 	// resource 
 
 	enum class ResourceState : uint32_t
@@ -126,19 +128,6 @@ namespace rhi
 		QueryResolve = 1 << 9
 	};
 	ENUM_CLASS_FLAG_OPERATORS(BufferUsage);
-
-	struct BufferDesc
-	{
-		size_t size = 0;
-		const char* name = nullptr;
-		BufferUsage usage = BufferUsage::None;
-
-		BufferDesc& setSize(size_t size) { this->size = size; return *this; }
-		BufferDesc& setName(const char* name) { this->name = name; return *this; }
-		BufferDesc& setUsage(BufferUsage usageFlag) { this->usage = usage; return *this; }
-	};
-
-	// texture
 
 	enum class TextureDimension : uint8_t
 	{
@@ -246,6 +235,194 @@ namespace rhi
 		CombinedDepthStencil = Depth | Stencil
 	};
 
+	enum class BlendFactor : uint32_t
+	{
+		Zero,
+		One,
+		SrcColor,
+		OneMinusSrcColor,
+		DstColor,
+		OneMinusDstColor,
+		SrcAlpha,
+		OneMinusSrcAlpha,
+		DstAlpha,
+		OneMinusDstAlpha,
+		ConstantColor,
+		OneMinusConstantColor,
+		ConstantAlpha,
+		OneMinusConstantAlpha,
+		SrcAlphaSaturate,
+		Src1Color,
+		OneMinusSrc1Color,
+		Src1Alpha,
+		OneMinusSrc1Alpha
+	};
+
+	enum class BlendOp : uint8_t
+	{
+		Add = 1,
+		Subrtact = 2,
+		ReverseSubtract = 3,
+		Min = 4,
+		Max = 5
+	};
+
+	enum class ColorMask : uint32_t
+	{
+		// These values are equal to their counterparts in DX11, DX12, and Vulkan.
+		Red = 1,
+		Green = 2,
+		Blue = 4,
+		Alpha = 8,
+		All = 0xF
+	};
+	ENUM_CLASS_FLAG_OPERATORS(ColorMask);
+
+	enum class SamplerAddressMode : uint8_t
+	{
+		// D3D names
+		Clamp,
+		Wrap,
+		Border,
+		Mirror,
+		MirrorOnce,
+
+		// Vulkan names
+		ClampToEdge = Clamp,
+		Repeat = Wrap,
+		ClampToBorder = Border,
+		MirroredRepeat = Mirror,
+		MirrorClampToEdge = MirrorOnce
+	};
+
+	enum class FilterMode : uint8_t
+	{
+		Linear,
+		nearest
+	};
+
+	enum class BorderColor : uint8_t
+	{
+		FloatOpaqueBlack,
+		FloatOpaqueWhite,
+		FloatTransparentBlack
+	};
+
+
+	// shader
+
+	enum class ShaderResourceType : uint8_t
+	{
+		None,
+		SampledTexture, //SRV
+		StorageTexture, //URV
+		UniformBuffer, // CBV
+		StorageBuffer, // UAV
+		UniformTexelBuffer,
+		StorageTexelBuffer,
+		Sampler,
+		TextureWithSampler // Combined texture and sampler
+	};
+
+	enum class ShaderStage : uint32_t
+	{
+		None = (0 << 0),
+		Vertex = (1 << 0),
+		TessellationControl = (1 << 1),
+		TessellationEvaluation = (1 << 2),
+		Geometry = (1 << 3),
+		Fragment = (1 << 4),
+		Task = (1 << 5),
+		Mesh = (1 << 6),
+		Compute = (1 << 7),
+		AllGraphics = Vertex | TessellationControl | TessellationEvaluation | Geometry | Fragment,
+		All = Vertex | TessellationControl | TessellationEvaluation | Geometry | Fragment | Task | Mesh | Compute
+	};
+	ENUM_CLASS_FLAG_OPERATORS(ShaderStage);
+
+	enum class PolygonMode : uint8_t
+	{
+		Fill = 0,
+		Line = 1,
+		Point = 2
+	};
+
+	enum class CullMode : uint8_t
+	{
+		None,
+		Front,
+		back
+	};
+
+	enum class CompareOp : uint32_t
+	{
+		Never = 0,
+		Less = 1,
+		Equal = 2,
+		LessOrEqual = 3,
+		Greater = 4,
+		NotEqual = 5,
+		GreaterOrEqual = 6,
+		Always = 7
+	};
+
+	enum class StencilOp : uint32_t
+	{
+		Keep = 0,
+		Zero = 1,
+		Replace = 2,
+		IncrementAndClamp = 3,
+		DecrementAndClamp = 4,
+		Invert = 5,
+		IncrementAndWrap = 6,
+		DecrementAndWrap = 7
+	};
+
+	enum class PrimitiveType : uint8_t
+	{
+		PointList,
+		LineList,
+		LineStrip,
+		TriangleList,
+		TriangleStrip,
+		TriangleFan,
+		PatchList
+	};
+
+	enum class QueueType
+	{
+		Graphics,
+		Compute,
+		Transfer,
+		Count
+	};
+
+	enum class LoadOp : uint8_t
+	{
+		Undefined,
+		Load,
+		Clear
+	};
+
+	enum class StoreOp : uint8_t
+	{
+		Undefined,
+		Store,
+		Discard
+	};
+
+	enum class MessageSeverity : uint8_t
+	{
+		Verbose,
+		Info,
+		Warning,
+		Error,
+		Fatal
+	};
+
+	typedef void(_stdcall* DebugMessageCallbackFunc) (MessageSeverity severity, const char* msg);
+	//using DebugMessageCallbackFunc = std::function<void(MessageSeverity severity, const char* msg)>;
+
 	struct Region3D
 	{
 		uint32_t minX = 0;
@@ -308,105 +485,7 @@ namespace rhi
 		uint32_t mipLevelCount = 1;
 	};
 
-	struct TextureDesc
-	{
-		TextureDimension dimension = TextureDimension::Undefined;
-		uint32_t width = 1;
-		uint32_t height = 1;
-		/// For a 1D array or 2D array, number of array slices
-		uint32_t arraySize = 1;
-		/// For a 3D texture, number of depth slices
-		uint32_t depth = 1;
-		uint32_t sampleCount = 1;
-		uint32_t mipLevels = 1;
-		Format format = Format::UNKNOWN;
 
-		TextureUsage usage = TextureUsage::None;
-
-		constexpr TextureDesc& setWidth(uint32_t value) { width = value; return *this; }
-		constexpr TextureDesc& setHeight(uint32_t value) { height = value; return *this; }
-		constexpr TextureDesc& setDepth(uint32_t value) { depth = value; return *this; }
-		constexpr TextureDesc& setArraySize(uint32_t value) { arraySize = value; return *this; }
-		constexpr TextureDesc& setMipLevels(uint32_t value) { mipLevels = value; return *this; }
-		constexpr TextureDesc& setFormat(Format value) { format = value; return *this; }
-		constexpr TextureDesc& setDimension(TextureDimension value) { dimension = value; return *this; }
-	};
-
-	enum class SamplerAddressMode : uint8_t
-	{
-		// D3D names
-		Clamp,
-		Wrap,
-		Border,
-		Mirror,
-		MirrorOnce,
-
-		// Vulkan names
-		ClampToEdge = Clamp,
-		Repeat = Wrap,
-		ClampToBorder = Border,
-		MirroredRepeat = Mirror,
-		MirrorClampToEdge = MirrorOnce
-	};
-
-	enum class FilterMode : uint8_t
-	{
-		Linear,
-		nearest
-	};
-
-	enum class BorderColor : uint8_t
-	{
-		FloatOpaqueBlack,
-		FloatOpaqueWhite,
-		FloatTransparentBlack
-	};
-
-	struct SamplerDesc
-	{
-		float maxAnisotropy = 1.f;
-		float mipLodBias = 0.f;
-		BorderColor borderColor = BorderColor::FloatOpaqueBlack;
-
-		FilterMode magFilter = FilterMode::Linear;
-		FilterMode minFilter = FilterMode::Linear;
-		FilterMode mipmapMode = FilterMode::Linear;
-
-		SamplerAddressMode addressModeU = SamplerAddressMode::Clamp;
-		SamplerAddressMode addressModeV = SamplerAddressMode::Clamp;
-		SamplerAddressMode addressModeW = SamplerAddressMode::Clamp;
-	};
-
-	// shader
-
-	enum class ShaderResourceType : uint8_t
-	{
-		None,
-		SampledTexture, //SRV
-		StorageTexture, //URV
-		UniformBuffer, // CBV
-		StorageBuffer, // UAV
-		UniformTexelBuffer,
-		StorageTexelBuffer,
-		Sampler,
-		TextureWithSampler // Combined texture and sampler
-	};
-
-	enum class ShaderStage : uint32_t
-	{
-		None = (0 << 0),
-		Vertex = (1 << 0),
-		TessellationControl = (1 << 1),
-		TessellationEvaluation = (1 << 2),
-		Geometry = (1 << 3),
-		Fragment = (1 << 4),
-		Task = (1 << 5),
-		Mesh = (1 << 6),
-		Compute = (1 << 7),
-		AllGraphics = Vertex | TessellationControl | TessellationEvaluation | Geometry | Fragment,
-		All = Vertex | TessellationControl | TessellationEvaluation | Geometry | Fragment | Task | Mesh | Compute
-	};
-	ENUM_CLASS_FLAG_OPERATORS(ShaderStage);
 
 	struct SpecializationConstant
 	{
@@ -440,19 +519,7 @@ namespace rhi
 		}
 	};
 
-	struct ShaderCreateInfo
-	{
-		ShaderStage type = ShaderStage::None;
-		const char* entry = nullptr;
-		const SpecializationConstant* specializationConstants;
-		uint32_t specializationConstantCount = 0;
-	};
 
-	struct ShaderDesc
-	{
-		ShaderStage type = ShaderStage::None;
-		const char* entry = nullptr;
-	};
 
 	// resource set 
 
@@ -610,17 +677,6 @@ namespace rhi
 	static constexpr uint32_t g_MaxBoundDescriptorSets = 4;
 	static constexpr uint32_t g_MaxVertexInputBindings = 16;
 
-	enum class PrimitiveType : uint8_t
-	{
-		PointList,
-		LineList,
-		LineStrip,
-		TriangleList,
-		TriangleStrip,
-		TriangleFan,
-		PatchList
-	};
-
 	struct VertexInputAttribute
 	{
 		uint32_t bindingBufferSlot = 0;
@@ -637,48 +693,7 @@ namespace rhi
 		uint32_t elementStride = UINT32_MAX;
 	};
 
-	enum class BlendFactor : uint32_t
-	{
-		Zero,
-		One,
-		SrcColor,
-		OneMinusSrcColor,
-		DstColor,
-		OneMinusDstColor,
-		SrcAlpha,
-		OneMinusSrcAlpha,
-		DstAlpha,
-		OneMinusDstAlpha,
-		ConstantColor,
-		OneMinusConstantColor,
-		ConstantAlpha,
-		OneMinusConstantAlpha,
-		SrcAlphaSaturate,
-		Src1Color,
-		OneMinusSrc1Color,
-		Src1Alpha,
-		OneMinusSrc1Alpha
-	};
 
-	enum class BlendOp : uint8_t
-	{
-		Add = 1,
-		Subrtact = 2,
-		ReverseSubtract = 3,
-		Min = 4,
-		Max = 5
-	};
-
-	enum class ColorMask : uint32_t
-	{
-		// These values are equal to their counterparts in DX11, DX12, and Vulkan.
-		Red = 1,
-		Green = 2,
-		Blue = 4,
-		Alpha = 8,
-		All = 0xF
-	};
-	ENUM_CLASS_FLAG_OPERATORS(ColorMask);
 
 	struct BlendState
 	{
@@ -698,30 +713,6 @@ namespace rhi
 
 		static constexpr uint32_t MaxRenderTargets = 8;
 		RenderTargetBlendState renderTargetBlendStates[MaxRenderTargets];
-	};
-
-	enum class CompareOp : uint32_t
-	{
-		Never = 0,
-		Less = 1,
-		Equal = 2,
-		LessOrEqual = 3,
-		Greater = 4,
-		NotEqual = 5,
-		GreaterOrEqual = 6,
-		Always = 7
-	};
-
-	enum class StencilOp : uint32_t
-	{
-		Keep = 0,
-		Zero = 1,
-		Replace = 2,
-		IncrementAndClamp = 3,
-		DecrementAndClamp = 4,
-		Invert = 5,
-		IncrementAndWrap = 6,
-		DecrementAndWrap = 7
 	};
 
 	struct StencilOpState
@@ -747,19 +738,6 @@ namespace rhi
 		StencilOpState	backFaceStencil;
 	};
 
-	enum class PolygonMode : uint8_t
-	{
-		Fill = 0,
-		Line = 1,
-		Point = 2
-	};
-
-	enum class CullMode : uint8_t
-	{
-		None,
-		Front,
-		back
-	};
 
 	struct RasterState
 	{
@@ -872,13 +850,64 @@ namespace rhi
 		IndexBufferBinding& setOffset(uint32_t value) { offset = value; return *this; }
 	};
 
+	struct BufferDesc
+	{
+		size_t size = 0;
+		const char* name = nullptr;
+		BufferUsage usage = BufferUsage::None;
+
+		BufferDesc& setSize(size_t size) { this->size = size; return *this; }
+		BufferDesc& setName(const char* name) { this->name = name; return *this; }
+		BufferDesc& setUsage(BufferUsage usageFlag) { this->usage = usage; return *this; }
+	};
+
+	struct TextureDesc
+	{
+		TextureDimension dimension = TextureDimension::Undefined;
+		uint32_t width = 1;
+		uint32_t height = 1;
+		/// For a 1D array or 2D array, number of array slices
+		uint32_t arraySize = 1;
+		/// For a 3D texture, number of depth slices
+		uint32_t depth = 1;
+		uint32_t sampleCount = 1;
+		uint32_t mipLevels = 1;
+		Format format = Format::UNKNOWN;
+
+		TextureUsage usage = TextureUsage::None;
+	};
+
+	struct ShaderDesc
+	{
+		ShaderStage type = ShaderStage::None;
+		const char* entry = nullptr;
+		const SpecializationConstant* specializationConstants;
+		uint32_t specializationConstantCount = 0;
+	};
+
+	struct SamplerDesc
+	{
+		float maxAnisotropy = 1.f;
+		float mipLodBias = 0.f;
+		BorderColor borderColor = BorderColor::FloatOpaqueBlack;
+
+		FilterMode magFilter = FilterMode::Linear;
+		FilterMode minFilter = FilterMode::Linear;
+		FilterMode mipmapMode = FilterMode::Linear;
+
+		SamplerAddressMode addressModeU = SamplerAddressMode::Clamp;
+		SamplerAddressMode addressModeV = SamplerAddressMode::Clamp;
+		SamplerAddressMode addressModeW = SamplerAddressMode::Clamp;
+	};
+
 	struct PushConstantDesc
 	{
 		ShaderStage stage = ShaderStage::None;
 		uint32_t size = 0;
 	};
 
-	struct GraphicsPipelineCreateInfo
+
+	struct GraphicsPipelineDesc
 	{
 		PrimitiveType primType = PrimitiveType::TriangleList;
 
@@ -902,7 +931,7 @@ namespace rhi
 		DepthStencilState depthStencilState;
 
 		uint32_t viewportCount = 1;
-		uint32_t renderTargetCount = 0;
+		uint32_t colorAttachmentCount = 0;
 		Format renderTargetFormats[g_MaxColorAttachments];
 		Format depthStencilFormat = Format::UNKNOWN;
 
@@ -927,28 +956,26 @@ namespace rhi
 		uint64_t cacheSize = 0;
 	};
 
-	struct GraphicsPipelineDesc
+
+	struct ColorAttachment
 	{
-		PrimitiveType primType = PrimitiveType::TriangleList;
-
-		BlendState blendState;
-		RasterState rasterState;
-		DepthStencilState depthStencilState;
-
-		Format renderTargetFormats[g_MaxColorAttachments]{};
-		uint32_t renderTargetFormatCount = 0;
-		Format depthStencilFormat = Format::UNKNOWN;
-
-		uint8_t sampleCount = 1;
-		uint32_t patchControlPoints = 0;
-		uint32_t viewportCount = 1;
+		ITextureView* view = nullptr;
+		ITextureView* resolveView = nullptr;
+		LoadOp loadOp;
+		StoreOp storeOp;
+		Color clearValue;
 	};
 
-	struct GraphicsState
+	struct DepthStencilAattachment
 	{
-		IGraphicsPipeline* pipeline = nullptr;
+		ITextureView* view;
+		LoadOp depthLoadOp = LoadOp::Undefined;
+		StoreOp depthStoreOp = StoreOp::Undefined;
+	};
 
-		uint32_t renderTargetCount = 0;
+	struct RenderPassDesc
+	{
+		uint32_t colorAttachmentCount = 0;
 		ITextureView* renderTargetViews[g_MaxColorAttachments]{};
 		ITextureView* depthStencilView = nullptr;
 
@@ -1042,27 +1069,6 @@ namespace rhi
 		float a = 0.0f;
 	};
 
-	// render device
-
-	enum class QueueType
-	{
-		Graphics,
-		Compute,
-		Transfer,
-		Count
-	};
-
-	enum class MessageSeverity : uint8_t
-	{
-		Verbose,
-		Info,
-		Warning,
-		Error,
-		Fatal
-	};
-
-	typedef void(_stdcall* DebugMessageCallbackFunc) (MessageSeverity severity, const char* msg);
-	//using DebugMessageCallbackFunc = std::function<void(MessageSeverity severity, const char* msg)>;
 
 	struct DeviceCreateInfo
 	{

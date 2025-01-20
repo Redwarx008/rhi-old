@@ -48,13 +48,13 @@ namespace rhi::vulkan
 		ITexture* createTexture(const TextureDesc& desc) override;
 		IBuffer* createBuffer(const BufferDesc& desc) override;
 		IBuffer* createBuffer(const BufferDesc& desc, const void* data, size_t dataSize) override;
-		IShader* createShader(const ShaderCreateInfo& shaderCI, const uint32_t* pCode, size_t codeSize) override;
+		IShader* createShader(const ShaderDesc& shaderCI, const uint32_t* pCode, size_t codeSize) override;
 		ISampler* createSampler(const SamplerDesc& desc) override;
 
 		IResourceSetLayout* createResourceSetLayout(const ResourceSetLayoutBinding* bindings, uint32_t bindingCount) override;
 		IResourceSet* createResourceSet(const IResourceSetLayout* layout, const ResourceSetBinding* bindings, uint32_t bindingCount) override;
 
-		IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineCreateInfo& pipelineCI) override;
+		IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineDesc& pipelineCI) override;
 		IComputePipeline* createComputePipeline(const ComputePipelineCreateInfo& pipelineCI) override;
 
 		void* mapBuffer(IBuffer* buffer) override;

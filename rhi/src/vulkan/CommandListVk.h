@@ -34,16 +34,16 @@ namespace rhi::vulkan
 		void clearColorTexture(ITextureView* textureView, const ClearColor& color) override;
 		void clearDepthStencil(ITextureView* textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal) override;
 		void clearBuffer(IBuffer* buffer, uint32_t value, uint64_t offset = 0, uint64_t size = ~0ull) override;
-		void updateBuffer(IBuffer* buffer, const void* data, uint64_t dataSize, uint64_t offset) override;
+		void WriteBuffer(IBuffer* buffer, const void* data, uint64_t dataSize, uint64_t offset) override;
 		void copyBuffer(IBuffer* srcBuffer, uint64_t srcOffset, IBuffer* dstBuffer, uint64_t dstOffset, uint64_t dataSize) override;
 		void* mapBuffer(IBuffer* buffer, MapMode usage) override;
-		void updateTexture(ITexture* texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo) override;
+		void WriteTexture(ITexture* texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo) override;
 
 		void commitShaderResources(IResourceSet* resourceSet, uint32_t dstSet = 0) override;
 
 		void setPushConstant(ShaderStage stages, const void* data) override;
 		void setScissors(const Rect* scissors, uint32_t scissorCount) override;
-		void setPipeline(const GraphicsState& state) override;
+		void setPipeline(const RenderPassDesc& state) override;
 
 		void draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance) override;
 		void drawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) override;
