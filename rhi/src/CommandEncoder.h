@@ -11,7 +11,7 @@ namespace rhi
 	class CommandList final : public ICommandList
 	{
 	public:
-		Ref<CommandList> Create(CommandEncoder* encoder);
+		static Ref<CommandList> Create(CommandEncoder* encoder);
 		void Wait(ICommandList* other) override;
 	private:
 		explicit CommandList(CommandEncoder* encoder);
@@ -23,7 +23,7 @@ namespace rhi
 	{
 	public:
 		ICommandList* Finish() override;
-		CommandAllocator* GetAllocator();
+		CommandAllocator& GetAllocator();
 	private:
 		CommandAllocator mCommandAllocator;
 	};

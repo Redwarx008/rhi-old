@@ -27,12 +27,8 @@ namespace rhi
 	class CommandIterator : public NonCopyable
 	{
 	public:
-		explicit CommandIterator(CommandAllocator allocator);
-		CommandIterator();
+		explicit CommandIterator(CommandAllocator& allocator);
 		~CommandIterator();
-
-		CommandIterator(CommandIterator&& other);
-		CommandIterator& operator=(CommandIterator&& other);
 
 		template <typename E>
 		bool NextCommandId(E* commandId)
@@ -58,13 +54,15 @@ namespace rhi
 		bool NextCommandId(uint32_t* commandId);
 		void* NextCommand(size_t commandSize, size_t commandAlignment);
 		void* NextData(size_t dataSize, size_t dataAlignment);
-		std::shared_ptr<CommandBlocks> mBlocks;
+		CommandBlocks mBlocks;
 		// This is an extremely hot pointer during command iteration, but always
 		// points to at least a valid uint32_t, either inside a block, or at mEndOfBlock.
 		char* mCurrentPtr = nullptr;
-		size_t mCurrentBlock = 0;
+		size_t mCurrentBlockIndex = 0;
 		// Used to avoid a special case for empty iterators.
 		uint32_t mEndOfBlock = detail::cEndOfBlock;
+
+		CommandAllocator& mAllocator;
 	};
 
 
@@ -102,6 +100,7 @@ namespace rhi
 			}
 			return result;
 		}
+		void Recycle(CommandBlocks&& blocks);
 	private:
 		static constexpr uint32_t cMaxSupportedAlignment = 8;
 		// To avoid checking for overflows at every step of the computations we compute an upper
@@ -112,7 +111,7 @@ namespace rhi
 		static constexpr uint32_t cDefaultBaseAllocationSize = 2048;
 
 		friend CommandIterator;
-		std::shared_ptr<CommandBlocks> AcquireBlocks();
+		CommandBlocks&& AcquireCurrentBlocks();
 
 		char* Allocate(uint32_t commandId, size_t commandSize, size_t commandAlignment);
 		char* AllocateData(size_t commandSize, size_t commandAlignment) 
@@ -121,8 +120,9 @@ namespace rhi
 		}
 		bool GetNewBlock(size_t minimumSize);
 		void Reset();
-		std::shared_ptr<CommandBlocks> mBlocks;
-		size_t mCurrentBlock = 0;
+		std::vector<CommandBlocks> mBlocksPool;
+		CommandBlocks mBlocks;
+		size_t mCurrentBlockIndex = 0;
 		// Data used for the block range at initialization so that the first call to Allocate sees
 		// there is not enough space and calls GetNewBlock. This avoids having to special case the
 		// initialization in Allocate.

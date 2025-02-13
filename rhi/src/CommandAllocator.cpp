@@ -7,7 +7,6 @@ namespace rhi
 {
     CommandAllocator::CommandAllocator()
     {
-        mBlocks = std::make_shared<CommandBlocks>();
         mCurrentPtr = reinterpret_cast<char*>(&mPlaceholderSpace[0]);
         mEndPtr = reinterpret_cast<char*>(&mPlaceholderSpace[1]); // just get address. no visit
     }
@@ -19,7 +18,7 @@ namespace rhi
     {
         mCurrentPtr = other.mCurrentPtr;
         mEndPtr = other.mEndPtr;
-        mCurrentBlock = other.mCurrentBlock;
+        mCurrentBlockIndex = other.mCurrentBlockIndex;
         other.Clear();
     }
     CommandAllocator& CommandAllocator::operator=(CommandAllocator&& other)
@@ -74,12 +73,18 @@ namespace rhi
         uint32_t* idAlloc = reinterpret_cast<uint32_t*>(mCurrentPtr);
         *idAlloc = detail::cEndOfBlock;
 
-        // We can reuse the allocated memory.
-        if (mBlocks->size() > mCurrentBlock)
+        if (mBlocks.empty() && mBlocksPool.size() > 0)
         {
-            ++mCurrentBlock;
-            mCurrentPtr = AlignPtr((*mBlocks)[mCurrentBlock].data.get(), alignof(uint32_t));
-            mEndPtr = (*mBlocks)[mCurrentBlock].data.get() + (*mBlocks)[mCurrentBlock].size;
+            mBlocks = std::move((*mBlocksPool.end()));
+            mBlocksPool.erase(mBlocksPool.end());
+        }
+
+        // We can reuse the allocated memory.
+        if (mBlocks.size() > mCurrentBlockIndex)
+        {
+            ++mCurrentBlockIndex;
+            mCurrentPtr = AlignPtr(mBlocks[mCurrentBlockIndex].data.get(), alignof(uint32_t));
+            mEndPtr = mBlocks[mCurrentBlockIndex].data.get() + mBlocks[mCurrentBlockIndex].size;
         }
         else
         {
@@ -115,34 +120,25 @@ namespace rhi
 
         mCurrentPtr = AlignPtr(block.get(), alignof(uint32_t));
         mEndPtr = block.get() + mLastAllocationSize;
-        mBlocks->push_back({ mLastAllocationSize, std::move(block) });
+        mBlocks.push_back({ mLastAllocationSize, std::move(block) });
         return true;
     }
 
     void CommandAllocator::Reset()
     {
-        if (!mBlocks->empty())
-        {
-            mCurrentPtr = AlignPtr((*mBlocks)[0].data.get(), alignof(uint32_t));
-            mEndPtr = (*mBlocks)[0].data.get() + (*mBlocks)[0].size;
-        }
-        else
-        {
-            mCurrentPtr = reinterpret_cast<char*>(&mPlaceholderSpace[0]);
-            mEndPtr = reinterpret_cast<char*>(&mPlaceholderSpace[1]); // just get address. no visit
-        }
 
-        mCurrentBlock = 0;
+        mCurrentPtr = reinterpret_cast<char*>(&mPlaceholderSpace[0]);
+        mEndPtr = reinterpret_cast<char*>(&mPlaceholderSpace[1]); // just get address. no visit
+        mCurrentBlockIndex = 0;
     }
 
     bool CommandAllocator::Clear()
     {
         Reset();
-        mBlocks.reset();
         mLastAllocationSize = cDefaultBaseAllocationSize;
     }
 
-    std::shared_ptr<CommandBlocks> CommandAllocator::AcquireBlocks()
+    CommandBlocks&& CommandAllocator::AcquireCurrentBlocks()
     {
         assert(mCurrentPtr != nullptr && mEndPtr != nullptr);
         assert(IsPtrAligned(mCurrentPtr, alignof(uint32_t)));
@@ -151,42 +147,24 @@ namespace rhi
 
         mCurrentPtr = nullptr;
         mEndPtr = nullptr;
-        return mBlocks;
+        return std::move(mBlocks);
     }
 
+    void CommandAllocator::Recycle(CommandBlocks&& blocks)
+    {
+        mBlocksPool.push_back(std::move(blocks));
+    }
 
-    CommandIterator::CommandIterator(CommandAllocator allocator) : mBlocks(allocator.AcquireBlocks())
+    CommandIterator::CommandIterator(CommandAllocator& allocator) :
+        mBlocks(allocator.AcquireCurrentBlocks()),
+        mAllocator(allocator)
     {
         Reset();
     }
 
-    CommandIterator::CommandIterator()
+    CommandIterator::~CommandIterator()
     {
-        mCurrentPtr = reinterpret_cast<char*>(&mEndOfBlock);
-    }
-
-    CommandIterator::~CommandIterator() = default;
-
-    CommandIterator::CommandIterator(CommandIterator&& other)
-    {
-        if (!other.IsEmpty()) 
-        {
-            mBlocks = std::move(other.mBlocks);
-            other.Reset();
-        }
-        Reset();
-    }
-
-    CommandIterator& CommandIterator::operator=(CommandIterator&& other)
-    {
-        assert(IsEmpty());
-        if (!other.IsEmpty())
-        {
-            mBlocks = std::move(other.mBlocks);
-            other.Reset();
-        }
-        Reset();
-        return *this;
+        mAllocator.Recycle(std::move(mBlocks));
     }
 
     bool CommandIterator::NextCommandId(uint32_t* commandId)
@@ -194,7 +172,7 @@ namespace rhi
         char* idPtr = AlignPtr(mCurrentPtr, alignof(uint32_t));
         assert(idPtr == reinterpret_cast<char*>(&mEndOfBlock) ||
             idPtr + sizeof(uint32_t) <=
-            (*mBlocks)[mCurrentBlock].data.get() + (*mBlocks)[mCurrentBlock].size);
+            mBlocks[mCurrentBlockIndex].data.get() + mBlocks[mCurrentBlockIndex].size);
 
         uint32_t id = *reinterpret_cast<uint32_t*>(idPtr);
 
@@ -205,22 +183,22 @@ namespace rhi
             return true;
         }
 
-        mCurrentBlock++;
-        if (mCurrentBlock >= mBlocks->size())
+        mCurrentBlockIndex++;
+        if (mCurrentBlockIndex >= mBlocks.size())
         {
             Reset();
             *commandId = detail::cEndOfBlock;
             return false;
         }
-        mCurrentPtr = AlignPtr((*mBlocks)[mCurrentBlock].data.get(), alignof(uint32_t));
+        mCurrentPtr = AlignPtr(mBlocks[mCurrentBlockIndex].data.get(), alignof(uint32_t));
         return NextCommandId(commandId);
     }
 
     void CommandIterator::Reset()
     {
-        mCurrentBlock = 0;
+        mCurrentBlockIndex = 0;
 
-        if (mBlocks->empty())
+        if (mBlocks.empty())
         {
             // This will case the first NextCommandId call to try to move to the next block and stop
             // the iteration immediately, without special casing the initialization.
@@ -228,7 +206,7 @@ namespace rhi
         }
         else
         {
-            mCurrentPtr = AlignPtr((*mBlocks)[0].data.get(), alignof(uint32_t));
+            mCurrentPtr = AlignPtr(mBlocks[0].data.get(), alignof(uint32_t));
         }
     }
 
@@ -240,20 +218,19 @@ namespace rhi
         }
 
         mCurrentPtr = reinterpret_cast<char*>(&mEndOfBlock);
-        mBlocks.reset();
         Reset();
     }
 
     bool CommandIterator::IsEmpty() const
     {
-        return mBlocks->empty();
+        return mBlocks.empty();
     }
 
     void* CommandIterator::NextCommand(size_t commandSize, size_t commandAlignment)
     {
         char* commandPtr = AlignPtr(mCurrentPtr, commandAlignment);
         assert(commandPtr + sizeof(commandSize) <=
-            (*mBlocks)[mCurrentBlock].data.get() + (*mBlocks)[mCurrentBlock].size);
+            mBlocks[mCurrentBlockIndex].data.get() + mBlocks[mCurrentBlockIndex].size);
 
         mCurrentPtr = commandPtr + commandSize;
         return commandPtr;

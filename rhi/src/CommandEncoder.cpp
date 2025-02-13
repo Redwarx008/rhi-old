@@ -4,9 +4,15 @@
 namespace rhi
 {
 	CommandList::CommandList(CommandEncoder* encoder)
-		:mCommandIter(encoder->)
+		:mCommandIter(encoder->GetAllocator())
 	{
 
+	}
+
+	Ref<CommandList> CommandList::Create(CommandEncoder* encoder)
+	{
+		Ref<CommandList> commands = AcquireRef(new CommandList(encoder));
+		return commands;
 	}
 
 	void CommandList::Wait(ICommandList* other)
@@ -16,7 +22,7 @@ namespace rhi
 
 	ICommandList* CommandEncoder::Finish()
 	{
-		Ref<CommandList> commands = AcquireRef(new CommandList(std::move(mCommands)));
+		Ref<CommandList> commands = CommandList::Create(this);
 		return commands.Detach();
 	}
 }
