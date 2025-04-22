@@ -1,11 +1,12 @@
 #pragma once
 
-#include <cassert>
-#include "rhi/common/Error.h"
+#include "../common/Error.h"
 
+#include <cassert>
+#include <string>
 #include <vulkan/vulkan.h>
 
-namespace rhi
+namespace rhi::vulkan
 {
 	inline std::string vkErrorToString(VkResult errorCode)
 	{
@@ -43,12 +44,34 @@ namespace rhi
 	}
 
 
-#define CHECK_VK_RESULT(err, ...)                                                                                                                                 
-    {                                                                                                                                                            \
-        if (err != VK_SUCCESS)                                                                                                                                   \
-        {                                                                                                                                                        \
-            logMsg(MessageSeverity::Error, __FUNCTION__, __LINE__, __VA_ARGS__, "\nVK Error Code : ", vkErrorToString(err));							 \                                                                                                                                                    
-        }                                                                                                                                                        \
-    }	
+#define CHECK_VK_RESULT_RETURN(err, ...)													\
+{																							\
+	VkResult res = (err);																	\
+	if (res != VK_SUCCESS)																	\
+	{																						\
+		LogMsg(LoggingSeverity::Error, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__, "\nVK Error Code : ", vkErrorToString(res));\
+	}																						\
+	return;																					 \
+}\
+
+
+#define CHECK_VK_RESULT_FALSE(err, ...)														\
+{																							\
+	VkResult res = (err);																	\
+	if (res != VK_SUCCESS)																	\
+	{																						\
+		LogMsg(LoggingSeverity::Error, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__, "\nVK Error Code : ", vkErrorToString(res));\
+		return false;																		\
+	}																						\
+}																							\
+
+#define CHECK_VK_RESULT(err, ...)															\
+{																							\
+	VkResult res = (err);																	\
+	if (res != VK_SUCCESS)																	\
+	{																						\
+		LogMsg(LoggingSeverity::Error, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__, "\nVK Error Code : ", vkErrorToString(res));\
+	}																						\
+}\
 
 }

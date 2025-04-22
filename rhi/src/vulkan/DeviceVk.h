@@ -1,93 +1,52 @@
 #pragma once
 
-#include "rhi/rhi.h"
-#if defined RHI_ENABLE_THREAD_RECORDING
-#include <mutex>
-#endif
+#include "../DeviceBase.h"
+#include "../common/Ref.hpp"
+#include "CommandRecordContextVk.h"
 #include <vk_mem_alloc.h>
-
-#include "../Ref.hpp"
-
 #include <array>
 
 namespace rhi::vulkan
 {
-	class CommandBuffer;
-	class CommandQueue;
+	class Adapter;
 
-	//template <typename T>
-	//class Ref;
+	struct VkDeviceInfo
+	{
+		VkPhysicalDeviceFeatures features;
+		VkPhysicalDeviceProperties properties;
+	};
 
-
-	class Device final : public IDevice
+	class Device final : public DeviceBase
 	{
 	public:
-		~Device();
-		// Internal methodsd
-		static Ref<Device> Create(const DeviceCreateInfo& desc);
+		static Ref<Device> Create(Adapter* adapter, const DeviceDesc& desc);
+		// api implementation
+		//void WaitIdle() override;
+		Ref<RenderPipelineBase> CreateRenderPipeline(const RenderPipelineDesc& desc) override;
+		Ref<ComputePipelineBase> CreateComputePipeline(const ComputePipelineDesc& desc) override;
+		Ref<BindSetLayoutBase> CreateBindSetLayout(const BindSetLayoutDesc& desc) override;
+		Ref<BindSetBase> CreateBindSet(const BindSetDesc& desc) override;
+		Ref<TextureBase> CreateTexture(const TextureDesc& desc) override;
+		Ref<BufferBase> CreateBuffer(const BufferDesc& desc) override;
+		Ref<ShaderModuleBase> CreateShader(const ShaderModuleDesc& desc) override;
+		Ref<SamplerBase> CreateSampler(const SamplerDesc& desc) override;
+		Ref<CommandListBase> CreateCommandList(CommandEncoder* encoder) override;
 
+		VkDevice GetHandle() const;
 		VmaAllocator GetMemoryAllocator() const;
-		CommandQueue GetQueue(QueueType queueType) const;
-		void setSwapChainImageAvailableSeamaphore(const VkSemaphore& semaphore);
-		void setRenderCompleteSemaphore(const VkSemaphore& semaphore);
-		void recycleCommandBuffers();
-		void executePresentCommandList(ICommandEncoder* cmdList);
-
-		DeviceCreateInfo createInfo{};
-		VkPhysicalDeviceProperties physicalDeviceProperties{};
-		uint32_t maxPushDescriptors = 0;
-
-		// Interface implementation
-
-
-
-		void waitIdle() override;
-
-		ICommandEncoder* CreateCommandRecorder(QueueType queueType = QueueType::Graphics) override;
-
-		ITexture* createTexture(const TextureDesc& desc) override;
-		IBuffer* createBuffer(const BufferDesc& desc) override;
-		IBuffer* createBuffer(const BufferDesc& desc, const void* data, size_t dataSize) override;
-		IShader* createShader(const ShaderDesc& shaderCI, const uint32_t* pCode, size_t codeSize) override;
-		ISampler* createSampler(const SamplerDesc& desc) override;
-
-		IResourceSetLayout* createResourceSetLayout(const ResourceSetLayoutBinding* bindings, uint32_t bindingCount) override;
-		IResourceSet* createResourceSet(const IResourceSetLayout* layout, const ResourceSetBinding* bindings, uint32_t bindingCount) override;
-
-		IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineDesc& pipelineCI) override;
-		IComputePipeline* createComputePipeline(const ComputePipelineCreateInfo& pipelineCI) override;
-
-		void* mapBuffer(IBuffer* buffer) override;
-
-		uint64_t executeCommandLists(ICommandEncoder** cmdLists, size_t numCmdLists) override;
-		void waitForExecution(uint64_t executeID, uint64_t timeout = UINT64_MAX) override;
-
-		void updateResourceSet(IResourceSet* set, const ResourceSetBinding* bindings, uint32_t bindingCount) override;
-
+		//VkPhysicalDevice GetVkPhysicalDevice() const;
+		const VkDeviceInfo& GetVkDeviceInfo() const;
+		uint32_t GetOptimalBytesPerRowAlignment() const override;
 	private:
-		Device() = default;
-		TextureVk* createRenderTarget(const TextureDesc& desc, VkImage image);
-		bool createInstance(bool enableDebugRuntime);
-		bool pickPhysicalDevice();
-		bool createDevice(const DeviceCreateInfo& desc);
+		explicit Device(Adapter* adapter, const DeviceDesc& desc);
+		~Device() noexcept;
+		bool Initialize(const DeviceDesc& desc);
 
-		void destroyDebugUtilsMessenger();
-#if defined RHI_ENABLE_THREAD_RECORDING
-		std::mutex m_Mutex;
-#endif
+		VkDevice mHandle = VK_NULL_HANDLE;
 
-		ContextVk m_Context = {};
 		VmaAllocator mMemoryAllocator = VK_NULL_HANDLE;
 
-		VkDebugUtilsMessengerEXT m_DebugUtilsMessenger = VK_NULL_HANDLE;
-
-		VkSemaphore m_SwapChainImgAvailableSemaphore = VK_NULL_HANDLE;
-
-		VkSemaphore m_RenderCompleteSemaphore = VK_NULL_HANDLE;
-
-		std::array<std::unique_ptr<CommandQueue>, static_cast<uint32_t>(QueueType::Count)> m_Queues;
-
-		std::vector<VkCommandBufferSubmitInfo> m_CmdBufSubmitInfos;
+		VkDeviceInfo mVkDeviceInfo;
 	};
 }
 

@@ -1,5 +1,5 @@
 #include "CommandAllocator.h"
-#include "Utils.h"
+#include "common/Utils.h"
 
 #include <cassert>
 
@@ -36,7 +36,7 @@ namespace rhi
 	{
         assert(mCurrentPtr != nullptr);
         assert(mEndPtr != nullptr);
-        assert(commandId != detail::cEndOfBlock);
+        assert(commandId != cEndOfBlock);
 
         // It should always be possible to allocate one id, for kEndOfBlock tagging,
         assert(IsPtrAligned(mCurrentPtr, alignof(uint32_t)));
@@ -71,7 +71,7 @@ namespace rhi
         // When there is not enough space, we signal the kEndOfBlock, so that the iterator knows
         // to move to the next one. kEndOfBlock on the last block means the end of the commands.
         uint32_t* idAlloc = reinterpret_cast<uint32_t*>(mCurrentPtr);
-        *idAlloc = detail::cEndOfBlock;
+        *idAlloc = cEndOfBlock;
 
         if (mBlocks.empty() && mBlocksPool.size() > 0)
         {
@@ -143,7 +143,7 @@ namespace rhi
         assert(mCurrentPtr != nullptr && mEndPtr != nullptr);
         assert(IsPtrAligned(mCurrentPtr, alignof(uint32_t)));
         assert(mCurrentPtr + sizeof(uint32_t) <= mEndPtr);
-        *reinterpret_cast<uint32_t*>(mCurrentPtr) = detail::cEndOfBlock;
+        *reinterpret_cast<uint32_t*>(mCurrentPtr) = cEndOfBlock;
 
         mCurrentPtr = nullptr;
         mEndPtr = nullptr;
@@ -176,7 +176,7 @@ namespace rhi
 
         uint32_t id = *reinterpret_cast<uint32_t*>(idPtr);
 
-        if (id != detail::cEndOfBlock)
+        if (id != cEndOfBlock)
         {
             mCurrentPtr = idPtr + sizeof(uint32_t);
             *commandId = id;
@@ -187,7 +187,7 @@ namespace rhi
         if (mCurrentBlockIndex >= mBlocks.size())
         {
             Reset();
-            *commandId = detail::cEndOfBlock;
+            *commandId = cEndOfBlock;
             return false;
         }
         mCurrentPtr = AlignPtr(mBlocks[mCurrentBlockIndex].data.get(), alignof(uint32_t));
@@ -241,7 +241,7 @@ namespace rhi
         uint32_t id;
         bool hasId = NextCommandId(&id);
         assert(hasId);
-        assert(id == detail::cAdditionalData);
+        assert(id == cAdditionalData);
 
         return NextCommand(dataSize, dataAlignment);
     }

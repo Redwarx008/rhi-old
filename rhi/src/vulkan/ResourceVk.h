@@ -36,7 +36,7 @@ namespace rhi::vulkan
 
 	struct FormatInfo
 	{
-		Format format;
+		TextureFormat format;
 		const char* name;
 		union
 		{
@@ -51,7 +51,7 @@ namespace rhi::vulkan
 		bool hasDepth : 1;
 		bool hasStencil : 1;
 		FormatComponentType componentType;
-		bool isCompressed() const { return blockSize != 1; }
+		bool IsCompressed() const { return blockSize != 1; }
 	};
 
 
@@ -101,7 +101,7 @@ namespace rhi::vulkan
 		TextureVk& m_Texture;
 	};
 
-	struct TextureCopyInfo
+	struct TextureCopy
 	{
 		//The number of rows in the region. 
 		//For compressed formats, this is the number of compressed-block rows.
@@ -115,7 +115,7 @@ namespace rhi::vulkan
 		uint64_t regionBytesCount = 0;
 	};
 
-	TextureCopyInfo getTextureCopyInfo(Format format, const Region3D& region, uint32_t  optimalBufferCopyRowPitchAlignment);
+	TextureCopy getTextureCopyInfo(TextureFormat format, const Region3D& region, uint32_t  optimalBufferCopyRowPitchAlignment);
 
 	class SamplerVk : public ISampler
 	{
@@ -138,21 +138,21 @@ namespace rhi::vulkan
 	class ShaderVk final : public IShader
 	{
 	public:
-		explicit ShaderVk(ShaderDesc desc)
+		explicit ShaderVk(ShaderModuleDesc desc)
 			:m_Desc(desc) {}
 		~ShaderVk();
-		const ShaderDesc& getDesc() const override { return m_Desc; }
+		const ShaderModuleDesc& getDesc() const override { return m_Desc; }
 		VkShaderModule shaderModule;
 		std::vector<uint32_t> spirv;
 		std::vector<SpecializationConstant> specializationConstants;
 	private:
-		ShaderDesc m_Desc;
+		ShaderModuleDesc m_Desc;
 		const ContextVk& m_Context;
 	};
 
 	// shaderResourceBinding
 
-	class ShaderResourceBinding final : public IShaderResourceBinding
+	class ShaderResourceBinding final : public IBindSetLayout
 	{
 	public:
 		explicit ShaderResourceBinding();
@@ -166,25 +166,6 @@ namespace rhi::vulkan
 		std::array<std::vector<VkWriteDescriptorSet>, 4> m_DescriptorSets;
 	};
 
-	const FormatInfo& getFormatInfo(Format format);
-
-	VkImageUsageFlags getVkImageUsageFlags(const TextureDesc& desc);
-
-	VkImageCreateFlags getVkImageCreateFlags(TextureDimension dimension);
-
-	VkSampleCountFlagBits getVkImageSampleCount(const TextureDesc& desc);
-
-	VkImageType getVkImageType(TextureDimension dimension);
-
-	VkImageViewType getVkImageViewType(TextureDimension dimension);
-
-	VkImageAspectFlags getVkAspectMask(VkFormat format);
-
-	VkFormat formatToVkFormat(Format format);
-
-	Format vkFormatToFormat(VkFormat format);
-
-
 	VkAccessFlags2 resourceStatesToVkAccessFlags2(ResourceState states);
 
 	VkPipelineStageFlags2 resourceStatesToVkPipelineStageFlags2(ResourceState states);
@@ -194,11 +175,11 @@ namespace rhi::vulkan
 
 	VkShaderStageFlagBits shaderTypeToVkShaderStageFlagBits(ShaderStage type);
 
-	VkDescriptorType shaderResourceTypeToVkDescriptorType(ShaderResourceType type);
+	VkDescriptorType shaderResourceTypeToVkDescriptorType(BindingType type);
 
 
 	VkSamplerAddressMode convertVkSamplerAddressMode(SamplerAddressMode mode);
 	VkBorderColor convertVkBorderColor(BorderColor color);
 
-	VkClearColorValue convertVkClearColor(ClearColor color, Format textureFormat);
+	VkClearColorValue convertVkClearColor(ClearColor color, TextureFormat textureFormat);
 }

@@ -21,15 +21,15 @@ namespace rhi
 		}
 	}
 
-	VkPolygonMode convertPolygonMode(PolygonMode mode)
+	VkPolygonMode convertPolygonMode(FillMode mode)
 	{
 		switch (mode)
 		{
-		case rhi::PolygonMode::Fill:
+		case rhi::FillMode::Fill:
 			return VK_POLYGON_MODE_FILL;
-		case rhi::PolygonMode::Line:
+		case rhi::FillMode::Line:
 			return VK_POLYGON_MODE_LINE;
-		case rhi::PolygonMode::Point:
+		case rhi::FillMode::Point:
 			return VK_POLYGON_MODE_POINT;
 		default:
 			assert(!"invalid enum");

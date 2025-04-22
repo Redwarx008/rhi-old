@@ -1,6 +1,6 @@
 #pragma once
 
-#include "NoCopyable.h"
+#include "common/NoCopyable.h"
 
 #include <memory>
 #include <vector>
@@ -8,11 +8,8 @@
 
 namespace rhi
 {
-	namespace detail
-	{
-		constexpr uint32_t cEndOfBlock = std::numeric_limits<uint32_t>::max();
-		constexpr uint32_t cAdditionalData = std::numeric_limits<uint32_t>::max() - 1;
-	}
+	constexpr uint32_t cEndOfBlock = std::numeric_limits<uint32_t>::max();
+	constexpr uint32_t cAdditionalData = std::numeric_limits<uint32_t>::max() - 1;
 
 	struct Block
 	{
@@ -60,7 +57,7 @@ namespace rhi
 		char* mCurrentPtr = nullptr;
 		size_t mCurrentBlockIndex = 0;
 		// Used to avoid a special case for empty iterators.
-		uint32_t mEndOfBlock = detail::cEndOfBlock;
+		uint32_t mEndOfBlock = cEndOfBlock;
 
 		CommandAllocator& mAllocator;
 	};
@@ -78,7 +75,7 @@ namespace rhi
 		T* Allocate(E commandId) {
 			static_assert(sizeof(E) == sizeof(uint32_t));
 			static_assert(alignof(E) == alignof(uint32_t));
-			static_assert(alignof(T) <= kMaxSupportedAlignment);
+			static_assert(alignof(T) <= cMaxSupportedAlignment);
 			T* result =
 				reinterpret_cast<T*>(Allocate(static_cast<uint32_t>(commandId), sizeof(T), alignof(T)));
 			if (!result) {
@@ -90,7 +87,7 @@ namespace rhi
 
 		template <typename T>
 		T* AllocateData(size_t count) {
-			static_assert(alignof(T) <= kMaxSupportedAlignment);
+			static_assert(alignof(T) <= cMaxSupportedAlignment);
 			T* result = reinterpret_cast<T*>(AllocateData(sizeof(T) * count, alignof(T)));
 			if (!result) {
 				return nullptr;
@@ -114,9 +111,9 @@ namespace rhi
 		CommandBlocks&& AcquireCurrentBlocks();
 
 		char* Allocate(uint32_t commandId, size_t commandSize, size_t commandAlignment);
-		char* AllocateData(size_t commandSize, size_t commandAlignment) 
+		char* AllocateData(size_t commandSize, size_t commandAlignment)
 		{
-			return Allocate(detail::cAdditionalData, commandSize, commandAlignment);
+			return Allocate(cAdditionalData, commandSize, commandAlignment);
 		}
 		bool GetNewBlock(size_t minimumSize);
 		void Reset();
@@ -126,7 +123,7 @@ namespace rhi
 		// Data used for the block range at initialization so that the first call to Allocate sees
 		// there is not enough space and calls GetNewBlock. This avoids having to special case the
 		// initialization in Allocate.
-		uint32_t mPlaceholderSpace[1] = {0};
+		uint32_t mPlaceholderSpace[1] = { 0 };
 		size_t mLastAllocationSize = cDefaultBaseAllocationSize;
 		char* mCurrentPtr = nullptr;
 		char* mEndPtr = nullptr;

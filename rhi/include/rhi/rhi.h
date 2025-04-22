@@ -1,9 +1,6 @@
 #pragma once
-
-#include <atomic>
 #include <cstdint>
-#include "rhi/common/RefCounted.h"
-#include "rhi_struct.h"
+#include "RHIStruct.h"
 
 namespace rhi
 {
@@ -26,80 +23,82 @@ namespace rhi
 			void* pointer;
 		};
 	};
+	 
 
-	class IBuffer : public RefCounted
+	class ITextureView : public IRefCounted
 	{
 	public:
-		virtual BufferUsage GetUsage() const = 0;
-		virtual uint64_t GetSize() const = 0;
-		virtual void MapAsync(MapMode mode, BufferMapCallback callback, void* userData) = 0;
+		virtual ITexture* GetTexture() const = 0;
+		virtual uint32_t GetBaseMipLevel() const = 0;
+		virtual uint32_t GetLevelCount() const = 0;
+		virtual uint32_t GetBaseArrayLayer() const = 0;
+		virtual uint32_t GetLayerCount() const = 0;
 	protected:
-		virtual ~IBuffer() = default;
-	};
-
-	class ITextureView : public RefCounted
-	{
-	public:
 		virtual ~ITextureView() = default;
-		virtual const TextureViewDesc& getDesc() const = 0;
-		virtual ITexture* getTexture() const = 0;
 	};
 
-	class ITexture : public RefCounted
+	class ITexture : public IRefCounted
 	{
 	public:
-		virtual ~ITexture() = default;
-		virtual const TextureDesc& getDesc() const = 0;
 		virtual ITextureView* getDefaultView() const = 0;
 		virtual ITextureView* createView(TextureViewDesc desc) = 0;
+		virtual uint32_t GetWidth() const = 0;
+		virtual uint32_t GetHeight() const = 0;
+		virtual uint32_t GetDepthOrArrayLayers() const = 0;
+		virtual uint32_t GetMipLevelCount() const = 0;
+		virtual uint32_t GetSampleCount() const = 0;
+		virtual TextureDimension GetDimension() const = 0;
+		virtual TextureFormat GetFormat() const = 0;
+		virtual TextureUsage GetUsage() const = 0;
+	protected:
+		virtual ~ITexture() = default;
 	};
 
-	class ISampler
+	class ISampler : public IRefCounted
 	{
-	public:
+	protected:
 		virtual ~ISampler() = default;
-		virtual const SamplerDesc& getDesc() const = 0;
 	};
 
-	class IShader
+	class IShader : public IRefCounted
 	{
-	public:
+	protected:
 		~IShader() = default;
-		virtual const ShaderDesc& getDesc() const = 0;
 	};
 
-	class IShaderResourceBinding
+	class IBindSetLayout : public IRefCounted
 	{
-	public:
-		virtual ~IShaderResourceBinding() = default;
-		virtual void bindBuffer(IBuffer* buffer, uint32_t slot, uint32_t set = 0, uint64_t offset = 0, uint64_t range = ~0ull) = 0;
-		virtual void bindTexture(ITextureView* textureView, uint32_t slot, uint32_t set = 0) = 0;
-		virtual void bindSampler(ISampler* sampler, uint32_t slot, uint32_t set = 0) = 0;
-		virtual void bindTextureWithSampler(ITextureView* textrueView, ISampler* sampler, uint32_t slot, uint32_t set = 0) = 0;
+	protected:
+		virtual ~IBindSetLayout() = default;
 	};
 
-	class IPipeline : public RefCounted
+	class IBindSet : public IRefCounted
+	{
+	protected:
+		~IBindSet() = default;
+	};
+
+	class IPipeline : public IRefCounted
 	{
 	public:
+		virtual IBindSetLayout* GetResourceSetLayout(uint32_t setIndex) = 0;
+	protected:
 		virtual ~IPipeline() = default;
-		virtual IShaderResourceBinding* createShaderResourceBinding() = 0;
 	};
 
-	class IGraphicsPipeline : public IPipeline
+	class IRenderPipeline : public IPipeline
 	{
-	public:
-		virtual ~IGraphicsPipeline() = default;
-
-		virtual const GraphicsPipelineDesc& getDesc() const = 0;
+	protected:
+		virtual ~IRenderPipeline() = default;
 	};
 
 	class IComputePipeline : public IPipeline
 	{
-	public:
+	protected:
 		~IComputePipeline() = default;
 	};
 
-	class ICommandList : public RefCounted
+	class ICommandList : public IRefCounted
 	{
 	public:
 		virtual void Wait(ICommandList* other) = 0;
@@ -107,79 +106,114 @@ namespace rhi
 		~ICommandList() = default;
 	};
 
-	class ICommandEncoder : public RefCounted
+	class ICommandEncoder : public IRefCounted
 	{
 	public:
-		virtual void clearColorTexture(ITextureView* textureView, const ClearColor& color) = 0;
-		virtual void clearDepthStencil(ITextureView* textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal) = 0;
-		virtual void clearBuffer(IBuffer* buffer, uint32_t value, uint64_t offset = 0, uint64_t size = ~0ull) = 0;
-		virtual void copyBuffer(IBuffer* srcBuffer, uint64_t srcOffset, IBuffer* dstBuffer, uint64_t dstOffset, uint64_t dataSize) = 0;
-		virtual void* mapBuffer(IBuffer* buffer, MapMode usage) = 0;
+		virtual void ClearColorTexture(ITextureView* textureView, const ClearColor& color) = 0;
+		virtual void ClearDepthStencil(ITextureView* textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal) = 0;
+		virtual void ClearBuffer(IBuffer* buffer, uint32_t value, uint64_t offset = 0, uint64_t size = ~0ull) = 0;
+		virtual void CopyBufferToBuffer(IBuffer* srcBuffer, uint64_t srcOffset, IBuffer* dstBuffer, uint64_t dstOffset, uint64_t dataSize) = 0;
 		virtual void CopyTextureToBuffer();
+		virtual void MapBufferAsync(IBuffer* buffer, MapMode usage, BufferMapCallback callback, void* userData) = 0;
+		virtual void commitShaderResources(IBindSetLayout* shaderResourceBinding) = 0;
 
-		virtual void commitShaderResources(IShaderResourceBinding* shaderResourceBinding) = 0;
 
-		virtual void setPipeline(const IGraphicsPipeline* pipeline) = 0;
-		virtual void setPipeline(const IComputePipeline* pipeline) = 0;
 
-		virtual void BeginRenderPass(const )
+
+		virtual IRenderPassEncoder* BeginRenderPass(const RenderPassDesc& renderPassDesc) = 0;
 
 		virtual void setPushConstant(ShaderStage stages, const void* data) = 0;
-		virtual void setVertexBuffer(uint32_t startSlot, uint32_t bufferCount, IBuffer* buffers, uint64_t* offsets) = 0;
-		virtual void setIndexBuffer(IBuffer* indexBuffer, uint64_t offset, Format indexFormat) = 0;
-		virtual void setScissors(const Rect* scissors, uint32_t scissorCount) = 0;
 
-		virtual void draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance) = 0;
-		virtual void drawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) = 0;
-		virtual void drawIndirect(IBuffer* argsBuffer, uint64_t offset, uint32_t drawCount) = 0;
-		virtual void drawIndexedIndirect(IBuffer* argsBuffer, uint64_t offset, uint32_t drawCount) = 0;
 
-		virtual void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) = 0;
-		virtual void dispatchIndirect(IBuffer* argsBuffer, uint64_t offset) = 0;
+
+
+
 
 		virtual ICommandList* Finish() = 0;
-		virtual void beginDebugLabel(const char* labelName, Color color = Color()) = 0;
-		virtual void endDebugLabel() = 0;
+		virtual void APIBeginDebugLabel(const char* labelName, Color color = Color()) = 0;
+		virtual void APIEndDebugLabel() = 0;
 	protected:
 		virtual ~ICommandEncoder() = default;
 	};
 
-	class IQueue
+	class IRenderPassEncoder : public IRefCounted
 	{
 	public:
-		virtual ~IQueue() = default;
+		virtual void APISetPipeline(const IRenderPipeline* pipeline) = 0;
+		virtual void SetVertexBuffer(uint32_t startSlot, uint32_t bufferCount, IBuffer* buffers, uint64_t* offsets) = 0;
+		virtual void SetIndexBuffer(IBuffer* indexBuffer, uint64_t offset, TextureFormat indexFormat) = 0;
+		virtual void SetScissorRects(const Rect* scissors, uint32_t scissorCount) = 0;
+		virtual void SetStencilReference(uint32_t reference) = 0;
+		virtual void SetBlendConstant(const Color& blendConstants) = 0;
+		virtual void SetBindGroup() = 0;
+		virtual void SetShaderResourceBinding(const IBindSetLayout* srb) = 0;
+		virtual void Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance) = 0;
+		virtual void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) = 0;
+		virtual void DrawIndirect(IBuffer* argsBuffer, uint64_t offset, uint32_t drawCount) = 0;
+		virtual void DrawIndexedIndirect(IBuffer* argsBuffer, uint64_t offset, uint32_t drawCount) = 0;
+		virtual void End() = 0;
+		virtual void SetLabel(const char* label) = 0;
+	};
+
+	class IComputePassEncoder : public IRefCounted
+	{
+	public:
+		virtual void setPipeline(const IComputePipeline* pipeline) = 0;
+		virtual void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) = 0;
+		virtual void dispatchIndirect(IBuffer* argsBuffer, uint64_t offset) = 0;
+	};
+
+	class IQueue : public IRefCounted
+	{
+	public:
 		virtual ICommandEncoder* CreateCommandEncoder() = 0;
 		virtual void WriteBuffer(IBuffer* buffer, const void* data, uint64_t dataSize, uint64_t offset) = 0;
-		virtual void WriteTexture(ITexture* texture, const void* data, uint64_t dataSize, const TextureUpdateInfo& updateInfo) = 0;
+		virtual void WriteTexture(const TextureCopy& destination, const void* data, size_t dataSize, const TextureDataLayout& dataLayout) = 0;
+		virtual void WaitQueue(IQueue* queue, uint64_t submitID) = 0;
+		virtual uint64_t Submit(const ICommandList** commands, size_t commandListCount) = 0;
+	protected:
+		virtual ~IQueue() = default;
 	};
 
-	class IDevice : public RefCounted
+	class IDevice : public IRefCounted
 	{
 	public:
-		virtual ~IDevice() = default;
+		virtual void WaitIdle() = 0;
+		virtual ISwapChain* CreateSwapChain(const SwapChainDesc& desc) = 0;
 		virtual IQueue* GetQueue(QueueType queueType) = 0;
-		virtual void waitIdle() = 0;
-		virtual void createSwapChain(const SwapChainCreateInfo& swapChainCI) = 0;
-		virtual void recreateSwapChain() = 0;
-		virtual IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineDesc& pipelineCI) = 0;
-		virtual IComputePipeline* createComputePipeline(const ComputePipelineCreateInfo& pipelineCI) = 0;
-		virtual IResourceSetLayout* createResourceSetLayout(const ResourceSetLayoutBinding* bindings, uint32_t bindingCount) = 0;
-		virtual IResourceSet* createResourceSet(const IResourceSetLayout* layout, const ResourceSetBinding* bindings, uint32_t bindingCount) = 0;
-		virtual void updateResourceSet(IResourceSet* set, const ResourceSetBinding* bindings, uint32_t bindingCount) = 0;
-		virtual ITexture* createTexture(const TextureDesc& desc) = 0;
-		virtual IBuffer* createBuffer(const BufferDesc& desc) = 0;
-		virtual IBuffer* createBuffer(const BufferDesc& desc, const void* data, uint64_t dataSize) = 0;
-		virtual IShader* createShader(const ShaderDesc& shaderCI, const uint32_t* pCode, size_t codeSize) = 0;
-		virtual ISampler* createSampler(const SamplerDesc& desc) = 0;
-		virtual 
-		virtual uint64_t executeCommandLists(ICommandEncoder** cmdLists, size_t numCmdLists) = 0;
-		virtual void waitForExecution(uint64_t executeID, uint64_t timeout = UINT64_MAX) = 0;
+		virtual IRenderPipeline* CreateGraphicsPipeline(const RenderPipelineDesc& pipelineCI) = 0;
+		virtual IComputePipeline* CreateComputePipeline(const ComputePipelineDesc& pipelineCI) = 0;
+		virtual IBindSetLayout* CreateBindSetLayout(const BindSetLayoutDesc& desc) = 0;
+		virtual IBindSetLayout* CreateBindSet(const BindSetDesc& desc) = 0;
+		virtual ITexture* CreateTexture(const TextureDesc& desc) = 0;
+		virtual IBuffer* CreateBuffer(const BufferDesc& desc) = 0;
+		virtual IBuffer* CreateBuffer(const BufferDesc& desc, const void* data, uint64_t dataSize) = 0;
+		virtual IShader* CreateShader(const ShaderModuleDesc& desc) = 0;
+		virtual ISampler* CreateSampler(const SamplerDesc& desc) = 0;
+	protected:
+		virtual ~IDevice() = default;
 	};
 
+	class IAdapter : public IRefCounted
+	{
+	public:
+		virtual IDevice* CreateDevice(const DeviceDesc& desc) = 0;
+		virtual AdapterInfo GetInfo() const = 0;
+		virtual Limits GetLimits() const = 0;
 
-    IDevice* createDevice(const DeviceCreateInfo& createInfo);
+	protected:
+		~IAdapter() = default;
+	};
 
-	class ISwapChain
+	class IInstance : public IRefCounted
+	{
+	public:
+		virtual void EnumerateAdapters(IAdapter** const adapters, uint32_t* adapterCount) = 0;
+	};
+
+	IInstance* CreateInstance(const InstanceDesc& desc);
+
+	class ISwapChain : public IRefCounted
 	{
 	public:
 		virtual ~ISwapChain() = default;

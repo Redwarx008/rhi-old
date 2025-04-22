@@ -1,18 +1,23 @@
-#include "rhi/rhi.h"
+#include "rhi/RHI.h"
 
 #include "vulkan/DeviceVk.h"
 #include "vulkan/SwapChainVk.h"
 
 namespace rhi
 {
-	DebugMessageCallbackFunc g_DebugMessageCallback;
+	LoggingCallback gDebugMessageCallback;
 
-	IDevice* createDevice(const DeviceCreateInfo& createInfo)
+	IDevice* createDevice(const DeviceDesc& createInfo)
 	{
 		return rhi::vulkan::Device::create(createInfo);
 	}
 
-	ISwapChain* createSwapChain(const SwapChainCreateInfo& createInfo)
+	IInstance* CreateInstance(const InstanceDesc& desc)
+	{
+
+	}
+
+	ISwapChain* CreateSwapChain(const SwapChainDesc& createInfo)
 	{ 
 		return rhi::vulkan::SwapChain::create(createInfo);
 	}

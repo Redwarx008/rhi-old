@@ -10,23 +10,23 @@ namespace rhi::vulkan
 {
 	struct ContextVk;
 
-	class GraphicsPipeline final : public IGraphicsPipeline
+	class GraphicsPipeline final : public IRenderPipeline
 	{
 	public:
 		explicit GraphicsPipeline(const ContextVk& context)
 			:m_Context(context){}
 		~GraphicsPipeline();
-		const GraphicsPipelineDesc& getDesc() const override  { return desc; }
+		const RenderPipelineDesc& getDesc() const override  { return desc; }
 		bool getPipelineCacheData(void* pData, size_t* pDataSize) const override;
 		Object getNativeObject(NativeObjectType type) const override;
 
-		GraphicsPipelineDesc desc;
+		RenderPipelineDesc desc;
 		VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 		VkPipeline pipeline = VK_NULL_HANDLE;
 
 		struct PushConstantInfo
 		{
-			PushConstantDesc desc{};
+			PushConstantRange desc{};
 			uint32_t offset = 0;
 		};
 		std::vector<PushConstantInfo> pushConstantInfos;
@@ -50,7 +50,7 @@ namespace rhi::vulkan
 
 		struct PushConstantInfo
 		{
-			PushConstantDesc desc{};
+			PushConstantRange desc{};
 			uint32_t offset = 0;
 		};
 		std::vector<PushConstantInfo> pushConstantInfos;
@@ -59,12 +59,12 @@ namespace rhi::vulkan
 	};
 
 	VkCullModeFlags convertCullMode(CullMode mode);
-	VkPolygonMode convertPolygonMode(PolygonMode mode);
+	VkPolygonMode convertPolygonMode(FillMode mode);
 	VkBlendFactor convertBlendFactor(BlendFactor factor);
 	VkBlendOp convertBlendOp(BlendOp op);
 	VkColorComponentFlags convertColorMask(ColorMask mask);
 	VkCompareOp convertCompareOp(CompareOp op);
 	VkStencilOpState convertStencilOpState(StencilOpState stencilOpState);
-	VkPrimitiveTopology convertPrimitiveTopology(PrimitiveType type);
+	VkPrimitiveTopology PrimitiveTopologyConvert(PrimitiveType type);
 	VkViewport convertViewport(const Viewport& viewport);
 }

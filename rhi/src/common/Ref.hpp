@@ -1,4 +1,7 @@
-#pragma once
+ #pragma once
+
+#include <cstddef>
+#include <type_traits>
 
 namespace rhi
 {
@@ -9,7 +12,7 @@ namespace rhi
         // Default constructor and destructor.
         RefBase() : mValue(Traits::kNullValue) {}
 
-        ~RefBase() { Release(mValue); }
+        ~RefBase() noexcept { Release(mValue); }
 
         // Constructors from nullptr.
         // NOLINTNEXTLINE(runtime/explicit)

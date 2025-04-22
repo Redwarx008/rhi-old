@@ -1,6 +1,8 @@
 #include "UploadAllocator.h"
-
-#include "rhi/common/Utils.h"
+#include "DeviceBase.h"
+#include "BufferBase.h"
+#include "common/Utils.h"
+#include "common/Error.h"
 
 namespace rhi
 {
@@ -8,7 +10,7 @@ namespace rhi
 
 	UploadAllocator::RingBuffer::~RingBuffer() = default;
 
-	uint64_t UploadAllocator::RingBuffer::Allocate(uint64_t allocationSize, uint64_t serialID, uint64_t offsetAlignment)
+	uint64_t UploadAllocator::RingBuffer::Allocate(uint64_t allocationSize, uint64_t serial, uint64_t offsetAlignment)
 	{
 		if (mUsedSize >= mMaxBlockSize)
 		{
@@ -67,29 +69,21 @@ namespace rhi
 			request.endOffset = mUsedEndOffset;
 			request.size = currentRequestSize;
 
-			mInflightRequests.push_back(std::move(request));
+			mInflightRequests.Push(serial, std::move(request));
 		}
 
 		return startOffset;
 	}
 
-	void UploadAllocator::RingBuffer::Deallocate(uint64_t lastCompletedSerialID)
+	void UploadAllocator::RingBuffer::Deallocate(uint64_t lastCompletedSerial)
 	{
-		std::vector<Request>::iterator lastCompletedRequestIter;
-
-		for (auto iter = mInflightRequests.begin(); iter != mInflightRequests.end(); ++iter)
-		{
-			// serialID is incrementing within the array
-			if (iter->serialID <= lastCompletedSerialID)
-			{
-				mUsedStartOffset = iter->endOffset;
-				mUsedSize -= iter->size;
-
-				lastCompletedRequestIter = iter;
-			}
+		for (Request& request : mInflightRequests.IterateUpTo(lastCompletedSerial)) {
+			mUsedStartOffset = request.endOffset;
+			mUsedSize -= request.size;
 		}
 
-		mInflightRequests.erase(mInflightRequests.begin(), lastCompletedRequestIter);
+		// Dequeue previously recorded requests.
+		mInflightRequests.ClearUpTo(lastCompletedSerial);
 	}
 
 	uint64_t UploadAllocator::RingBuffer::GetSize() const
@@ -104,16 +98,93 @@ namespace rhi
 
 	bool UploadAllocator::RingBuffer::Empty() const
 	{
-		return mInflightRequests.empty();
+		return mInflightRequests.Empty();
 	}
 
-	UploadAllocator::UploadAllocator(IDevice* device) : mDevice(device) {}
+	UploadAllocator::UploadAllocator(DeviceBase* device) : mDevice(device) {}
 
-	UploadAllocation UploadAllocator::Allocate(uint64_t allocationSize, uint64_t serialID, uint64_t offsetAlignment)
+	UploadAllocation UploadAllocator::Allocate(uint64_t allocationSize, uint64_t serial, uint64_t offsetAlignment)
 	{
 		if (allocationSize > cRingBufferSize)
 		{
+			BufferDesc desc{};
+			desc.usage = BufferUsage::CopySrc | BufferUsage::MapWrite;
+			desc.size = AlignUp(allocationSize, 4);
+			desc.name = "UploadStageBuffer";
 
+			Ref<BufferBase> buffer = mDevice->CreateBuffer(desc);
+			UploadAllocation allocation{};
+			allocation.buffer = buffer.Get();
+			allocation.mappedAddress = buffer->APIGetMappedPointer();
+			
+			mLargeStageBuffersToDelete.Push(serial, std::move(buffer));
+			return allocation;
 		}
+
+		if (mRingBuffers.empty())
+		{
+			mRingBuffers.emplace_back(std::make_unique<RingBuffer>(cRingBufferSize));
+		}
+
+		uint64_t startOffset = RingBuffer::cInvalidOffset;
+		RingBuffer* targetRingBuffer;
+		for (auto& ringBuffer : mRingBuffers)
+		{
+			ASSERT(ringBuffer->GetSize() >= ringBuffer->GetUsedSize());
+			startOffset = ringBuffer->Allocate(allocationSize, serial, offsetAlignment);
+			if (startOffset != RingBuffer::cInvalidOffset)
+			{
+				targetRingBuffer = ringBuffer.get();
+				break;
+			}
+		}
+
+		// append a newly created ring buffer to fulfill the request.
+		if (startOffset == RingBuffer::cInvalidOffset)
+		{
+			mRingBuffers.emplace_back(std::make_unique<RingBuffer>(cRingBufferSize));
+			targetRingBuffer = mRingBuffers.back().get();
+			startOffset = targetRingBuffer->Allocate(allocationSize, serial);
+		}
+
+		ASSERT(startOffset != RingBuffer::cInvalidOffset);
+
+		if (targetRingBuffer->buffer == nullptr)
+		{
+			BufferDesc desc{};
+			desc.usage = BufferUsage::CopySrc | BufferUsage::MapWrite;
+			desc.size = AlignUp(targetRingBuffer->GetSize(), 4);
+			desc.name = "UploadStageBuffer";
+
+			Ref<BufferBase> buffer = mDevice->CreateBuffer(desc);
+			targetRingBuffer->buffer = std::move(buffer);
+		}
+
+		ASSERT(targetRingBuffer->buffer != nullptr);
+
+		UploadAllocation allocation{};
+		allocation.buffer = targetRingBuffer->buffer.Get();
+		allocation.mappedAddress = static_cast<uint8_t*>(targetRingBuffer->buffer->APIGetMappedPointer()) + startOffset;
+		allocation.offset = startOffset;
+
+		return allocation;
+	}
+
+	void UploadAllocator::Deallocate(uint64_t lastCompletedSerial)
+	{
+		for (auto ringBufferIter = mRingBuffers.begin(); ringBufferIter != mRingBuffers.end();)
+		{
+			(*ringBufferIter)->Deallocate(lastCompletedSerial);
+			if ((*ringBufferIter)->Empty() &&  mRingBuffers.size() > 1)
+			{
+				// Never erase the last buffer as to prevent re-creating smaller buffers.
+				ringBufferIter = mRingBuffers.erase(ringBufferIter);
+			}
+			else
+			{
+				++ringBufferIter;
+			}
+		}
+		mLargeStageBuffersToDelete.CIterateUpTo(lastCompletedSerial);
 	}
 }

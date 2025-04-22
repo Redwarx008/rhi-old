@@ -22,7 +22,7 @@ namespace rhi::vulkan
 
 	}
 
-	void SwapChain::createSwapChain(const SwapChainCreateInfo& swapChainCI)
+	void SwapChain::CreateSwapChain(const SwapChainDesc& swapChainCI)
 	{
 		m_SwapChainFormat = swapChainCI.preferredColorFormat;
 		m_DepthStencilFormat = swapChainCI.preferredDepthStencilFormat;
@@ -66,7 +66,7 @@ namespace rhi::vulkan
 
 		VkSurfaceFormatKHR selectedFormat = surfaceFormats[0];
 		std::vector<VkFormat> preferredImageFormats = {
-			rhi::formatToVkFormat(m_SwapChainFormat),
+			rhi::GetVkFormat(m_SwapChainFormat),
 			VK_FORMAT_R8G8B8A8_SRGB,
 			VK_FORMAT_B8G8R8A8_UNORM,
 			VK_FORMAT_R8G8B8A8_UNORM,
@@ -84,12 +84,12 @@ namespace rhi::vulkan
 			}
 		}
 
-		if (selectedFormat.format != rhi::formatToVkFormat(m_SwapChainFormat))
+		if (selectedFormat.format != rhi::GetVkFormat(m_SwapChainFormat))
 		{
 			std::stringstream ss;
-			ss << "Requested color format is not supported and will be replaced by " << getFormatInfo(vkFormatToFormat(selectedFormat.format)).name;
-			logMsg(MessageSeverity::Warning, __FUNCTION__, __LINE__, ss.str().c_str());
-			m_SwapChainFormat = vkFormatToFormat(selectedFormat.format);
+			ss << "Requested color format is not supported and will be replaced by " << GetFormatInfo(GetFormat(selectedFormat.format)).name;
+			LogMsg(LoggingSeverity::Warning, __FUNCTION__, __LINE__, ss.str().c_str());
+			m_SwapChainFormat = GetFormat(selectedFormat.format);
 		}
 
 		// Store the current swap chain handle so we can use it later on to ease up recreation
@@ -243,7 +243,7 @@ namespace rhi::vulkan
 			m_ColorAttachments[i] = std::unique_ptr<TextureVk>(colorTex);
 		}
 
-		if (m_DepthStencilFormat != Format::UNKNOWN)
+		if (m_DepthStencilFormat != TextureFormat::Undefined)
 		{
 			TextureDesc depthStencilDesc;
 			depthStencilDesc.width = swapchainExtent.width;
@@ -251,7 +251,7 @@ namespace rhi::vulkan
 			depthStencilDesc.format = m_DepthStencilFormat;
 			depthStencilDesc.usage = TextureUsage::DepthStencil;
 			depthStencilDesc.dimension = TextureDimension::Texture2D;
-			TextureVk* depthStencilTex = static_cast<TextureVk*>(createTexture(depthStencilDesc));
+			TextureVk* depthStencilTex = static_cast<TextureVk*>(CreateTexture(depthStencilDesc));
 			m_DepthStencilAttachments = std::unique_ptr<TextureVk>(depthStencilTex);
 		}
 
@@ -286,7 +286,7 @@ namespace rhi::vulkan
 
 	void SwapChain::recreateSwapChain()
 	{
-		waitIdle();
+		WaitIdle();
 		createSwapChainInternal();
 	}
 

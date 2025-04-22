@@ -1,13 +1,20 @@
 #include "DeviceVk.h"
+#include "InstanceVk.h"
+#include "AdapterVk.h"
+#include "QueueVk.h"
 #include "SwapChainVk.h"
 #include "CommandListVk.h"
-#include "CommandQueueVk.h"
-#include "PipelineVk.h"
+#include "RenderPipelineVk.h"
+#include "ComputePipelineVk.h"
+#include "BindSetLayoutVk.h"
+#include "BindSetVk.h"
+#include "TextureVk.h"
 #include "BufferVk.h"
+#include "ShaderModuleVk.h"
+#include "SamplerVk.h"
 #include "ErrorsVk.h"
-#include "../Ref.hpp"
-#include "../Error.h"
-#include "../Utils.h"
+#include "../common/Error.h"
+#include "../common/Utils.h"
 
 #include <string>
 #include <sstream>
@@ -15,294 +22,40 @@
 #include <unordered_map>
 #include <algorithm>
 #include <iostream>
+#include <optional>
 
 
 
 namespace rhi::vulkan
 {
-	static VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessageCallback(
-		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-		VkDebugUtilsMessageTypeFlagsEXT messageType,
-		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-		void* pUserData)
+	Ref<Device> Device::Create(Adapter* adapter, const DeviceDesc& desc)
 	{
-		//Device* rd = reinterpret_cast<Device*>(pUserData);
-
-		MessageSeverity serverity = MessageSeverity::Info;
-
-		std::string prefix;
-		if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) 
+		Ref<Device> device = AcquireRef(new Device(adapter, desc));
+		if (!device->Initialize(desc))
 		{
-#if defined(_WIN32)
-			prefix = "\033[32m" + prefix + "\033[0m";
-#endif
-			prefix = "VERBOSE: ";
-			serverity = MessageSeverity::Verbose;
+			return nullptr;
 		}
-		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
-		{
-			prefix = "INFO: ";
-#if defined(_WIN32)
-			prefix = "\033[36m" + prefix + "\033[0m";
-#endif
-			serverity = MessageSeverity::Info;
-		}
-		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) 
-		{
-			prefix = "WARNING: ";
-#if defined(_WIN32)
-			prefix = "\033[33m" + prefix + "\033[0m";
-#endif
-			serverity = MessageSeverity::Warning;
-		}
-		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-		{
-			prefix = "ERROR: ";
-#if defined(_WIN32)
-			prefix = "\033[31m" + prefix + "\033[0m";
-#endif
-			serverity = MessageSeverity::Error;
-		}
-
-		std::stringstream debugMessage;
-
-		if (!g_DebugMessageCallback)
-		{
-			debugMessage << prefix;
-		}
-
-		debugMessage << pCallbackData->pMessage;
-
-		if (g_DebugMessageCallback)
-		{
-			g_DebugMessageCallback(serverity, debugMessage.str().c_str());
-		}
-		else
-		{
-			std::cerr << debugMessage.str().c_str() << std::endl;
-		}
-		// The return value of this callback controls whether the Vulkan call that caused the validation message will be aborted or not
-		// We return VK_FALSE as we DON'T want Vulkan calls that cause a validation message to abort
-		// If you instead want to have calls abort, pass in VK_TRUE and the function will return VK_ERROR_VALIDATION_FAILED_EXT
-		return VK_FALSE;
+		return device;
 	}
 
-	bool Device::createInstance(bool enableDebugRuntime)
+	Device::Device(Adapter* adapter, const DeviceDesc& desc)
+		:DeviceBase(adapter, desc){ }
+
+	bool Device::Initialize(const DeviceDesc& desc)
 	{
-		std::vector<const char*> instanceExtensions = { VK_KHR_SURFACE_EXTENSION_NAME };
-
-
-		instanceExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-		instanceExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-
-		std::vector<std::string> supportedInstanceExtensions;
-		// Get extensions supported by the instance and store for later use
-		uint32_t extCount = 0;
-		vkEnumerateInstanceExtensionProperties(nullptr, &extCount, nullptr);
-		if (extCount > 0)
-		{
-			std::vector<VkExtensionProperties> extensions(extCount);
-			if (vkEnumerateInstanceExtensionProperties(nullptr, &extCount, &extensions.front()) == VK_SUCCESS)
-			{
-				for (VkExtensionProperties& extension : extensions)
-				{
-					supportedInstanceExtensions.push_back(extension.extensionName);
-				}
-			}
-		}
-
-		for (auto extensionName : instanceExtensions)
-		{
-			if (std::find(supportedInstanceExtensions.begin(), supportedInstanceExtensions.end(), extensionName) == supportedInstanceExtensions.end())
-			{
-				LOG_ERROR(extensionName, " is not supported.");
-				return false;
-			}
-		}
-
-		VkApplicationInfo appInfo{};
-		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-		appInfo.pApplicationName = "rhi";
-		appInfo.apiVersion = VK_API_VERSION_1_3;
-
-		VkInstanceCreateInfo instanceCreateInfo{};
-		instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-		instanceCreateInfo.pApplicationInfo = &appInfo;
-
-		if (enableDebugRuntime) {
-			VkDebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCI{};
-			debugUtilsMessengerCI.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-			debugUtilsMessengerCI.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-			debugUtilsMessengerCI.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
-			debugUtilsMessengerCI.pfnUserCallback = DebugMessageCallback;
-			debugUtilsMessengerCI.pUserData = this;
-			instanceCreateInfo.pNext = &debugUtilsMessengerCI;
-
-			instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-
-			// The VK_LAYER_KHRONOS_validation contains all current validation functionality.
-			// Note that on Android this layer requires at least NDK r20
-			const char* validationLayerName = "VK_LAYER_KHRONOS_validation";
-			// Check if this layer is available at instance level
-			uint32_t instanceLayerCount;
-			vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr);
-			std::vector<VkLayerProperties> instanceLayerProperties(instanceLayerCount);
-			vkEnumerateInstanceLayerProperties(&instanceLayerCount, instanceLayerProperties.data());
-			bool validationLayerPresent = false;
-			for (VkLayerProperties& layer : instanceLayerProperties) {
-				if (strcmp(layer.layerName, validationLayerName) == 0) {
-					validationLayerPresent = true;
-					break;
-				}
-			}
-			if (validationLayerPresent) {
-
-				const VkBool32 setting_validate_core = VK_TRUE;
-				const VkBool32 setting_validate_sync = VK_TRUE;
-				const VkBool32 setting_thread_safety = VK_TRUE;
-				const char* setting_debug_action[] = { "VK_DBG_LAYER_ACTION_LOG_MSG" };
-				const char* setting_report_flags[] = { "info", "warn", "perf", "error", "debug" };
-				const VkBool32 setting_enable_message_limit = VK_TRUE;
-				const int32_t setting_duplicate_message_limit = 10;
-
-				const VkLayerSettingEXT settings[] = {
-					{validationLayerName, "validate_core", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_core},
-					{validationLayerName, "validate_sync", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_sync},
-					{validationLayerName, "thread_safety", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_thread_safety},
-					{validationLayerName, "debug_action", VK_LAYER_SETTING_TYPE_STRING_EXT, 1, setting_debug_action},
-					{validationLayerName, "report_flags", VK_LAYER_SETTING_TYPE_STRING_EXT, static_cast<uint32_t>(std::size(setting_report_flags)), setting_report_flags},
-					{validationLayerName, "enable_message_limit", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1,& setting_enable_message_limit },
-					{validationLayerName, "duplicate_message_limit", VK_LAYER_SETTING_TYPE_INT32_EXT, 1, &setting_duplicate_message_limit} };
-
-				const VkLayerSettingsCreateInfoEXT layerSettingsCreateInfo =
-				{
-					VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT, nullptr,
-					static_cast<uint32_t>(std::size(settings)), settings 
-				};
-				debugUtilsMessengerCI.pNext = &layerSettingsCreateInfo;
-
-				instanceCreateInfo.ppEnabledLayerNames = &validationLayerName;
-				instanceCreateInfo.enabledLayerCount = 1;
-			}
-			else {
-				LOG_ERROR("Validation layer VK_LAYER_KHRONOS_validation not present, validation is disabled");
-			}
-		}
-
-		instanceCreateInfo.enabledExtensionCount = (uint32_t)instanceExtensions.size();
-		instanceCreateInfo.ppEnabledExtensionNames = instanceExtensions.data();
-
-		VkResult result = vkCreateInstance(&instanceCreateInfo, nullptr, &m_Context.instace);
-		if (result != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to create a Vulkan instance");
-			return false;
-		}
-		return true;
-	}
-
-
-	bool Device::pickPhysicalDevice()
-	{
-		assert(m_Context.instace != VK_NULL_HANDLE);
-
-		uint32_t deviceCount = 0;
-		vkEnumeratePhysicalDevices(m_Context.instace, &deviceCount, nullptr);
-
-		if (deviceCount == 0)
-		{
-			LOG_ERROR("No device with Vulkan support found");
-			return false;
-		}
-
-		std::vector<VkPhysicalDevice> physicalDevices(deviceCount);
-		vkEnumeratePhysicalDevices(m_Context.instace, &deviceCount, physicalDevices.data());
-
-		// pick the first discrete GPU if it exists, otherwise the first integrated GPU
-		for (const VkPhysicalDevice& physicalDevice : physicalDevices)
-		{
-			VkPhysicalDeviceProperties deviceProperties;
-			vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
-
-			if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
-			{
-				m_Context.physicalDevice = physicalDevice;
-				physicalDeviceProperties = deviceProperties;
-				return true;
-			}
-		}
-
-		m_Context.physicalDevice = physicalDevices[0];
-		vkGetPhysicalDeviceProperties(m_Context.physicalDevice, &physicalDeviceProperties);
-		return true;
-	}
-
-	bool Device::createDevice(const DeviceCreateInfo& desc)
-	{
-		assert(m_Context.physicalDevice != VK_NULL_HANDLE);
-		// find queue family
-		uint32_t queueFamilyCount = 0;
-		vkGetPhysicalDeviceQueueFamilyProperties(m_Context.physicalDevice, &queueFamilyCount, nullptr);
-		std::vector<VkQueueFamilyProperties> queueFamilyPropertieses(queueFamilyCount);
-		vkGetPhysicalDeviceQueueFamilyProperties(m_Context.physicalDevice, &queueFamilyCount, queueFamilyPropertieses.data());
-		for (uint32_t i = 0; i < queueFamilyPropertieses.size(); i++)
-		{
-			const auto& queueFamilyProps = queueFamilyPropertieses[i];
-
-			if (m_Queues[static_cast<uint32_t>(QueueType::Graphics)] == nullptr &&
-				queueFamilyProps.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT))
-			{
-				m_Queues[static_cast<uint32_t>(QueueType::Graphics)] = std::make_unique<CommandQueue>(this, m_Context);
-				m_Queues[static_cast<uint32_t>(QueueType::Graphics)]->queueFamilyIndex = i;
-			}
-
-			if (m_Queues[static_cast<uint32_t>(QueueType::Compute)] == nullptr &&
-				queueFamilyProps.queueFlags & VK_QUEUE_COMPUTE_BIT && 
-				!(queueFamilyProps.queueFlags & VK_QUEUE_GRAPHICS_BIT))
-			{
-				m_Queues[static_cast<uint32_t>(QueueType::Compute)] = std::make_unique<CommandQueue>(this, m_Context);
-				m_Queues[static_cast<uint32_t>(QueueType::Compute)]->queueFamilyIndex = i;
-			}
-
-			if (m_Queues[static_cast<uint32_t>(QueueType::Transfer)] == nullptr &&
-				queueFamilyProps.queueFlags & VK_QUEUE_TRANSFER_BIT &&
-				!(queueFamilyProps.queueFlags & VK_QUEUE_GRAPHICS_BIT) &&
-				!(queueFamilyProps.queueFlags & VK_QUEUE_TRANSFER_BIT))
-			{
-				m_Queues[static_cast<uint32_t>(QueueType::Transfer)] = std::make_unique<CommandQueue>(this, m_Context);
-				m_Queues[static_cast<uint32_t>(QueueType::Transfer)]->queueFamilyIndex = i;
-			}
-		}
-
-		float priority = 1.f;
-		std::vector<VkDeviceQueueCreateInfo> queueCIs;
-		
-		for (uint32_t i = 0; i < m_Queues.size(); ++i)
-		{
-			if (m_Queues[i] != nullptr)
-			{
-				auto& queueCI = queueCIs.emplace_back();
-				queueCI.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-				queueCI.queueFamilyIndex = m_Queues[i]->queueFamilyIndex;;
-				queueCI.queueCount = 1;
-				queueCI.pQueuePriorities = &priority;
-			}
-		}
-
-		// Create the logical device
 		std::vector<const char*> deviceExtensions;
-
 		deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-		deviceExtensions.push_back(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
 
 		// Get list of supported extensions
 		std::vector<std::string> supportedExtensions;
 		uint32_t extCount = 0;
-		vkEnumerateDeviceExtensionProperties(m_Context.physicalDevice, nullptr, &extCount, nullptr);
+		Adapter* adapter = checked_cast<Adapter>(mAdapter.Get());
+		vkEnumerateDeviceExtensionProperties(adapter->GetHandle(), nullptr, &extCount, nullptr);
 		if (extCount > 0)
 		{
 			std::vector<VkExtensionProperties> extensions(extCount);
-			if (vkEnumerateDeviceExtensionProperties(m_Context.physicalDevice, nullptr, &extCount, &extensions.front()) == VK_SUCCESS)
+			if (vkEnumerateDeviceExtensionProperties(checked_cast<Adapter>(mAdapter)->GetHandle(),
+				nullptr, &extCount, &extensions.front()) == VK_SUCCESS)
 			{
 				for (auto& ext : extensions)
 				{
@@ -321,15 +74,23 @@ namespace rhi::vulkan
 		}
 
 		VkPhysicalDeviceFeatures deviceFeatures{};
-		deviceFeatures.textureCompressionBC = true;
-		deviceFeatures.geometryShader = true;
-		deviceFeatures.tessellationShader = true;
 		deviceFeatures.fillModeNonSolid = true;
-		deviceFeatures.multiViewport = desc.enableMultiViewport;
-		deviceFeatures.depthBiasClamp = desc.enableDepthBiasClamp;
-		deviceFeatures.depthClamp = desc.enableDepthClamp;
-		deviceFeatures.samplerAnisotropy = desc.enableSamplerAnisotropy;
-		deviceFeatures.sampleRateShading = desc.enableSampleRateShading;
+		deviceFeatures.imageCubeArray = true;
+		deviceFeatures.textureCompressionBC = HasRequiredFeature(FeatureName::TextureCompressionBC);
+		deviceFeatures.textureCompressionETC2 = HasRequiredFeature(FeatureName::TextureCompressionETC2);
+		deviceFeatures.textureCompressionASTC_LDR = HasRequiredFeature(FeatureName::TextureCompressionASTC);
+		deviceFeatures.multiViewport = HasRequiredFeature(FeatureName::MultiViewport);
+		deviceFeatures.depthBiasClamp = HasRequiredFeature(FeatureName::DepthBiasClamp);
+		deviceFeatures.depthClamp = HasRequiredFeature(FeatureName::DepthClamp);
+		deviceFeatures.samplerAnisotropy = HasRequiredFeature(FeatureName::SamplerAnisotropy);
+		deviceFeatures.sampleRateShading = HasRequiredFeature(FeatureName::SampleRateShading);
+		deviceFeatures.shaderInt16 = HasRequiredFeature(FeatureName::ShaderInt16);
+		deviceFeatures.shaderInt64 = HasRequiredFeature(FeatureName::ShaderInt64);
+		deviceFeatures.shaderFloat64 = HasRequiredFeature(FeatureName::ShaderFloat64);
+		deviceFeatures.multiDrawIndirect = HasRequiredFeature(FeatureName::MultiDrawIndirect);
+		deviceFeatures.geometryShader = HasRequiredFeature(FeatureName::GeometryShader);
+		deviceFeatures.tessellationShader = HasRequiredFeature(FeatureName::TessellationShader);
+		deviceFeatures.shaderStorageImageExtendedFormats = HasRequiredFeature(FeatureName::R8UnormStorage);
 
 		VkPhysicalDeviceVulkan13Features feature13{};
 		feature13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
@@ -343,6 +104,53 @@ namespace rhi::vulkan
 		feature12.scalarBlockLayout = true;
 		feature12.pNext = &feature13;
 
+		uint32_t queueFamilyCount = 0;
+		vkGetPhysicalDeviceQueueFamilyProperties(checked_cast<Adapter>(mAdapter)->GetHandle(), &queueFamilyCount, nullptr);
+		std::vector<VkQueueFamilyProperties> queueFamilyPropertieses(queueFamilyCount);
+		vkGetPhysicalDeviceQueueFamilyProperties(checked_cast<Adapter>(mAdapter)->GetHandle(), &queueFamilyCount, queueFamilyPropertieses.data());
+		
+		std::array<std::optional<uint32_t>, 3> queueFamlies;
+		for (uint32_t i = 0; i < queueFamilyPropertieses.size(); i++)
+		{
+			const auto& queueFamilyProps = queueFamilyPropertieses[i];
+
+			if (!queueFamlies[static_cast<uint32_t>(QueueType::Graphics)].has_value() &&
+				queueFamilyProps.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT))
+			{
+				queueFamlies[static_cast<uint32_t>(QueueType::Graphics)] = i;
+			}
+
+			if (!queueFamlies[static_cast<uint32_t>(QueueType::Compute)].has_value() &&
+				queueFamilyProps.queueFlags & VK_QUEUE_COMPUTE_BIT &&
+				!(queueFamilyProps.queueFlags & VK_QUEUE_GRAPHICS_BIT))
+			{
+				queueFamlies[static_cast<uint32_t>(QueueType::Compute)] = i;
+			}
+
+			if (!queueFamlies[static_cast<uint32_t>(QueueType::Transfer)].has_value() &&
+				queueFamilyProps.queueFlags & VK_QUEUE_TRANSFER_BIT &&
+				!(queueFamilyProps.queueFlags & VK_QUEUE_GRAPHICS_BIT) &&
+				!(queueFamilyProps.queueFlags & VK_QUEUE_TRANSFER_BIT))
+			{
+				queueFamlies[static_cast<uint32_t>(QueueType::Transfer)] = i;
+			}
+		}
+
+		float priority = 1.f;
+		std::vector<VkDeviceQueueCreateInfo> queueCIs;
+
+		for (uint32_t i = 0; i < queueFamlies.size(); ++i)
+		{
+			if (queueFamlies[i].has_value())
+			{
+				auto& queueCI = queueCIs.emplace_back();
+				queueCI.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+				queueCI.queueFamilyIndex = queueFamlies[i].value();
+				queueCI.queueCount = 1;
+				queueCI.pQueuePriorities = &priority;
+			}
+		}
+
 		VkDeviceCreateInfo deviceCreateInfo{};
 		deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 		deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
@@ -352,121 +160,74 @@ namespace rhi::vulkan
 		deviceCreateInfo.pQueueCreateInfos = queueCIs.data();
 		deviceCreateInfo.pNext = &feature12;
 
-		VkResult err = vkCreateDevice(m_Context.physicalDevice, &deviceCreateInfo, nullptr, &m_Context.device);
-		CHECK_VK_RESULT(err);
-		if (err != VK_SUCCESS)
+		VkResult err = vkCreateDevice(checked_cast<Adapter>(mAdapter)->GetHandle(), &deviceCreateInfo, nullptr, &mHandle);
+		CHECK_VK_RESULT_FALSE(err);
+
+		VmaAllocatorCreateInfo allocatorCreateInfo{};
+		allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+		allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+		allocatorCreateInfo.physicalDevice = checked_cast<Adapter>(mAdapter)->GetHandle();
+		allocatorCreateInfo.device = mHandle;
+		allocatorCreateInfo.instance = checked_cast<Instance>(checked_cast<Adapter>(mAdapter)->GetInstance())->GetHandle();
+		err = vmaCreateAllocator(&allocatorCreateInfo, &mMemoryAllocator);
+		CHECK_VK_RESULT_FALSE(err);
+
+		// create queues
+		for (uint32_t i = 0; i < mQueues.size(); ++i)
 		{
-			return false;
+			if (queueFamlies[i].has_value())
+			{
+				mQueues[i] = Queue::Create(this, queueFamlies[i].value());
+			}
 		}
 
-		for (uint32_t i = 0; i < queueCIs.size(); ++i)
-		{
-			vkGetDeviceQueue(m_Context.device, m_Queues[i]->queueFamilyIndex, 0, &m_Queues[i]->queue);
-		}
+		mVkDeviceInfo.features = deviceFeatures;
+		vkGetPhysicalDeviceProperties(adapter->GetHandle(), &mVkDeviceInfo.properties);
 		
 		return true;
 	}
 
-
-	void Device::destroyDebugUtilsMessenger()
+	VkDevice Device::GetHandle() const
 	{
-		assert(context.instace);
-
-		if (m_DebugUtilsMessenger)
-		{
-			auto vkDestroyDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(context.instace, "vkDestroyDebugUtilsMessengerEXT"));
-
-			vkDestroyDebugUtilsMessengerEXT(context.instace, m_DebugUtilsMessenger, nullptr);
-		}
+		return mHandle;
 	}
 
-	Device* Device::Create(const DeviceCreateInfo& createInfo)
+	const VkDeviceInfo& Device::GetVkDeviceInfo() const
 	{
-		auto renderDevice = new Device();
-		renderDevice->createInfo = createInfo;
+		return mVkDeviceInfo;
+	}
 
-		g_DebugMessageCallback = createInfo.messageCallback;
-
-		if (!renderDevice->createInstance(createInfo.enableDebugRuntime))
-		{
-			delete renderDevice;
-			return nullptr;
-		}
-
-		if (createInfo.enableDebugRuntime)
-		{
-			auto vkCreateDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(renderDevice->context.instace, "vkCreateDebugUtilsMessengerEXT"));
-
-			VkDebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCI{};
-			debugUtilsMessengerCI.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-			debugUtilsMessengerCI.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-			debugUtilsMessengerCI.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
-			debugUtilsMessengerCI.pfnUserCallback = DebugMessageCallback;
-			debugUtilsMessengerCI.pUserData = renderDevice;
-			VkResult result = vkCreateDebugUtilsMessengerEXT(renderDevice->context.instace, &debugUtilsMessengerCI, nullptr, &renderDevice->m_DebugUtilsMessenger);
-			assert(result == VK_SUCCESS);
-		}
-
-		if (!renderDevice->pickPhysicalDevice())
-		{
-			delete renderDevice;
-			return nullptr;
-		}
-
-		if (!renderDevice->createDevice(createInfo))
-		{
-			delete renderDevice;
-			return nullptr;
-		}
-
-		// Get device push descriptor properties (to display them)
-		PFN_vkGetPhysicalDeviceProperties2KHR vkGetPhysicalDeviceProperties2KHR = reinterpret_cast<PFN_vkGetPhysicalDeviceProperties2KHR>(vkGetInstanceProcAddr(renderDevice->context.instace, "vkGetPhysicalDeviceProperties2KHR"));
-		if (!vkGetPhysicalDeviceProperties2KHR) {
-			LOG_ERROR("Could not get a valid function pointer for vkGetPhysicalDeviceProperties2KHR");
-			delete renderDevice;
-			return nullptr;
-		}
-
-		VkPhysicalDeviceProperties2KHR deviceProps2{};
-		VkPhysicalDevicePushDescriptorPropertiesKHR pushDescriptorProps{};
-		pushDescriptorProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR;
-		deviceProps2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
-		deviceProps2.pNext = &pushDescriptorProps;
-		vkGetPhysicalDeviceProperties2KHR(renderDevice->context.physicalDevice, &deviceProps2);
-		renderDevice->maxPushDescriptors = pushDescriptorProps.maxPushDescriptors;
-
-		VmaAllocatorCreateInfo allocatorCreateInfo = {};
-		allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
-		allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_3;
-		allocatorCreateInfo.physicalDevice = renderDevice->context.physicalDevice;
-		allocatorCreateInfo.device = renderDevice->context.device;
-		allocatorCreateInfo.instance = renderDevice->context.instace;
-		VkResult err = vmaCreateAllocator(&allocatorCreateInfo, &renderDevice->mMemoryAllocator);
-
-		CHECK_VK_RESULT(err);
-		if (err != VK_SUCCESS)
-		{
-			delete renderDevice;
-			return nullptr;
-		}
-		return renderDevice;
+	uint32_t Device::GetOptimalBytesPerRowAlignment() const
+	{
+		return mVkDeviceInfo.properties.limits.optimalBufferCopyRowPitchAlignment;
 	}
 
 	Device::~Device()
 	{
-		waitIdle();
-
-		destroyDebugUtilsMessenger();
-		vmaDestroyAllocator(mMemoryAllocator);
-
-		for (auto mCommandBuffer : m_AllCommandBuffers)
+		// We failed during initialization so early that we don't even have a VkDevice. There is
+		// nothing to do.
+		if (mHandle == VK_NULL_HANDLE)
 		{
-			delete mCommandBuffer;
-			mCommandBuffer = nullptr;
+			return;
 		}
 
-		vkDestroyDevice(context.device, nullptr);
-		vkDestroyInstance(context.instace, nullptr);
+		vkDeviceWaitIdle(mHandle);
+
+		for (auto& queue : mQueues)
+		{
+			if (queue)
+			{
+				queue->AssumeCommandsComplete();
+				ASSERT(queue->GetCompletedSerial() == queue->GetLastSubmittedSerial());
+				queue->Tick();
+				queue = nullptr;
+			}
+		}
+		DestroyObjects();
+
+		vmaDestroyAllocator(mMemoryAllocator);
+
+		vkDestroyDevice(mHandle, nullptr);
 	}
 
 	VmaAllocator Device::GetMemoryAllocator() const
@@ -474,1076 +235,50 @@ namespace rhi::vulkan
 		return mMemoryAllocator;
 	}
 
-	void Device::waitIdle()
+
+	Ref<RenderPipelineBase> Device::CreateRenderPipeline(const RenderPipelineDesc& desc)
 	{
-		vkDeviceWaitIdle(m_Context.device);
+		return RenderPipeline::Create(this, desc);
 	}
 
-	ITexture* Device::createTexture(const TextureDesc& desc)
+	Ref<ComputePipelineBase> Device::CreateComputePipeline(const ComputePipelineDesc& desc)
 	{
-		assert(desc.format != Format::UNKNOWN);
-		assert(desc.dimension != TextureDimension::Undefined);
-		TextureVk* tex = new TextureVk(context, mMemoryAllocator);
-		tex->format = formatToVkFormat(desc.format);
-		tex->m_Desc = desc;
-
-		VkImageCreateInfo imageCreateInfo{};
-		imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-		imageCreateInfo.imageType = getVkImageType(desc.dimension);
-		imageCreateInfo.extent = { desc.width, desc.height, desc.depth };
-		imageCreateInfo.mipLevels = desc.mipLevels;
-		imageCreateInfo.arrayLayers = desc.depth;
-		imageCreateInfo.format = tex->format;
-		imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		imageCreateInfo.usage = getVkImageUsageFlags(desc);
-		imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-		imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		imageCreateInfo.samples = getVkImageSampleCount(desc);
-		imageCreateInfo.flags = getVkImageCreateFlags(desc.dimension);
-
-		// Let the library select the optimal memory type, which will likely have VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT.
-		VmaAllocationCreateInfo allocCreateInfo = {};
-		allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
-		allocCreateInfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
-		allocCreateInfo.priority = 1.0f;
-		VkResult err = vmaCreateImage(mMemoryAllocator, &imageCreateInfo, &allocCreateInfo, &tex->image, &tex->allocation, nullptr);
-		CHECK_VK_RESULT(err, "Could not to create vkImage");
-		if (err != VK_SUCCESS)
-		{
-			delete tex;
-			return nullptr;
-		}
-		tex->managed = true;
-		tex->createDefaultView();
-
-		return tex;
+		return ComputePipeline::Create(this, desc);
 	}
 
-	IBuffer* Device::createBuffer(const BufferDesc& desc)
+	Ref<BindSetLayoutBase> Device::CreateBindSetLayout(const BindSetLayoutDesc& desc)
 	{
-		ASSERT_MSG(HasFlag(BufferUsage::MapWrite, desc.usage) && !HasFlag(desc.usage, BufferUsage::CopyDst),
-			"The BufferUsage::MapWrite flag is not compatible with BufferUsage::CopyDst.");
-		ASSERT_MSG(HasFlag(BufferUsage::MapRead, desc.usage) && !HasFlag(desc.usage, BufferUsage::CopySrc),
-			"The BufferUsage::MapRead flag is not compatible with BufferUsage::CopySrc.");
-
-		Ref<Buffer> buffer = Buffer::Create(this, desc);
-		return buffer.Detach();
+		return BindSetLayout::Create(this, desc);
 	}
 
-	ISampler* Device::createSampler(const SamplerDesc& desc)
+	Ref<BindSetBase> Device::CreateBindSet(const BindSetDesc& desc)
 	{
-		SamplerVk* sampler = new SamplerVk(context);
-
-		VkSamplerCreateInfo samplerCI{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
-		samplerCI.magFilter = desc.magFilter == FilterMode::Linear ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
-		samplerCI.minFilter = desc.minFilter == FilterMode::Linear ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
-		samplerCI.mipmapMode = desc.mipmapMode == FilterMode::Linear ? VK_SAMPLER_MIPMAP_MODE_LINEAR : VK_SAMPLER_MIPMAP_MODE_NEAREST;
-		samplerCI.addressModeU = convertVkSamplerAddressMode(desc.addressModeU);
-		samplerCI.addressModeV = convertVkSamplerAddressMode(desc.addressModeV);
-		samplerCI.addressModeW = convertVkSamplerAddressMode(desc.addressModeW);
-		samplerCI.mipLodBias = desc.mipLodBias;
-		samplerCI.anisotropyEnable = desc.maxAnisotropy > 0.f;
-		samplerCI.maxAnisotropy = desc.maxAnisotropy;
-		samplerCI.minLod = 0.f;
-		samplerCI.maxLod = VK_LOD_CLAMP_NONE;
-		samplerCI.borderColor = convertVkBorderColor(desc.borderColor);
-		samplerCI.compareOp = VK_COMPARE_OP_NEVER;
-
-		VkResult err = vkCreateSampler(context.device, &samplerCI, nullptr, &sampler->sampler);
-		CHECK_VK_RESULT(err, "Failed to create sampler");
-
-		if (err != VK_SUCCESS)
-		{
-			delete sampler;
-			sampler = nullptr;
-		}
-		return sampler;
+		return BindSet::Create(this, desc);
 	}
 
-	void* Device::mapBuffer(IBuffer* buffer)
+	Ref<TextureBase> Device::CreateTexture(const TextureDesc& desc)
 	{
-		assert(buffer);
-		auto buf = checked_cast<Buffer*>(buffer);
-		if (buf->getDesc().access == BufferAccess::GpuOnly)
-		{
-			LOG_ERROR("Could not map gpu only buffer");
-			return nullptr;
-		}
-
-		return buf->allocaionInfo.pMappedData;
+		return Texture::Create(this, desc);
 	}
 
-	IBuffer* Device::createBuffer(const BufferDesc& desc, const void* data, size_t dataSize)
+	Ref<BufferBase> Device::CreateBuffer(const BufferDesc& desc)
 	{
-		Buffer* buffer = checked_cast<Buffer*>(createBuffer(desc));
-		if (buffer->getDesc().access == BufferAccess::GpuOnly)
-		{
-			auto tmpCmdList = std::unique_ptr<CommandList>(checked_cast<CommandList*>(CreateCommandRecorder()));
-			tmpCmdList->open();
-			tmpCmdList->WriteBuffer(buffer, data, dataSize, 0);
-			tmpCmdList->close();
-			ICommandEncoder* cmdListArr[] = { tmpCmdList.get() };
-			uint64_t submitID = executeCommandLists(cmdListArr, 1);
-			waitForExecution(submitID, UINT64_MAX);
-		}
-		else
-		{
-			vmaCopyMemoryToAllocation(mMemoryAllocator, data, buffer->allocation, 0, dataSize);
-		}
-
-		return buffer;
+		return Buffer::Create(this, desc);
 	}
 
-	IShader* Device::createShader(const ShaderDesc& shaderCI, const uint32_t* pCode, size_t codeSize)
+	Ref<ShaderBase> Device::CreateShader(const ShaderModuleDesc& desc)
 	{
-		assert(pCode != nullptr && codeSize != 0);
-
-		ShaderDesc desc{};
-		desc.entry = shaderCI.entry;
-		desc.type = shaderCI.type;
-
-		auto shader = new ShaderVk(desc);
-
-		VkShaderModuleCreateInfo moduleCreateInfo{ VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
-		moduleCreateInfo.codeSize = codeSize;
-		moduleCreateInfo.pCode = pCode;
-
-		VkResult err = vkCreateShaderModule(m_Context.device, &moduleCreateInfo, nullptr, &shader->shaderModule);
-		CHECK_VK_RESULT(err, "Failed to create shaderModule.");
-
-		shader->spirv.resize(codeSize);
-		memcpy(shader->spirv.data(), pCode, codeSize);
-		for (uint32_t i = 0; i < shaderCI.specializationConstantCount; ++i)
-		{
-			shader->specializationConstants.push_back(shaderCI.specializationConstants[i]);
-		}
-
-		return shader;
+		return ShaderModule::Create(this, desc);
 	}
 
-	IResourceSetLayout* Device::createResourceSetLayout(const ResourceSetLayoutBinding* bindings, uint32_t bindingCount)
+	Ref<SamplerBase> Device::CreateSampler(const SamplerDesc& desc)
 	{
-		assert(bindings != nullptr && bindingCount != 0);
-		ASSERT_MSG(bindingCount <= maxPushDescriptors, "A set can have a maximum of 32 descriptors.");
-
-		auto resourceLayoutVk = new ResourceSetLayoutVk(context);
-
-		std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBindings{ bindingCount };
-
-		for (uint32_t i = 0; i < bindingCount; ++i)
-		{
-			VkDescriptorType descriptorType = shaderResourceTypeToVkDescriptorType(bindings[i].type);
-
-			auto& binding = descriptorSetLayoutBindings[i];
-			binding.binding = bindings[i].bindingSlot;
-			binding.descriptorCount = bindings[i].arrayElementCount;
-			binding.descriptorType = descriptorType;
-			binding.stageFlags = shaderTypeToVkShaderStageFlagBits(bindings[i].visibleStages);
-			// we will use them in ResourceSet creation
-			resourceLayoutVk->resourceSetLayoutBindings.push_back(bindings[i]);
-		}
-
-		VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCI{};
-		descriptorSetLayoutCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		descriptorSetLayoutCI.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
-		descriptorSetLayoutCI.bindingCount = static_cast<uint32_t>(descriptorSetLayoutBindings.size());
-		descriptorSetLayoutCI.pBindings = descriptorSetLayoutBindings.data();
-		descriptorSetLayoutCI.pNext = nullptr;
-
-		VkResult err = vkCreateDescriptorSetLayout(context.device, &descriptorSetLayoutCI, nullptr, &resourceLayoutVk->descriptorSetLayout);
-		CHECK_VK_RESULT(err, "Could not create ShaderBindingLayout");
-		if (err != VK_SUCCESS)
-		{
-			delete resourceLayoutVk;
-			return nullptr;
-		}
-
-		return resourceLayoutVk;
+		return Sampler::Create(this, desc);
 	}
 
-	static void writeDescriptor(
-		std::vector<VkWriteDescriptorSet>& writeDescriptorSets,
-		std::vector<VkDescriptorImageInfo>& descriptorImageInfos,
-		std::vector<VkDescriptorBufferInfo>& descriptorBufferInfos,
-		const ResourceSetBinding& binding)
+	Ref<CommandListBase> Device::CreateCommandList(CommandEncoder* encoder)
 	{
-		auto& setWriter = writeDescriptorSets.emplace_back();
-
-		switch (binding.type)
-		{
-		case ShaderResourceType::SampledTexture:
-		{
-			assert(binding.textureView != nullptr);
-			auto textureView = checked_cast<TextureViewVk*>(binding.textureView);
-
-			auto& descriptorImageInfo = descriptorImageInfos.emplace_back();
-			descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			descriptorImageInfo.imageView = textureView->imageView;
-			descriptorImageInfo.sampler = nullptr;
-
-			setWriter.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			setWriter.pNext = nullptr;
-			setWriter.dstBinding = binding.bindingSlot;
-			setWriter.dstSet = 0;
-			setWriter.dstArrayElement = binding.arrayElementIndex;
-			setWriter.pImageInfo = &descriptorImageInfo;
-			setWriter.descriptorType = shaderResourceTypeToVkDescriptorType(binding.type);
-			setWriter.descriptorCount = 1;
-
-			break;
-		}
-		case ShaderResourceType::StorageTexture:
-		{
-			assert(binding.textureView != nullptr);
-			auto textureView = checked_cast<TextureViewVk*>(binding.textureView);
-
-			auto& descriptorImageInfo = descriptorImageInfos.emplace_back();
-			descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-			descriptorImageInfo.imageView = textureView->imageView;
-			descriptorImageInfo.sampler = nullptr;
-
-			setWriter.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			setWriter.pNext = nullptr;
-			setWriter.dstBinding = binding.bindingSlot;
-			setWriter.dstSet = 0;
-			setWriter.dstArrayElement = binding.arrayElementIndex;
-			setWriter.pImageInfo = &descriptorImageInfo;
-			setWriter.descriptorType = shaderResourceTypeToVkDescriptorType(binding.type);
-			setWriter.descriptorCount = 1;
-
-			break;
-		}
-		case ShaderResourceType::TextureWithSampler:
-		{
-			assert(binding.textureView != nullptr);
-			assert(binding.sampler != nullptr);
-			auto textureView = checked_cast<TextureViewVk*>(binding.textureView);
-
-			auto& descriptorImageInfo = descriptorImageInfos.emplace_back();
-			descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			descriptorImageInfo.imageView = textureView->imageView;
-			descriptorImageInfo.sampler = checked_cast<SamplerVk*>(binding.sampler)->sampler;
-
-			setWriter.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			setWriter.pNext = nullptr;
-			setWriter.dstBinding = binding.bindingSlot;
-			setWriter.dstSet = 0;
-			setWriter.dstArrayElement = binding.arrayElementIndex;
-			setWriter.pImageInfo = &descriptorImageInfo;
-			setWriter.descriptorType = shaderResourceTypeToVkDescriptorType(binding.type);
-			setWriter.descriptorCount = 1;
-
-			break;
-		}
-		case ShaderResourceType::StorageBuffer:
-		case ShaderResourceType::UniformBuffer:
-		{
-			assert(binding.buffer != nullptr);
-			auto buffer = checked_cast<Buffer*>(binding.buffer);
-
-			auto& descriptorBufferInfo = descriptorBufferInfos.emplace_back();
-			descriptorBufferInfo.buffer = buffer->buffer;
-			descriptorBufferInfo.offset = binding.bufferOffset;
-			descriptorBufferInfo.range = binding.bufferRange == 0 ? VK_WHOLE_SIZE : binding.bufferRange;
-
-			setWriter.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			setWriter.pNext = nullptr;
-			setWriter.dstBinding = binding.bindingSlot;
-			setWriter.dstSet = 0;
-			setWriter.dstArrayElement = binding.arrayElementIndex;
-			setWriter.pBufferInfo = &descriptorBufferInfo;
-			setWriter.descriptorType = shaderResourceTypeToVkDescriptorType(binding.type);
-			setWriter.descriptorCount = 1;
-
-			break;
-		}
-		case ShaderResourceType::Sampler:
-		{
-			assert(binding.sampler != nullptr);
-
-			auto sampler = checked_cast<SamplerVk*>(binding.sampler);
-
-			auto& descriptorImageInfo = descriptorImageInfos.emplace_back();
-			descriptorImageInfo.sampler = sampler->sampler;
-			descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			descriptorImageInfo.imageView = nullptr;
-
-			setWriter.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			setWriter.pNext = nullptr;
-			setWriter.dstBinding = binding.bindingSlot;
-			setWriter.dstSet = 0;
-			setWriter.dstArrayElement = binding.arrayElementIndex;
-			setWriter.pImageInfo = &descriptorImageInfo;
-			setWriter.descriptorCount = 1;
-
-			break;
-		}
-		case ShaderResourceType::UniformTexelBuffer:
-		case ShaderResourceType::StorageTexelBuffer:
-		{
-			assert(!"not yet implemented");
-			break;
-		}
-		default:
-			assert(!"invalid ShaderResourceType");
-			break;
-		}
+		return CommandList::Create(this, encoder);
 	}
-
-	IResourceSet* Device::createResourceSet(const IResourceSetLayout* layout, const ResourceSetBinding* bindings, uint32_t bindingCount)
-	{
-		assert(layout);
-		const auto setLayout = checked_cast<const ResourceSetLayoutVk*>(layout);
-
-		auto resourceSet = new ResourceSetVk(context);
-		resourceSet->resourceSetLayout = setLayout;
-		resourceSet->writeDescriptorSets.reserve(maxPushDescriptors);
-		resourceSet->descriptorBufferInfos.reserve(maxPushDescriptors);
-		resourceSet->descriptorImageInfos.reserve(maxPushDescriptors);
-
-		for (uint32_t i = 0; i < bindingCount; ++i)
-		{
-			const ResourceSetBinding& binding = bindings[i];
-
-			ShaderStage bindingVisibleStages;
-
-			auto checkValidBinding = [&](const ResourceSetLayoutBinding& layoutBinding)->bool
-				{
-					return layoutBinding.bindingSlot == binding.bindingSlot && layoutBinding.type == binding.type;
-				};
-
-			if (auto it = std::find_if(
-				std::begin(setLayout->resourceSetLayoutBindings),
-				std::end(setLayout->resourceSetLayoutBindings),
-				checkValidBinding);
-				it != std::end(setLayout->resourceSetLayoutBindings))
-			{
-				bindingVisibleStages = it->visibleStages;
-			}
-			else
-			{
-				assert(!"Invalid ResourceSetBinding, make sure the bindingSlot and resourceType match those in the ResourceSetLayout.");
-			}
-
-			resourceSet->resourcesNeedStateTransition.emplace_back(ResourceSetBindngWithVisibleStages{ binding, bindingVisibleStages });
-
-			writeDescriptor(resourceSet->writeDescriptorSets, resourceSet->descriptorImageInfos, resourceSet->descriptorBufferInfos, binding);
-		}
-
-		return resourceSet;
-	}
-
-	void Device::updateResourceSet(IResourceSet* set, const ResourceSetBinding* bindings, uint32_t bindingCount)
-	{
-		assert(set);
-		assert(bindings != nullptr && bindingCount != 0);
-		auto resourceSet = checked_cast<ResourceSetVk*>(set);
-
-		const ResourceSetLayoutVk* layout = resourceSet->resourceSetLayout;
-
-		for (uint32_t i = 0; i < bindingCount; ++i)
-		{
-			const ResourceSetBinding& binding = bindings[i];
-
-			auto checkValidBinding = [&](const VkWriteDescriptorSet& setWriter)->bool
-				{
-					return setWriter.dstBinding == binding.bindingSlot && setWriter.dstArrayElement == binding.arrayElementIndex;
-				};
-
-			if (auto it = std::find_if(
-				std::begin(resourceSet->writeDescriptorSets),
-				std::end(resourceSet->writeDescriptorSets),
-				checkValidBinding);
-				it != std::end(resourceSet->writeDescriptorSets))
-			{
-				auto& setWriter = *it;
-				// if exists, only update resource pointer
-				ASSERT_MSG(shaderResourceTypeToVkDescriptorType(binding.type) == setWriter.descriptorType,
-					"Invalid ResourceSetBinding, resourceType mismatch.");
-				switch (binding.type)
-				{
-				case ShaderResourceType::SampledTexture:
-				case ShaderResourceType::StorageTexture:
-				{
-
-					auto descriptorImageInfo = const_cast<VkDescriptorImageInfo*>(setWriter.pImageInfo);
-					descriptorImageInfo->imageView = checked_cast<TextureViewVk*>(binding.textureView)->imageView;
-					break;
-				}
-				case ShaderResourceType::TextureWithSampler:
-				{
-					auto descriptorImageInfo = const_cast<VkDescriptorImageInfo*>(setWriter.pImageInfo);
-					descriptorImageInfo->imageView = checked_cast<TextureViewVk*>(binding.textureView)->imageView;
-					descriptorImageInfo->sampler = checked_cast<SamplerVk*>(binding.sampler)->sampler;
-					break;
-				}
-				case ShaderResourceType::StorageBuffer:
-				case ShaderResourceType::UniformBuffer:
-				{
-					auto descriptorBufferInfo = const_cast<VkDescriptorBufferInfo*>(setWriter.pBufferInfo);
-					descriptorBufferInfo->buffer = checked_cast<Buffer*>(binding.buffer)->buffer;
-					descriptorBufferInfo->offset = binding.bufferOffset;
-					descriptorBufferInfo->range = binding.bufferRange == 0 ? VK_WHOLE_SIZE : binding.bufferRange;
-					break;
-				}
-				case ShaderResourceType::Sampler:
-				{
-					auto descriptorImageInfo = const_cast<VkDescriptorImageInfo*>(setWriter.pImageInfo);
-					descriptorImageInfo->sampler = checked_cast<SamplerVk*>(binding.sampler)->sampler;
-					break;
-				}
-				default:
-					break; //nothing to do
-				}
-
-			}
-			else
-			{
-				ShaderStage bindingVisibleStages;
-
-				auto checkValidBinding = [&](const ResourceSetLayoutBinding& layoutBinding)->bool
-					{
-						return layoutBinding.bindingSlot == binding.bindingSlot && layoutBinding.type == binding.type;
-					};
-
-				if (auto it = std::find_if(
-					std::begin(layout->resourceSetLayoutBindings),
-					std::end(layout->resourceSetLayoutBindings),
-					checkValidBinding);
-					it != std::end(layout->resourceSetLayoutBindings))
-				{
-					bindingVisibleStages = it->visibleStages;
-				}
-				else
-				{
-					assert(!"Invalid ResourceSetBinding, make sure the bindingSlot and resourceType match those in the ResourceSetLayout.");
-				}
-
-				resourceSet->resourcesNeedStateTransition.emplace_back(ResourceSetBindngWithVisibleStages{ binding, bindingVisibleStages });
-
-				writeDescriptor(resourceSet->writeDescriptorSets, resourceSet->descriptorImageInfos, resourceSet->descriptorBufferInfos, binding);
-			}
-
-		}
-	}
-
-	static void resolveVertexInputOffsetAndStride(VertexInputAttribute* attributes, uint32_t attributeCount)
-	{
-		uint32_t bufferSlotUsed = 0;
-		for (uint32_t i = 0; i < attributeCount; ++i)
-		{
-			bufferSlotUsed = (std::max)(bufferSlotUsed, attributes[i].bindingBufferSlot + 1);
-		}
-		std::vector<uint32_t> autoSetStrides(bufferSlotUsed, 0);
-		std::vector<uint32_t> originStrides(bufferSlotUsed, UINT32_MAX);
-
-		for (uint32_t i = 0; i < attributeCount; ++i)
-		{
-			uint32_t bufferSlot = attributes[i].bindingBufferSlot;
-			auto& currentAutoSetStride = autoSetStrides[bufferSlot];
-
-			auto& formatInfo = getFormatInfo(attributes[i].format);
-
-			if (attributes[i].offsetInElement == UINT32_MAX)
-			{
-				attributes[i].offsetInElement = currentAutoSetStride;
-			}
-
-			if (attributes[i].elementStride != UINT32_MAX)
-			{
-				if (originStrides[bufferSlot] != UINT32_MAX &&
-					attributes[i].elementStride != originStrides[bufferSlot])
-				{
-					LOG_ERROR("stride between elements is not consistent in the same buffer slot.");
-				}
-				originStrides[bufferSlot] = attributes[i].elementStride;
-			}
-
-			currentAutoSetStride = (std::max)(currentAutoSetStride, attributes[i].offsetInElement + formatInfo.bytes);
-		}
-
-		for (uint32_t i = 0; i < attributeCount; ++i)
-		{
-			uint32_t bufferSlot = attributes[i].bindingBufferSlot;
-			if (originStrides[bufferSlot] != UINT32_MAX && originStrides[bufferSlot] >= autoSetStrides[bufferSlot])
-			{
-				LOG_ERROR("stride is too small");
-			}
-
-			if (attributes[i].elementStride == UINT32_MAX)
-			{
-				attributes[i].elementStride = autoSetStrides[bufferSlot];
-			}
-		}
-	}
-
-	static VkPipelineShaderStageCreateInfo getShaderStageCreateInfo(ShaderVk& shader, std::vector<VkSpecializationMapEntry>& specMapEntries,
-		std::vector<VkSpecializationInfo>& specInfos, std::vector<uint32_t>& specData)
-	{
-		VkPipelineShaderStageCreateInfo shaderStageCI{ VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
-		shaderStageCI.stage = shaderTypeToVkShaderStageFlagBits(shader.getDesc().type);
-		shaderStageCI.module = shader.shaderModule;
-		shaderStageCI.pName = shader.getDesc().entry;
-
-		if (!shader.specializationConstants.empty())
-		{
-			// The vectors are pre-allocated, so it's safe to use .data() before writing the data
-			shaderStageCI.pSpecializationInfo = specInfos.data() + specInfos.size();
-
-			VkSpecializationInfo specInfo{};
-			specInfo.pData = specData.data() + specData.size();
-			specInfo.mapEntryCount = static_cast<uint32_t>(shader.specializationConstants.size());
-			specInfo.pMapEntries = specMapEntries.data() + specMapEntries.size();
-			specInfo.dataSize = shader.specializationConstants.size() * sizeof(uint32_t);
-
-			uint32_t dataOffset = 0;
-			for (const auto& constant : shader.specializationConstants)
-			{
-				VkSpecializationMapEntry specMapEntry{};
-				specMapEntry.constantID = constant.constantID;
-				specMapEntry.offset = dataOffset;
-				specMapEntry.size = sizeof(uint32_t);
-
-				specMapEntries.push_back(specMapEntry);
-				specData.push_back(constant.value.u);
-				dataOffset += static_cast<uint32_t>(specMapEntry.size);
-			}
-
-			specInfos.push_back(specInfo);
-		}
-		return shaderStageCI;
-	}
-
-	static void countSpecializationConstants(ShaderVk* shader, uint32_t& shaderCount, uint32_t& shaderWithSpecializationCount, uint32_t& specializationConstantCount)
-	{
-		if (!shader)
-		{
-			return;
-		}
-		shaderCount++;
-		if (shader->specializationConstants.empty())
-		{
-			return;
-		}
-		shaderWithSpecializationCount++;
-		specializationConstantCount += static_cast<uint32_t>(shader->specializationConstants.size());
-	}
-
-	static GraphicsPipelineDesc getGraphicsPipelineDesc(const GraphicsPipelineDesc& pipelineCI)
-	{
-		GraphicsPipelineDesc desc;
-		desc.blendState = pipelineCI.blendState;
-		desc.rasterState = pipelineCI.rasterState;
-		desc.primType = pipelineCI.primType;
-		desc.depthStencilFormat = pipelineCI.depthStencilFormat;
-		desc.renderTargetFormatCount = pipelineCI.renderTargetFormatCount;
-		desc.viewportCount = pipelineCI.viewportCount;
-		desc.sampleCount = pipelineCI.sampleCount;
-		desc.patchControlPoints = pipelineCI.patchControlPoints;
-		for (uint32_t i = 0; i < pipelineCI.renderTargetFormatCount; ++i)
-		{
-			desc.renderTargetFormats[i] = pipelineCI.renderTargetFormats[i];
-		}
-		return desc;
-	}
-
-	IGraphicsPipeline* Device::createGraphicsPipeline(const GraphicsPipelineDesc& pipelineCI)
-	{
-		auto pipeline = new GraphicsPipelineVk(m_Context);
-
-		// pipeline layout
-		std::vector<VkDescriptorSetLayout> descriptorSetLayouts{ pipelineCI.resourceSetLayoutCount };
-		for (uint32_t i = 0; i < pipelineCI.resourceSetLayoutCount; ++i)
-		{
-			auto resourceSetLayout = checked_cast<ResourceSetLayoutVk*>(pipelineCI.resourceSetLayouts[i]);
-			descriptorSetLayouts[i] = resourceSetLayout->descriptorSetLayout;
-		}
-
-		std::vector<VkPushConstantRange> pushConstantRanges(pipelineCI.pushConstantCount);
-		pipeline->pushConstantInfos.resize(pushConstantRanges.size());
-		ShaderStage usedStages = ShaderStage::None;
-		uint32_t offset = 0;
-		for (uint32_t i = 0; i < pushConstantRanges.size(); ++i)
-		{
-			ASSERT_MSG((pipelineCI.pushConstantDescs[i].stage & usedStages) == 0, "Each pipeline stage can only have one pushConstants."); // to simplify the design
-			pushConstantRanges[i].stageFlags = shaderTypeToVkShaderStageFlagBits(pipelineCI.pushConstantDescs[i].stage);
-			pushConstantRanges[i].size = pipelineCI.pushConstantDescs[i].size;
-			pushConstantRanges[i].offset = offset;
-			pipeline->pushConstantInfos[i] = { pipelineCI.pushConstantDescs[i], offset };
-			offset += pushConstantRanges[i].size;
-			usedStages = usedStages | pipelineCI.pushConstantDescs[i].stage;
-		}
-
-		VkPipelineLayoutCreateInfo pipelineLayoutCI{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-		pipelineLayoutCI.pushConstantRangeCount = static_cast<uint32_t>(pushConstantRanges.size());
-		pipelineLayoutCI.pPushConstantRanges = pushConstantRanges.data();
-		pipelineLayoutCI.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
-		pipelineLayoutCI.pSetLayouts = descriptorSetLayouts.data();
-		VkResult err = vkCreatePipelineLayout(context.device, &pipelineLayoutCI, nullptr, &pipeline->pipelineLayout);
-		CHECK_VK_RESULT(err);
-
-		VkGraphicsPipelineCreateInfo createInfo{ VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
-
-		// Rasterization state
-		VkPipelineRasterizationStateCreateInfo rasterizationStateCI{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
-		rasterizationStateCI.cullMode = convertCullMode(pipelineCI.rasterState.cullMode);
-		rasterizationStateCI.polygonMode = convertPolygonMode(pipelineCI.rasterState.fillMode);
-		rasterizationStateCI.frontFace = pipelineCI.rasterState.frontCounterClockwise ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;;
-		rasterizationStateCI.depthClampEnable = pipelineCI.rasterState.depthClampEnable;
-		rasterizationStateCI.depthBiasEnable = pipelineCI.rasterState.depthBiasEnable;
-		rasterizationStateCI.lineWidth = pipelineCI.rasterState.lineWidth;
-
-		// blend state
-		std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachmentStates{ pipelineCI.renderTargetFormatCount };
-		for (uint32_t i = 0; i < pipelineCI.renderTargetFormatCount; ++i)
-		{
-			auto& colorBlendAttachmentState = colorBlendAttachmentStates[i];
-			colorBlendAttachmentState.blendEnable = pipelineCI.blendState.renderTargetBlendStates[i].blendEnable;
-			colorBlendAttachmentState.srcColorBlendFactor = convertBlendFactor(pipelineCI.blendState.renderTargetBlendStates[i].srcColorBlend);
-			colorBlendAttachmentState.dstColorBlendFactor = convertBlendFactor(pipelineCI.blendState.renderTargetBlendStates[i].srcColorBlend);
-			colorBlendAttachmentState.colorBlendOp = convertBlendOp(pipelineCI.blendState.renderTargetBlendStates[i].colorBlendOp);
-			colorBlendAttachmentState.srcAlphaBlendFactor = convertBlendFactor(pipelineCI.blendState.renderTargetBlendStates[i].srcAlphaBlend);
-			colorBlendAttachmentState.dstAlphaBlendFactor = convertBlendFactor(pipelineCI.blendState.renderTargetBlendStates[i].destAlphaBlend);
-			colorBlendAttachmentState.alphaBlendOp = convertBlendOp(pipelineCI.blendState.renderTargetBlendStates[i].alphaBlendOp);
-			colorBlendAttachmentState.colorWriteMask = convertColorMask(pipelineCI.blendState.renderTargetBlendStates[i].colorWriteMask);
-		}
-
-		VkPipelineColorBlendStateCreateInfo colorBlendStateCI{ VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
-		colorBlendStateCI.attachmentCount = static_cast<uint32_t>(colorBlendAttachmentStates.size());
-		colorBlendStateCI.pAttachments = colorBlendAttachmentStates.data();
-
-		// Viewport state sets the number of viewports and scissor used in this pipeline
-		// Note: This is actually overridden by the dynamic states (see below)
-		VkPipelineViewportStateCreateInfo viewportStateCI{ VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
-		viewportStateCI.viewportCount = pipelineCI.viewportCount;
-		viewportStateCI.scissorCount = pipelineCI.viewportCount;
-
-		// Enable dynamic states
-		std::vector<VkDynamicState> dynamicStateEnables = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
-		VkPipelineDynamicStateCreateInfo dynamicStateCI{ VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
-		dynamicStateCI.pDynamicStates = dynamicStateEnables.data();
-		dynamicStateCI.dynamicStateCount = static_cast<uint32_t>(dynamicStateEnables.size());
-
-		// Depth and stencil state
-		VkPipelineDepthStencilStateCreateInfo depthStencilStateCI{ VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
-		depthStencilStateCI.depthTestEnable = pipelineCI.depthStencilState.depthTestEnable;
-		depthStencilStateCI.depthWriteEnable = pipelineCI.depthStencilState.depthWriteEnable;
-		depthStencilStateCI.depthCompareOp = convertCompareOp(pipelineCI.depthStencilState.depthCompareOp);
-		depthStencilStateCI.stencilTestEnable = pipelineCI.depthStencilState.stencilTestEnable;
-		depthStencilStateCI.front = convertStencilOpState(pipelineCI.depthStencilState.frontFaceStencil);
-		depthStencilStateCI.back = convertStencilOpState(pipelineCI.depthStencilState.backFaceStencil);
-
-		VkPipelineMultisampleStateCreateInfo multisampleStateCI{ VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-		multisampleStateCI.alphaToCoverageEnable = pipelineCI.blendState.alphaToCoverageEnable;
-		multisampleStateCI.rasterizationSamples = static_cast<VkSampleCountFlagBits>(pipelineCI.sampleCount);
-
-		// vertex input 
-		VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCI{ VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
-		inputAssemblyStateCI.topology = convertPrimitiveTopology(pipelineCI.primType);
-
-		resolveVertexInputOffsetAndStride(pipelineCI.vertexInputAttributes, pipelineCI.vertexInputAttributeCount);
-
-		std::vector<VkVertexInputBindingDescription> vertexInputBindings;
-		std::vector<VkVertexInputAttributeDescription> vertexInputAttributes;
-
-		constexpr int maxVertexInputBindings = 32;
-		int bufferSlotUsed[maxVertexInputBindings]{};
-		for (uint32_t i = 0; i < pipelineCI.vertexInputAttributeCount; ++i)
-		{
-			auto& attribute = pipelineCI.vertexInputAttributes[i];
-
-			uint32_t bufferSlot = attribute.bindingBufferSlot;
-			if (bufferSlotUsed[bufferSlot] == 0)
-			{
-				auto& vertexInputBinding = vertexInputBindings.emplace_back();
-				vertexInputBinding.binding = attribute.bindingBufferSlot;
-				vertexInputBinding.stride = attribute.elementStride;
-				vertexInputBinding.inputRate = attribute.isInstanced ? VK_VERTEX_INPUT_RATE_INSTANCE : VK_VERTEX_INPUT_RATE_VERTEX;
-
-				bufferSlotUsed[bufferSlot]++;
-			}
-
-			auto& vertexInputAttribute = vertexInputAttributes.emplace_back();
-			vertexInputAttribute.binding = attribute.bindingBufferSlot;
-			vertexInputAttribute.location = attribute.location;
-			vertexInputAttribute.format = formatToVkFormat(attribute.format);
-			vertexInputAttribute.offset = attribute.offsetInElement;
-		}
-
-		VkPipelineVertexInputStateCreateInfo vertexInputStateCI{ VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
-		vertexInputStateCI.vertexBindingDescriptionCount = static_cast<uint32_t>(vertexInputBindings.size());
-		vertexInputStateCI.pVertexBindingDescriptions = vertexInputBindings.data();
-		vertexInputStateCI.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertexInputAttributes.size());
-		vertexInputStateCI.pVertexAttributeDescriptions = vertexInputAttributes.data();
-
-		// shader 
-
-		auto vertexShader = checked_cast<ShaderVk*>(pipelineCI.vertexShader);
-		auto fragmentShader = checked_cast<ShaderVk*>(pipelineCI.fragmentShader);
-		auto tessControlShader = checked_cast<ShaderVk*>(pipelineCI.tessControlShader);
-		auto tessEvaluationShader = checked_cast<ShaderVk*>(pipelineCI.tessEvaluationShader);
-		auto geometryShader = checked_cast<ShaderVk*>(pipelineCI.geometryShader);
-
-		uint32_t shaderCount = 0;
-		uint32_t shaderWithSpecializationCount = 0;
-		uint32_t specializationConstantCount = 0;
-
-		countSpecializationConstants(vertexShader, shaderCount, specializationConstantCount, specializationConstantCount);
-		countSpecializationConstants(fragmentShader, shaderCount, specializationConstantCount, specializationConstantCount);
-		countSpecializationConstants(tessControlShader, shaderCount, specializationConstantCount, specializationConstantCount);
-		countSpecializationConstants(vertexShader, shaderCount, specializationConstantCount, specializationConstantCount);
-		countSpecializationConstants(tessEvaluationShader, shaderCount, specializationConstantCount, specializationConstantCount);
-		countSpecializationConstants(geometryShader, shaderCount, specializationConstantCount, specializationConstantCount);
-
-		std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
-		std::vector<VkSpecializationMapEntry> specializationMapEntries;
-		std::vector<VkSpecializationInfo> specializationInfo;
-		std::vector<uint32_t> specializationData;
-
-		shaderStages.reserve(shaderCount);
-		specializationMapEntries.reserve(specializationConstantCount);
-		specializationInfo.reserve(shaderWithSpecializationCount);
-		specializationData.reserve(specializationConstantCount);
-
-		if (vertexShader)
-		{
-			shaderStages.push_back(getShaderStageCreateInfo(*vertexShader, specializationMapEntries, specializationInfo, specializationData));
-		}
-		if (fragmentShader)
-		{
-			shaderStages.push_back(getShaderStageCreateInfo(*fragmentShader, specializationMapEntries, specializationInfo, specializationData));
-		}
-		if (tessControlShader)
-		{
-			shaderStages.push_back(getShaderStageCreateInfo(*tessControlShader, specializationMapEntries, specializationInfo, specializationData));
-		}
-		if (tessEvaluationShader)
-		{
-			shaderStages.push_back(getShaderStageCreateInfo(*tessEvaluationShader, specializationMapEntries, specializationInfo, specializationData));
-		}
-		if (geometryShader)
-		{
-			shaderStages.push_back(getShaderStageCreateInfo(*geometryShader, specializationMapEntries, specializationInfo, specializationData));
-		}
-
-		// tessellation 
-		if (pipelineCI.primType == PrimitiveType::PatchList)
-		{
-			VkPipelineTessellationStateCreateInfo tessellationStateCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO };
-			tessellationStateCreateInfo.patchControlPoints = pipelineCI.patchControlPoints;
-			createInfo.pTessellationState = &tessellationStateCreateInfo;
-		}
-
-		// Attachment information for dynamic rendering
-		std::vector<VkFormat> colorAttachmentFormats{ pipelineCI.renderTargetFormatCount };
-		for (int i = 0; i < colorAttachmentFormats.size(); ++i)
-		{
-			colorAttachmentFormats[i] = formatToVkFormat(pipelineCI.renderTargetFormats[i]);
-		}
-		VkPipelineRenderingCreateInfoKHR pipelineRenderingCI{ VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR };
-		pipelineRenderingCI.colorAttachmentCount = pipelineCI.renderTargetFormatCount;
-		pipelineRenderingCI.pColorAttachmentFormats = colorAttachmentFormats.data();
-		pipelineRenderingCI.depthAttachmentFormat = formatToVkFormat(pipelineCI.depthStencilFormat);
-		pipelineRenderingCI.stencilAttachmentFormat = formatToVkFormat(pipelineCI.depthStencilFormat);
-
-		createInfo.layout = pipeline->pipelineLayout;
-		createInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
-		createInfo.pStages = shaderStages.data();
-		createInfo.pVertexInputState = &vertexInputStateCI;
-		createInfo.pInputAssemblyState = &inputAssemblyStateCI;
-		createInfo.pViewportState = &viewportStateCI;
-		createInfo.pRasterizationState = &rasterizationStateCI;
-		createInfo.pColorBlendState = &colorBlendStateCI;
-		createInfo.pMultisampleState = &multisampleStateCI;
-		createInfo.pDepthStencilState = &depthStencilStateCI;
-		createInfo.pDynamicState = &dynamicStateCI;
-		createInfo.pNext = &pipelineRenderingCI;
-
-		VkPipelineCacheCreateInfo cacheCI{ VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO };
-		cacheCI.initialDataSize = pipelineCI.cacheSize;
-		cacheCI.pInitialData = pipelineCI.cacheData;
-
-		err = vkCreatePipelineCache(context.device, &cacheCI, nullptr, &pipeline->pipelineCache);
-		CHECK_VK_RESULT(err, "Failed to create pipeline cache.");
-
-		err = vkCreateGraphicsPipelines(context.device, pipeline->pipelineCache, 1, &createInfo, nullptr, &pipeline->pipeline);
-		CHECK_VK_RESULT(err, "Failed to create pipeline.");
-
-		pipeline->desc = getGraphicsPipelineDesc(pipelineCI);
-		if (err != VK_SUCCESS)
-		{
-			delete pipeline;
-			pipeline = nullptr;
-		}
-
-		return pipeline;
-	}
-
-	IComputePipeline* Device::createComputePipeline(const ComputePipelineCreateInfo& pipelineCI)
-	{
-		auto pipeline = new ComputePipelineVk(context);
-
-		// pipeline layout
-		std::vector<VkDescriptorSetLayout> descriptorSetLayouts{ pipelineCI.resourceSetLayoutCount };
-		for (uint32_t i = 0; i < pipelineCI.resourceSetLayoutCount; ++i)
-		{
-			auto resourceSetLayout = checked_cast<ResourceSetLayoutVk*>(pipelineCI.resourceSetLayouts[i]);
-			descriptorSetLayouts[i] = resourceSetLayout->descriptorSetLayout;
-		}
-
-		std::vector<VkPushConstantRange> pushConstantRanges(pipelineCI.pushConstantCount);
-		pipeline->pushConstantInfos.resize(pushConstantRanges.size());
-		ShaderStage usedStages = ShaderStage::None;
-		uint32_t offset = 0;
-		for (uint32_t i = 0; i < pushConstantRanges.size(); ++i)
-		{
-			ASSERT_MSG((pipelineCI.pushConstantDescs[i].stage & usedStages) == 0, "Each pipeline stage can only have one pushConstants."); // to simplify the design
-			pushConstantRanges[i].stageFlags = shaderTypeToVkShaderStageFlagBits(pipelineCI.pushConstantDescs[i].stage);
-			pushConstantRanges[i].size = pipelineCI.pushConstantDescs[i].size;
-			pushConstantRanges[i].offset = offset;
-			pipeline->pushConstantInfos[i] = { pipelineCI.pushConstantDescs[i], offset };
-			offset += pushConstantRanges[i].size;
-			usedStages = usedStages | pipelineCI.pushConstantDescs[i].stage;
-		}
-
-		VkPipelineLayoutCreateInfo pipelineLayoutCI{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-		pipelineLayoutCI.pushConstantRangeCount = static_cast<uint32_t>(pushConstantRanges.size());
-		pipelineLayoutCI.pPushConstantRanges = pushConstantRanges.data();
-		pipelineLayoutCI.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
-		pipelineLayoutCI.pSetLayouts = descriptorSetLayouts.data();
-		VkResult err = vkCreatePipelineLayout(context.device, &pipelineLayoutCI, nullptr, &pipeline->pipelineLayout);
-		CHECK_VK_RESULT(err);
-
-		auto shader = checked_cast<ShaderVk*>(pipelineCI.computeShader);
-
-		uint32_t shaderCount = 0;
-		uint32_t shaderWithSpecializationCount = 0;
-		uint32_t specializationConstantCount = 0;
-
-		countSpecializationConstants(shader, shaderCount, shaderWithSpecializationCount, specializationConstantCount);
-
-		std::vector<VkSpecializationMapEntry> specializationMapEntries;
-		std::vector<VkSpecializationInfo> specializationInfo;
-		std::vector<uint32_t> specializationData;
-
-		specializationMapEntries.reserve(specializationConstantCount);
-		specializationInfo.reserve(shaderWithSpecializationCount);
-		specializationData.reserve(specializationConstantCount);
-
-		VkPipelineShaderStageCreateInfo shaderStageCI = getShaderStageCreateInfo(*shader, specializationMapEntries,
-			specializationInfo, specializationData);
-
-		VkPipelineCacheCreateInfo cacheCI{ VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO };
-		cacheCI.initialDataSize = pipelineCI.cacheSize;
-		cacheCI.pInitialData = pipelineCI.cacheData;
-
-		err = vkCreatePipelineCache(context.device, &cacheCI, nullptr, &pipeline->pipelineCache);
-		CHECK_VK_RESULT(err, "Failed to create pipeline cache.");
-
-		VkComputePipelineCreateInfo computePipelineCI{ VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
-		computePipelineCI.stage = shaderStageCI;
-		computePipelineCI.layout = pipeline->pipelineLayout;
-
-		err = vkCreateComputePipelines(context.device, pipeline->pipelineCache, 1, &computePipelineCI, nullptr, &pipeline->pipeline);
-		CHECK_VK_RESULT(err, "Failed to create pipeline.");
-		if (err != VK_SUCCESS)
-		{
-			delete pipeline;
-			pipeline = nullptr;
-		}
-		return pipeline;
-	}
-
-	TextureVk* Device::createRenderTarget(const TextureDesc& desc, VkImage image)
-	{
-		assert(desc.format != Format::UNKNOWN);
-		assert(desc.dimension != TextureDimension::Undefined);
-
-		auto tex = new TextureVk{ context, mMemoryAllocator };
-		tex->image = image;
-		tex->managed = false;
-		tex->format = formatToVkFormat(desc.format);
-		tex->m_Desc = desc;
-		tex->createDefaultView();
-		// an image layout transition needs to be performed on a presentable image before it is used in a graphics pipeline
-		tex->setState(ResourceState::InitialRenderTarget);
-		return tex;
-	}
-
-	void Device::setSwapChainImageAvailableSeamaphore(const VkSemaphore& semaophore)
-	{
-		m_SwapChainImgAvailableSemaphore = semaophore;
-	}
-
-	void Device::setRenderCompleteSemaphore(const VkSemaphore& semaphore)
-	{
-		m_RenderCompleteSemaphore = semaphore;
-	}
-
-	ICommandEncoder* Device::CreateCommandRecorder(QueueType queueType)
-	{
-		CommandList* cmdList = m_Queues[static_cast<uint32_t>(queueType)]->getValidCommandList();
-
-		VkCommandBufferBeginInfo cmdBufferBeginInfo{};
-		cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		vkBeginCommandBuffer(cmdList->mCommandBuffer, &cmdBufferBeginInfo);
-
-		return cmdList;
-	}
-
-	uint64_t Device::executeCommandLists(ICommandEncoder** cmdLists, size_t numCmdLists)
-	{
-		++lastSubmittedID;
-		bool hasGraphicPipeline = false;
-		m_CmdBufSubmitInfos.resize(numCmdLists);
-		for (int i = 0; i < numCmdLists; ++i)
-		{
-			assert(cmdLists[i] != nullptr);
-			auto cmdList = checked_cast<CommandList*>(cmdLists[i]);
-			cmdList->updateSubmittedState();
-			hasGraphicPipeline = cmdList->hasPresentTexture();
-
-			CommandBuffer* cmdBuffer = cmdList->getCommandBuffer();
-			cmdBuffer->submitID = lastSubmittedID;
-			m_CommandBufferInFlight.push_back(cmdBuffer);
-
-			m_CmdBufSubmitInfos[i].sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-			m_CmdBufSubmitInfos[i].mCommandBuffer = cmdBuffer->vkCmdBuf;
-		}
-
-		VkSubmitInfo2 submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO_2 };
-		submitInfo.signalSemaphoreInfoCount = 1;
-
-		VkSemaphoreSubmitInfo waitSemaphoreSubmitInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
-		if (hasGraphicPipeline && m_SwapChainImgAvailableSemaphore != VK_NULL_HANDLE)
-		{
-			waitSemaphoreSubmitInfo.semaphore = m_SwapChainImgAvailableSemaphore;
-			waitSemaphoreSubmitInfo.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-			submitInfo.waitSemaphoreInfoCount = 1;
-			submitInfo.pWaitSemaphoreInfos = &waitSemaphoreSubmitInfo;
-		}
-
-		VkSemaphoreSubmitInfo signalSemaphoreSubmitInfo{};
-		signalSemaphoreSubmitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-		signalSemaphoreSubmitInfo.semaphore = m_TrackingSubmittedSemaphore;
-		signalSemaphoreSubmitInfo.value = lastSubmittedID;
-		signalSemaphoreSubmitInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-
-
-		submitInfo.pSignalSemaphoreInfos = &signalSemaphoreSubmitInfo;
-		submitInfo.commandBufferInfoCount = static_cast<uint32_t>(m_CmdBufSubmitInfos.size());
-		submitInfo.pCommandBufferInfos = m_CmdBufSubmitInfos.data();
-
-		VkResult err = vkQueueSubmit2(queue, 1, &submitInfo, VK_NULL_HANDLE);
-		CHECK_VK_RESULT(err);
-
-		m_CmdBufSubmitInfos.clear();
-
-		// we only need to wait for swapChain image available at first time that graphicPipeline is set.
-		if (hasGraphicPipeline)
-		{
-			m_SwapChainImgAvailableSemaphore = VK_NULL_HANDLE;
-		}
-		return lastSubmittedID;
-	}
-
-	void Device::waitForExecution(uint64_t executeID, uint64_t timeout)
-	{
-		uint64_t lastFinishedID;
-		VkResult err = vkGetSemaphoreCounterValue(context.device, m_TrackingSubmittedSemaphore, &lastFinishedID);
-		CHECK_VK_RESULT(err);
-
-		if (lastFinishedID >= executeID)
-		{
-			return;
-		}
-
-		VkSemaphoreWaitInfo semaphoreWaitInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO };
-		semaphoreWaitInfo.semaphoreCount = 1;
-		semaphoreWaitInfo.pSemaphores = &m_TrackingSubmittedSemaphore;
-		semaphoreWaitInfo.pValues = &executeID;
-
-		err = vkWaitSemaphores(context.device, &semaphoreWaitInfo, timeout);
-		CHECK_VK_RESULT(err);
-	}
-
-	void Device::recycleCommandBuffers()
-	{
-		std::vector<CommandBuffer*> submittedCmdBuf = std::move(m_CommandBufferInFlight);
-
-		uint64_t lastFinishedID = 0;
-		VkResult err = vkGetSemaphoreCounterValue(context.device, m_TrackingSubmittedSemaphore, &lastFinishedID);
-		CHECK_VK_RESULT(err);
-
-		for (auto mCommandBuffer : submittedCmdBuf)
-		{
-			if (mCommandBuffer->submitID <= lastFinishedID)
-			{
-				mCommandBuffer->referencedInternalStageBuffer.clear();
-				mCommandBuffer->submitID = 0;
-				m_CommandBufferPool.push_back(mCommandBuffer);
-			}
-			else
-			{
-				m_CommandBufferInFlight.push_back(mCommandBuffer);
-			}
-		}
-	}
-
-	void Device::executePresentCommandList(ICommandEncoder* cmdList)
-	{
-		++lastSubmittedID;
-
-		auto commandList = checked_cast<CommandList*>(cmdList);
-		commandList->updateSubmittedState();
-		CommandBuffer* cmdBuffer = commandList->getCommandBuffer();
-		cmdBuffer->submitID = lastSubmittedID;
-		m_CommandBufferInFlight.push_back(cmdBuffer);
-
-		VkCommandBufferSubmitInfo cmdBufferSubmitInfo{};
-		cmdBufferSubmitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-		cmdBufferSubmitInfo.mCommandBuffer = cmdBuffer->vkCmdBuf;
-
-
-		VkSubmitInfo2 submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO_2 };
-		submitInfo.signalSemaphoreInfoCount = 1;
-
-		VkSemaphoreSubmitInfo waitSemaphoreSubmitInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
-
-		if (m_SwapChainImgAvailableSemaphore != VK_NULL_HANDLE)
-		{
-			waitSemaphoreSubmitInfo.semaphore = m_SwapChainImgAvailableSemaphore;
-			waitSemaphoreSubmitInfo.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-
-			submitInfo.waitSemaphoreInfoCount = 1;
-			submitInfo.pWaitSemaphoreInfos = &waitSemaphoreSubmitInfo;
-		}
-
-		VkSemaphoreSubmitInfo signalSemaphoreSubmitInfos[2]{};
-		signalSemaphoreSubmitInfos[0].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-		signalSemaphoreSubmitInfos[0].semaphore = m_TrackingSubmittedSemaphore;
-		signalSemaphoreSubmitInfos[0].value = lastSubmittedID;
-		signalSemaphoreSubmitInfos[0].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-		signalSemaphoreSubmitInfos[1].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-		signalSemaphoreSubmitInfos[1].semaphore = m_RenderCompleteSemaphore;
-		signalSemaphoreSubmitInfos[1].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-
-		submitInfo.signalSemaphoreInfoCount = 2;
-		submitInfo.pSignalSemaphoreInfos = signalSemaphoreSubmitInfos;
-		submitInfo.commandBufferInfoCount = 1;
-		submitInfo.pCommandBufferInfos = &cmdBufferSubmitInfo;
-
-		VkResult err = vkQueueSubmit2(queue, 1, &submitInfo, VK_NULL_HANDLE);
-		CHECK_VK_RESULT(err);
-
-		m_CmdBufSubmitInfos.clear();
-
-		// we only need to wait for swapChain image available at first time that graphicPipeline is set.
-		m_SwapChainImgAvailableSemaphore = VK_NULL_HANDLE;
-		m_RenderCompleteSemaphore = VK_NULL_HANDLE;
-	}
-
-	void Device::createSwapChain(const SwapChainCreateInfo& swapChainCI)
 
 }

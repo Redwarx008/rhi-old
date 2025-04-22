@@ -5,11 +5,11 @@ project(spirv-reflect)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(CMAKE_CXX_STANDARD 14)
 
-add_library(spirv-reflect-static STATIC ${CMAKE_CURRENT_SOURCE_DIR}/spirv_reflect.h
-                                     ${CMAKE_CURRENT_SOURCE_DIR}/spirv_reflect.c)
+add_library(spirv-reflect STATIC ${CMAKE_CURRENT_SOURCE_DIR}/spirv_reflect.h
+                                     ${CMAKE_CURRENT_SOURCE_DIR}/spirv_reflect.cpp)
 
-target_include_directories(spirv-reflect-static
+target_include_directories(spirv-reflect
                            PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-install(TARGETS spirv-reflect-static
+install(TARGETS spirv-reflect
             LIBRARY DESTINATION lib
             ARCHIVE DESTINATION lib)

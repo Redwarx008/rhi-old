@@ -1,18 +1,18 @@
 #pragma once
 
-#include "Ref.hpp"
+#include "rhi/RHIStruct.h"
+#include "common/Ref.hpp"
+#include "common/SerialQueue.hpp"
 #include <cstdint>
 #include <limits>
-#include <vector>
+#include <list>
+#include <memory>
 
 namespace rhi
 {
-	class IDevice;
-	class IBuffer;
-
 	struct UploadAllocation
 	{
-		IBuffer* buffer;
+		BufferBase* buffer;
 		uint64_t offset;
 		void* mappedAddress;
 	};
@@ -20,11 +20,11 @@ namespace rhi
 	class UploadAllocator
 	{
 	public:
-		explicit UploadAllocator(IDevice* device);
+		explicit UploadAllocator(DeviceBase* device);
 		~UploadAllocator() = default;
 
-		UploadAllocation Allocate(uint64_t allocationSize, uint64_t serialID, uint64_t offsetAlignment);
-		void Deallocate(uint64_t lastCompletedSerialID);
+		UploadAllocation Allocate(uint64_t allocationSize, uint64_t serial, uint64_t offsetAlignment);
+		void Deallocate(uint64_t lastCompletedSerial);
 	private:
 		class RingBuffer
 		{
@@ -34,8 +34,8 @@ namespace rhi
 
 			// Sub-allocate the ring-buffer by requesting a chunk of the specified size. 
 			// return the starting offset. 
-			uint64_t Allocate(uint64_t allocationSize, uint64_t serialID, uint64_t offsetAlignment = 1);
-			void Deallocate(uint64_t lastCompletedSerialID);
+			uint64_t Allocate(uint64_t allocationSize, uint64_t serial, uint64_t offsetAlignment = 1);
+			void Deallocate(uint64_t lastCompletedSerial);
 
 			uint64_t GetSize() const;
 			uint64_t GetUsedSize() const;
@@ -43,16 +43,15 @@ namespace rhi
 
 			static constexpr uint64_t cInvalidOffset = std::numeric_limits<uint64_t>::max();
 
-			Ref<IBuffer> buffer;
+			Ref<BufferBase> buffer;
 		private:
 			struct Request
 			{
-				uint64_t serialID;
 				uint64_t endOffset;
 				uint64_t size;
 			};
 
-			std::vector<Request> mInflightRequests;
+			SerialQueue<uint64_t, Request> mInflightRequests;
 
 			uint64_t mUsedEndOffset = 0;    // Tail of used sub-alloc requests (in bytes).
 			uint64_t mUsedStartOffset = 0;  // Head of used sub-alloc requests (in bytes).
@@ -62,6 +61,11 @@ namespace rhi
 
 		static constexpr uint64_t cRingBufferSize = 4 * 1024 * 1024;
 
-		IDevice* mDevice;
+		std::list<std::unique_ptr<RingBuffer>> mRingBuffers;
+
+		SerialQueue<uint64_t, Ref<BufferBase>> mLargeStageBuffersToDelete;
+
+		DeviceBase* mDevice;
+
 	};
 }

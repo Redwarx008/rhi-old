@@ -1,30 +1,51 @@
 #pragma once
 
-#include "rhi/rhi.h"
+#include "rhi/RHIStruct.h"
 #include "Commands.h"
-#include "CommandAllocator.h"
-#include "Ref.hpp"
-#include <vector>
+#include "EncodingContext.h"
+#include "CommandListBase.h"
+#include "common/Ref.hpp"
+#include "common/RefCounted.h"
+#include <memory>
+
 namespace rhi
 {
-	class CommandEncoder;
-	class CommandList final : public ICommandList
+	class CommandEncoder final : public RefCounted
 	{
 	public:
-		static Ref<CommandList> Create(CommandEncoder* encoder);
-		void Wait(ICommandList* other) override;
-	private:
-		explicit CommandList(CommandEncoder* encoder);
-		std::vector<Ref<CommandList>> mWaitCommandLists;
-		CommandIterator mCommandIter;
-	};
+		static Ref<CommandEncoder> Create(DeviceBase* device);
 
-	class CommandEncoder : public ICommandEncoder
-	{
-	public:
-		ICommandList* Finish() override;
-		CommandAllocator& GetAllocator();
+		//void ClearColorTexture(TextureViewBase* textureView, const ClearColor& color);
+		//void ClearDepthStencil(TextureViewBase* textureView, ClearDepthStencilFlag flag, float depthVal, uint8_t stencilVal);
+		void APIClearBuffer(BufferBase* buffer, uint32_t value, uint64_t offset = 0, uint64_t size = ~0ull);
+		void APICopyBufferToBuffer(BufferBase* srcBuffer, uint64_t srcOffset, BufferBase* dstBuffer, uint64_t dstOffset, uint64_t dataSize);
+		void APICopyBufferToTexture(BufferBase* srcBuffer, const TextureDataLayout& dataLayout, const TextureSlice& dstTextureSlice);
+		void APICopyTextureToBuffer(const TextureSlice& srcTextureSlice, BufferBase* dstBuffer, const TextureDataLayout& dataLayout);
+		void APICopyTextureToTexture(const TextureSlice& srcTextureSlice, const TextureSlice& dstTextureSlice);
+		void APIMapBufferAsync(BufferBase* buffer, MapMode usage, BufferMapCallback callback, void* userData);
+		void APIBeginDebugLabel(std::string_view label, Color color = Color());
+		void APIEndDebugLabel();
+		RenderPassEncoder* APIBeginRenderPass(const RenderPassDesc& desc);
+		ComputePassEncoder* APIBeginComputePass();
+		Ref<RenderPassEncoder> BeginRenderPass(const RenderPassDesc& desc);
+		Ref<ComputePassEncoder> BeginComputePass();
+		CommandListBase* APIFinish();
+
+		CommandIterator AcquireCommands();
+		CommandListResourceUsage AcquireResourceUsages();
+		void OnRenderPassEnd();
+		void OnComputePassEnd();
 	private:
-		CommandAllocator mCommandAllocator;
+		explicit CommandEncoder(DeviceBase* device);
+		enum class State
+		{
+			OutsideOfPass,
+			InRenderPass,
+			InComputePass
+		};
+		DeviceBase* mDevice;
+		EncodingContext mEncodingContext;
+		uint64_t mDebugLabelCount = 0;
+		State mState = State::OutsideOfPass;
 	};
 }

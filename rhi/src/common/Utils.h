@@ -2,7 +2,8 @@
 
 #include <sstream>
 #include <cassert>
-
+#include <type_traits>
+#include "Ref.hpp"
 namespace rhi
 {
 	inline void combineStrSS(std::stringstream& ss)
@@ -32,24 +33,96 @@ namespace rhi
 
 	// A type cast that is safer than static_cast in debug builds, and is a simple static_cast in release builds.
 	// Used for downcasting various ISomething* pointers to their implementation classes in the backends.
-	template <typename T, typename U>
-	T checked_cast(U u)
+	template <typename T, typename S>
+	T* checked_cast(S* source)
 	{
-		static_assert(!std::is_same<T, U>::value, "Redundant checked_cast");
-#ifdef _DEBUG
-		if (!u) return nullptr;
-		T t = dynamic_cast<T>(u);
-		if (!t) assert(!"Invalid type cast");  // NOLINT(clang-diagnostic-string-conversion)
-		return t;
+		static_assert(!std::is_pointer_v<T> && !std::is_pointer_v<S>);
+		if (!source)
+		{
+			return nullptr;
+		}
+
+#if !defined(NDEBUG)
+		if constexpr (std::is_polymorphic_v<S> && std::is_polymorphic_v<T>) 
+		{
+			auto temp = dynamic_cast<T*>(source);
+			assert(temp != nullptr && "checked_cast failed: pointer type mismatch");
+			return temp;
+		}
+		else 
+		{
+			static_assert(
+				std::is_base_of_v<T, S> || std::is_base_of_v<S, T>,
+				"checked_cast on non-polymorphic types requires inheritance"
+				);
+			return static_cast<T*>(source);
+		}
 #else
-		return static_cast<T>(u);
+		// 发布模式直接 static_cast
+		return static_cast<T*>(source);
+#endif
+	}
+
+	template <typename T, typename S>
+	Ref<T> checked_cast(Ref<S> source)
+	{
+		static_assert(!std::is_pointer_v<T> && !std::is_pointer_v<S>);
+		if (!source)
+		{
+			return nullptr;
+		}
+
+#if !defined(NDEBUG)
+		if constexpr (std::is_polymorphic_v<S> && std::is_polymorphic_v<T>)
+		{
+
+			auto temp = dynamic_cast<T*>(source.Detach());
+			assert(temp != nullptr && "checked_cast failed: pointer type mismatch");
+			return AcquireRef(temp);
+		}
+		else 
+		{
+			static_assert(
+				std::is_base_of_v<T, S> || std::is_base_of_v<S, T>,
+				"checked_cast on non-polymorphic types requires inheritance"
+				);
+			return AcquireRef(static_cast<T*>(source.Detach()));
+		}
+#else
+		// 发布模式直接 static_cast
+		return AcquireRef(static_cast<T*>(source.Detach()));
 #endif
 	}
 
 	template <typename T>
-	bool IsPowerOfTwo(T val)
+	bool IsPowerOfTwo(T val) noexcept
 	{
 		return val > 0 && (val & (val - 1)) == 0;
+	}
+
+	template <typename T>
+	int PopCount(T x) noexcept
+	{
+		static_assert(std::is_unsigned<T>::value, "T must be unsigned");
+		static_assert(sizeof(x) <= sizeof(uint64_t), "T is too large");
+
+#if defined (__GNUC__) || defined(__clang__)
+		if constexpr (sizeof(x) <= sizeof(uint32_t))
+		{
+			return __builtin_popcount(x);
+		}
+		else
+		{
+			return __builtin_popcountll(x);
+		}
+#else
+		int count = 0;
+		while (x) {
+			x &= x - 1;
+			count++;
+		}
+		return count;
+#endif 
 	}
 
 	template <typename T1, typename T2>
@@ -97,6 +170,16 @@ namespace rhi
 		return (flag & set) != 0;
 	}
 
+	template <typename Enum>
+	bool HasOneFlag(Enum value)
+	{
+		using Underlying = std::underlying_type_t<Enum>;
+
+		Underlying underlyingValue = static_cast<Underlying>(value);
+
+		return underlyingValue != 0 && (underlyingValue & (underlyingValue - 1)) == 0;
+	}
+
 	template <typename T>
 	T* AlignPtr(T* ptr, size_t alignment) {
 		assert(IsPowerOfTwo(alignment));
@@ -109,4 +192,19 @@ namespace rhi
 		assert(alignment != 0);
 		return (reinterpret_cast<size_t>(ptr) & (alignment - 1)) == 0;
 	}
+
+	template <typename LHS, typename RHS = LHS, typename T = void>
+	struct HasEqualityOperator {
+		static constexpr const bool value = false;
+	};
+
+	template <typename LHS, typename RHS>
+	struct HasEqualityOperator<
+		LHS,
+		RHS,
+		std::enable_if_t<
+		std::is_same<decltype(std::declval<LHS>() == std::declval<RHS>()), bool>::value>> {
+		static constexpr const bool value = true;
+	};
+
 }

@@ -83,16 +83,29 @@ ENDIF()
 add_subdirectory(third_party)
 
 set(interface_rhi 
-	"include/rhi/rhi.h"
-	"include/rhi/rhi_struct.h")
+	"include/rhi/RHI.h"
+	"include/rhi/RHIStruct.h")
 set(common_rhi
-	
-	"src/Utils.h"
-	"include/rhi/common/RefCounted.h")
+	  )
 
 set(src_common
-	"src/NoCopyable.h"
-	"src/Ref.hpp"
+	"src/common/Error.h"
+	"src/common/Utils.h"
+	"src/common/NoCopyable.h"
+	"src/common/Ref.hpp"
+	"src/common/LinkedList.h"
+	"src/common/ObjectContentHasher.h" 
+	"src/common/RefCounted.h"
+	"src/common/SerialQueue.hpp" 
+	"src/common/SerialMap.hpp"
+	"src/common/EnumFlagIterator.hpp"
+	"src/common/MutexProtected.hpp"
+	"src/common/Log.h" 
+	"src/common/Log.cpp" 
+	"src/common/Constants.h"
+	"src/common/BitSetUtils.h")
+
+set (src
 	"src/RHI.cpp"
 	"src/UploadAllocator.h"
 	"src/UploadAllocator.cpp"
@@ -100,7 +113,58 @@ set(src_common
 	"src/CommandEncoder.h"
 	"src/CommandEncoder.cpp"
 	"src/CommandAllocator.h"
-	"src/CommandAllocator.cpp")
+	"src/CommandAllocator.cpp"
+	"src/ResourceBase.h"
+	"src/ResourceBase.cpp"
+	"src/DeviceBase.h" 
+	"src/DeviceBase.cpp"
+	"src/SyncScopeUsageTracker.h"
+	"src/SubresourceStorage.hpp"
+	"src/FeatureSet.h" 
+	"src/Subresource.h" 
+	"src/SubResource.cpp"
+	"src/SyncScopeUsageTracker.cpp"
+	"src/BufferBase.h"
+	"src/BufferBase.cpp" 
+	"src/TextureBase.h"
+	"src/TextureBase.cpp" 
+	"src/InstanceBase.h" 
+	"src/InstanceBase.cpp" 
+	"src/AdapterBase.h" 
+	"src/AdapterBase.cpp"
+	"src/BindSetBase.h" 
+	 "src/BindSetLayoutBase.h"
+	 "src/BindSetLayoutBase.cpp"
+	 "src/BindSetBase.cpp" 
+	 "src/SamplerBase.h" 
+	 "src/SamplerBase.cpp" 
+	 "src/ShaderModuleBase.h" 
+	 "src/ShaderModuleBase.cpp" 
+	 "src/PipelineLayoutBase.h" 
+	 "src/PipelineLayoutBase.cpp" 
+	 "src/PipelineBase.h"
+	 "src/PipelineBase.cpp"
+	 "src/RenderPipelineBase.h"
+	 "src/RenderPipelineBase.cpp"
+	 "src/PerShaderStage.hpp" 
+	 "src/CachedObject.h"
+	 "src/CachedObject.cpp"
+	 "src/PassResourceUsage.h"
+	 "src/EncodingContext.h" 
+	 "src/EncodingContext.cpp"
+	 "src/RenderPassEncoder.h"
+	 "src/RenderPassEncoder.cpp" 
+	 "src/CommandListBase.h" 
+	 "src/CommandListBase.cpp"
+	 "src/PassEncoder.h" 
+	 "src/PassEncoder.cpp" 
+	 "src/QueueBase.h" 
+	 "src/QueueBase.cpp" 
+	 "src/CallbackTaskManager.h" 
+	 "src/CallbackTaskManager.cpp" 
+	 "src/ComputePipelineBase.h"
+	 "src/ComputePipelineBase.cpp" "src/SwapchainBase.h")
+
 set(src_vk
 	"src/vulkan/VMA.cpp"
 	"src/vulkan/DeviceVk.h"
@@ -114,16 +178,48 @@ set(src_vk
 	"src/vulkan/CommandListVk.cpp"
 	"src/vulkan/PipelineVk.h"
 	"src/vulkan/PipelineVk.cpp"  
-	"src/vulkan/CommandQueueVk.h"
-	"src/vulkan/CommandQueueVk.cpp"
+	"src/vulkan/QueueVk.h"
+	"src/vulkan/QueueVk.cpp"
 	"src/vulkan/BufferVk.h"
-	"src/vulkan/BufferVk.cpp" )
+	"src/vulkan/BufferVk.cpp"
+	"src/vulkan/TextureVk.h" 
+	"src/vulkan/InstanceVk.h" 
+	"src/vulkan/InstanceVk.cpp" 
+	"src/vulkan/AdapterVk.h"
+	"src/vulkan/AdapterVk.cpp" 
+	"src/vulkan/CommandRecordContextVk.h"
+	"src/vulkan/CommandRecordContextVk.cpp" 
+	"src/vulkan/TextureVk.cpp"
+	"src/vulkan/VkResourceDeleter.h"
+	"src/vulkan/VkResourceDeleter.cpp" 
+	"src/vulkan/ResourceToDelete.h"
+	"src/vulkan/ResourceToDelete.cpp" 
+	"src/vulkan/VulkanUtils.h"
+	"src/vulkan/VulkanUtils.cpp" 
+	"src/vulkan/DescriptorSetAllocator.h"
+	"src/vulkan/DescriptorSetAllocator.cpp" 
+	"src/vulkan/BindSetLayoutVk.h"
+	"src/vulkan/BindSetLayoutVk.cpp" 
+	"src/vulkan/BindSetVk.h"
+	"src/vulkan/BindSetVk.cpp" 
+	"src/vulkan/DescriptorSetAllocation.h"
+	"src/vulkan/SamplerVk.h" 
+	"src/vulkan/SamplerVk.cpp" 
+	"src/vulkan/ShaderModuleVk.h"
+	"src/vulkan/ShaderModuleVk.cpp" 
+	"src/vulkan/PipelineLayoutVk.h"
+	"src/vulkan/PipelineLayoutVk.cpp" 
+	"src/vulkan/RenderPipelineVk.h" 
+	"src/vulkan/RenderPipelineVk.cpp" 
+	"src/vulkan/ComputePipelineVk.h" 
+	"src/vulkan/ComputePipelineVk.cpp")
 
 add_library(rhi "")
 
 target_sources(rhi	PRIVATE
 				${interface_rhi}
 				${common_rhi}
+				${src}
 				${src_common}
 				${src_vk} )
 
@@ -141,4 +237,4 @@ ELSE(WIN32)
 	target_link_libraries(rhi ${XCB_LIBRARIES} ${Vulkan_LIBRARY} ${Vulkan_LIBRARY} ${DIRECTFB_LIBRARIES} ${WAYLAND_CLIENT_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 ENDIF(WIN32)
 
-target_link_libraries(rhi Vulkan::Vulkan vma)
+target_link_libraries(rhi Vulkan::Vulkan vma absl::inlined_vector absl::flat_hash_map absl::strings spirv-reflect)

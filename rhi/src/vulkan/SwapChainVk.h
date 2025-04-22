@@ -22,7 +22,7 @@ namespace rhi::vulkan
 	class SwapChain final : public ISwapChain
 	{
 	public:
-		static Ref<SwapChain> Create(const SwapChainCreateInfo& swapChainCI);
+		static Ref<SwapChain> Create(const SwapChainDesc& swapChainCI);
 		~SwapChain();
 		SwapChain(Device* device);
 		void recreateSwapChain() override;
@@ -39,8 +39,8 @@ namespace rhi::vulkan
 		uint32_t m_SwapChainImageWidth = 0;
 		uint32_t m_SwapChainImageHeight = 0;
 
-		Format m_SwapChainFormat = Format::UNKNOWN;
-		Format m_DepthStencilFormat = Format::UNKNOWN;
+		TextureFormat m_SwapChainFormat = TextureFormat::Undefined;
+		TextureFormat m_DepthStencilFormat = TextureFormat::Undefined;
 
 		bool m_VSyncEnabled = false;
 

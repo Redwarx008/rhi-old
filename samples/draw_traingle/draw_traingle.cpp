@@ -18,7 +18,7 @@
 using namespace rhi;
 
 
-static void messageCallback(MessageSeverity severity, const char* msg)
+static void loggingCallback(LoggingSeverity severity, const char* msg)
 {
 	std::cerr << msg;
 }
@@ -96,76 +96,76 @@ public:
 		glfwSetKeyCallback(m_Window, &GLFW_KeyCallback);
 		glfwSetCursorPosCallback(m_Window, &GLFW_CursorPosCallback);
 
-		DeviceCreateInfo rdCI{};
-		rdCI.enableDebugRuntime = true;
+		DeviceDesc rdCI{};
+		rdCI.enableDebugLayer = true;
 		
 		m_RenderDevice = std::unique_ptr<IDevice>(createDevice(rdCI));
 
-		SwapChainCreateInfo spCI{};
+		SwapChainDesc spCI{};
 		spCI.initialWidth = m_windowWidth;
 		spCI.initialHeight = m_windowHeight;
 		spCI.windowHandle = glfwGetWin32Window(m_Window);
 		spCI.renderDevice = m_RenderDevice.get();
 		spCI.enableVSync = true;
-		m_SwapChain = std::unique_ptr<ISwapChain>(createSwapChain(spCI));
+		m_SwapChain = std::unique_ptr<ISwapChain>(CreateSwapChain(spCI));
 		// create shader 
-		ShaderDesc shaderCI{};
+		ShaderModuleDesc shaderCI{};
 		shaderCI.type = ShaderStage::Vertex;
 		shaderCI.entry = "main";
 		std::vector<uint32_t> buffer = loadShaderData("triangle.vert.spv");
-		auto vertexShader = m_RenderDevice->createShader(shaderCI, buffer.data(), buffer.size() * sizeof(uint32_t));
+		auto vertexShader = m_RenderDevice->CreateShader(shaderCI, buffer.data(), buffer.size() * sizeof(uint32_t));
 		shaderCI.type = ShaderStage::Fragment;
 		buffer = loadShaderData("triangle.frag.spv");
-		auto fragmentShader = m_RenderDevice->createShader(shaderCI, buffer.data(), buffer.size() * sizeof(uint32_t));
+		auto fragmentShader = m_RenderDevice->CreateShader(shaderCI, buffer.data(), buffer.size() * sizeof(uint32_t));
 
 		// create vertex buffer and index buffer
 		BufferDesc bufferDesc{};
 		bufferDesc.access = BufferAccess::GpuOnly;
 		bufferDesc.usage = BufferUsage::VertexBuffer;
 		bufferDesc.size = static_cast<uint32_t>(vertices.size()) * sizeof(Vertex);
-		m_VertexBuffer = m_RenderDevice->createBuffer(bufferDesc, vertices.data(), bufferDesc.size);
+		m_VertexBuffer = m_RenderDevice->CreateBuffer(bufferDesc, vertices.data(), bufferDesc.size);
 
 		bufferDesc.usage = BufferUsage::IndexBuffer;
 		bufferDesc.size = indices.size() * sizeof(uint32_t);
-		m_IndexBuffer = m_RenderDevice->createBuffer(bufferDesc, indices.data(), bufferDesc.size);
+		m_IndexBuffer = m_RenderDevice->CreateBuffer(bufferDesc, indices.data(), bufferDesc.size);
 
 		bufferDesc.usage = BufferUsage::UniformBuffer;
 		bufferDesc.size = sizeof(ShaderData);
-		m_UniformBuffer = m_RenderDevice->createBuffer(bufferDesc);
+		m_UniformBuffer = m_RenderDevice->CreateBuffer(bufferDesc);
 		// These match the following shader layout (see triangle.vert):
 		//	layout (location = 0) in vec3 inPos;
 		//	layout (location = 1) in vec3 inColor;
 		VertexInputAttribute vertexInputs[] =
 		{
-			{0, 0, Format::RGB32_FLOAT}, 
-			{0, 1, Format::RGB32_FLOAT} 
+			{0, 0, TextureFormat::RGB32_FLOAT}, 
+			{0, 1, TextureFormat::RGB32_FLOAT} 
 		};
 
 		// create resouce set and layout
-		ResourceSetLayoutBinding layoutBindings[] = { ResourceSetLayoutBinding::UniformBuffer(ShaderStage::Vertex, 0) };
+		ResourceSetLayoutEntry layoutBindings[] = { ResourceSetLayoutEntry::UniformBuffer(ShaderStage::Vertex, 0) };
 
-		ResourceSetBinding bindings[] = { ResourceSetBinding::UniformBuffer(m_UniformBuffer, 0) };
+		BindSetEntry bindings[] = { BindSetEntry::UniformBuffer(m_UniformBuffer, 0) };
 
-		m_ResourceSetLayout = m_RenderDevice->createResourceSetLayout(layoutBindings, 1);
-		m_ResourceSet = m_RenderDevice->createResourceSet(m_ResourceSetLayout, bindings, 1);
+		m_ResourceSetLayout = m_RenderDevice->CreateBindSetLayout(layoutBindings, 1);
+		m_ResourceSet = m_RenderDevice->CreateBindSet(m_ResourceSetLayout, bindings, 1);
 
 		// create pipeline
-		GraphicsPipelineDesc pipelineCI{};
+		RenderPipelineDesc pipelineCI{};
 		pipelineCI.primType = PrimitiveType::TriangleList;
-		pipelineCI.vertexInputAttributes = vertexInputs;
-		pipelineCI.vertexInputAttributeCount = 2;
+		pipelineCI.vertexAttributes = vertexInputs;
+		pipelineCI.vertexAttributeCount = 2;
 		pipelineCI.vertexShader = vertexShader;
 		pipelineCI.fragmentShader = fragmentShader;
 		pipelineCI.resourceSetLayouts = &m_ResourceSetLayout;
 		pipelineCI.resourceSetLayoutCount = 1;
 		pipelineCI.renderTargetFormatCount = 1;
-		pipelineCI.renderTargetFormats[0] = m_SwapChain->getRenderTargetFormat();
+		pipelineCI.colorAttachmentFormats[0] = m_SwapChain->getRenderTargetFormat();
 		pipelineCI.depthStencilFormat = m_SwapChain->getDepthStencilFormat();
 		pipelineCI.depthStencilState.depthTestEnable = true;
 		pipelineCI.rasterState.cullMode = CullMode::back;
 		pipelineCI.rasterState.frontCounterClockwise = false;
 
-		m_Pipeline = m_RenderDevice->createGraphicsPipeline(pipelineCI);
+		m_Pipeline = m_RenderDevice->CreateGraphicsPipeline(pipelineCI);
 
 		delete vertexShader;
 		delete fragmentShader;
@@ -176,7 +176,7 @@ public:
 
 		m_GraphicState.pipeline = m_Pipeline;
 		m_GraphicState.colorAttachmentCount = 1;
-		m_GraphicState.indexBuffer = IndexBufferBinding().setBuffer(m_IndexBuffer).setFormat(Format::R32_UINT).setOffset(0);
+		m_GraphicState.indexBuffer = IndexBufferBinding().setBuffer(m_IndexBuffer).setFormat(TextureFormat::R32_UINT).setOffset(0);
 		m_GraphicState.vertexBufferCount = 1;
 		m_GraphicState.vertexBuffers[0] = VertexBufferBinding().setBuffer(m_VertexBuffer).setSlot(0).setOffset(0);
 		m_GraphicState.viewportCount = 1;
@@ -222,17 +222,17 @@ public:
 		m_CmdList->setPipeline(m_GraphicState);
 		m_CmdList->commitShaderResources(m_ResourceSet);
 		//m_CmdList->setScissors(&scissor, 1);
-		m_CmdList->drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+		m_CmdList->DrawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 		m_CmdList->close();
 
-		m_RenderDevice->executeCommandLists(&m_CmdList, 1);
+		m_RenderDevice->Submit(&m_CmdList, 1);
 	}
 
 	void cleanUp()
 	{
 		if (m_RenderDevice)
 		{
-			m_RenderDevice->waitIdle();
+			m_RenderDevice->WaitIdle();
 		}
 		delete m_IndexBuffer;
 		m_IndexBuffer = nullptr;
@@ -254,10 +254,10 @@ private:
 	IBuffer* m_UniformBuffer;
 	IBuffer* m_VertexBuffer;
 	IBuffer* m_IndexBuffer;
-	IGraphicsPipeline* m_Pipeline;
+	IRenderPipeline* m_Pipeline;
 	ICommandEncoder* m_CmdList;
-	IResourceSetLayout* m_ResourceSetLayout;
-	IResourceSet* m_ResourceSet;
+	IBindSetLayout* m_ResourceSetLayout;
+	IBindSetLayout* m_ResourceSet;
 
 	uint32_t m_windowWidth = 1024;
 	uint32_t m_windowHeight = 768;
