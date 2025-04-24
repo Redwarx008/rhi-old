@@ -12,23 +12,24 @@ namespace rhi
 	class TextureBase : public ResourceBase
 	{
 	public:
-		
-		uint32_t GetWidth() const;
-		uint32_t GetHeight() const;
-		uint32_t GetDepthOrArrayLayers() const;
-		uint32_t GetMipLevelCount() const;
-		uint32_t GetSampleCount() const;
-		TextureDimension GetDimension() const;
-		TextureFormat GetFormat() const;
-		TextureUsage GetUsage() const;
-		virtual TextureViewBase* CreateView(const TextureViewDesc& desc) = 0;
+		uint32_t APIGetWidth() const;
+		uint32_t APIGetHeight() const;
+		uint32_t APIGetDepthOrArrayLayers() const;
+		uint32_t APIGetMipLevelCount() const;
+		uint32_t APIGetSampleCount() const;
+		TextureDimension APIGetDimension() const;
+		TextureFormat APIGetFormat() const;
+		TextureUsage APIGetUsage() const;
+		TextureViewBase* APICreateView(const TextureViewDesc& desc);
+		virtual Ref<TextureViewBase> CreateView(const TextureViewDesc& desc) = 0;
 		// internal 
 		ResourceType GetType() const override;
 		ResourceList* GetViewList();
 		TextureUsage GetInternalUsage() const;
+		SubresourceRange GetAllSubresources() const;
 		bool IsDestoryed() const;
 	protected:
-		explicit TextureBase(DeviceBase* device, const TextureDesc& desc) noexcept;
+		explicit TextureBase(DeviceBase* device, const TextureDesc& desc);
 		~TextureBase();
 		void Initialize();
 

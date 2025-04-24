@@ -6,6 +6,10 @@
 #include <vector>
 #include <limits>
 
+#if defined (max)
+#undef max
+#endif
+
 namespace rhi
 {
 	constexpr uint32_t cEndOfBlock = std::numeric_limits<uint32_t>::max();

@@ -3,7 +3,8 @@
 #include "ErrorsVk.h"
 #include "VulkanUtils.h"
 #include "../common/Utils.h"
-#include <spirv_reflect.h>
+
+//#include <spirv_reflect.h>
 
 namespace rhi::vulkan
 {

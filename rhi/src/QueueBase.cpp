@@ -126,27 +126,119 @@ namespace rhi
 		}
 	}
 
-	uint64_t ComputeRequiredBytesInCopy(TextureFormat format, const Extent3D& size, uint32_t bytesPerRow, uint32_t rowsPerImage)
+	uint64_t ComputeRequiredBytesInCopy(TextureFormat format, const Extent3D& size, uint32_t alignedBytesPerRow, uint32_t rowsPerImage)
 	{
 		const FormatInfo& formatInfo = GetFormatInfo(format);
 		uint32_t widthInBlocks = size.width / formatInfo.blockSize;
-		uint32_t heightInBlocks = size.height / blockInfo.height;
+		uint32_t heightInBlocks = size.height / formatInfo.blockSize;
+		// The number of bytes in the last row may be different because there is alignment padding in the memory layout
+		// and the padding bytes are not used in the last row.
+		uint64_t bytesInLastRow = static_cast<uint64_t>(widthInBlocks) * static_cast<uint64_t>(formatInfo.bytesPerBlock);
+
+		if (size.depthOrArrayLayers == 0)
+		{
+			return 0;
+		}
+
+		uint64_t bytesPerImage = static_cast<uint64_t>(alignedBytesPerRow) * static_cast<uint64_t>(rowsPerImage);
+		uint64_t requiredBytesInCopy = bytesPerImage * (uint64_t(size.depthOrArrayLayers) - 1);
+		if (heightInBlocks > 0)
+		{
+			uint64_t bytesInLastImage = static_cast<uint64_t>(alignedBytesPerRow) * (heightInBlocks - 1) + bytesInLastRow;
+			requiredBytesInCopy += bytesInLastImage;
+		}
+
+		return requiredBytesInCopy;
+	}
+
+	void CopyTextureData(uint8_t* dstPointer,
+		const uint8_t* srcPointer,
+		uint32_t depth,
+		uint32_t rowsPerImage,
+		uint64_t additionalStridePerImage,
+		uint32_t actualBytesPerRow,
+		uint32_t dstBytesPerRow,
+		uint32_t srcBytesPerRow)
+	{
+		bool copyWholeLayer = actualBytesPerRow == dstBytesPerRow && dstBytesPerRow == srcBytesPerRow;
+		bool copyWholeData = copyWholeLayer && additionalStridePerImage == 0;
+
+		if (!copyWholeLayer) 
+		{  // copy row by row
+			for (uint32_t d = 0; d < depth; ++d) {
+				for (uint32_t h = 0; h < rowsPerImage; ++h) 
+				{
+					memcpy(dstPointer, srcPointer, actualBytesPerRow);
+					dstPointer += dstBytesPerRow;
+					srcPointer += srcBytesPerRow;
+				}
+				srcPointer += additionalStridePerImage;
+			}
+		}
+		else 
+		{
+			uint64_t layerSize = uint64_t(rowsPerImage) * actualBytesPerRow;
+			if (!copyWholeData)
+			{  // copy layer by layer
+				for (uint32_t d = 0; d < depth; ++d)
+				{
+					memcpy(dstPointer, srcPointer, layerSize);
+					dstPointer += layerSize;
+					srcPointer += layerSize + additionalStridePerImage;
+				}
+			}
+			else 
+			{  // do a single copy
+				memcpy(dstPointer, srcPointer, layerSize * depth);
+			}
+		}
 	}
 
 	void QueueBase::APIWriteTexture(const TextureSlice& dstTexture, const void* data, size_t dataSize, const TextureDataLayout& dataLayout)
 	{
-		ASSERT(HasFlag(dstTexture.texture->GetUsage(), TextureUsage::CopyDst));
+		ASSERT(HasFlag(dstTexture.texture->APIGetUsage(), TextureUsage::CopyDst));
 		ASSERT(dataLayout.bytesPerRow != 0 && dataLayout.rowsPerImage != 0);
 		INVALID_IF(dataLayout.offset > dataSize, "Data offset (%u) is greater than the data size (%u).", dataLayout.offset, dataSize);
-		TextureFormat format = dstTexture.texture->GetFormat();
+		TextureFormat format = dstTexture.texture->APIGetFormat();
 		ASSERT(dstTexture.size.width % GetFormatInfo(format).blockSize == 0);
 		ASSERT(dstTexture.size.height % GetFormatInfo(format).blockSize == 0);
 
 		uint32_t alignedBytesPerRow = dstTexture.size.width / GetFormatInfo(format).blockSize * GetFormatInfo(format).bytesPerBlock;
 		uint32_t alignedRowsPerImage = dstTexture.size.height / GetFormatInfo(format).blockSize;
 
+		uint64_t optimalOffsetAlignment = mDevice->GetOptimalBufferToTextureCopyOffsetAlignment();
+		// We need the offset to be aligned to both optimalOffsetAlignment and blockByteSize,
+		// since both of them are powers of two, we only need to align to the max value.
+		uint64_t offsetAlignment = std::max(optimalOffsetAlignment, uint64_t(GetFormatInfo(format).bytesPerBlock));
 		uint32_t optimalBytesPerRowAlignment = mDevice->GetOptimalBytesPerRowAlignment();
 		uint32_t optimallyAlignedBytesPerRow = AlignUp(alignedBytesPerRow, optimalBytesPerRowAlignment);
 
+		uint64_t requiredBytesInCopy = ComputeRequiredBytesInCopy(dstTexture.texture->APIGetFormat(), dstTexture.size, optimallyAlignedBytesPerRow, alignedRowsPerImage);
+
+		UploadAllocation allocation = mUploadAllocator->Allocate(requiredBytesInCopy, GetPendingSubmitSerial(), offsetAlignment);
+		ASSERT(allocation.mappedAddress != nullptr);
+
+		const uint8_t* copySrc = static_cast<const uint8_t*>(data) + dataLayout.offset;
+		uint8_t* copyDst = static_cast<uint8_t*>(allocation.mappedAddress);
+
+		ASSERT(dataLayout.rowsPerImage >= alignedRowsPerImage);
+
+		uint64_t additionalStridePerImage = dataLayout.bytesPerRow * (dataLayout.rowsPerImage - alignedRowsPerImage);
+
+		CopyTextureData(copyDst, copySrc, dstTexture.size.depthOrArrayLayers, alignedRowsPerImage,
+			additionalStridePerImage, alignedBytesPerRow, optimallyAlignedBytesPerRow,
+			dataLayout.bytesPerRow);
+
+		TextureDataLayout alignedDataLayout{};
+		alignedDataLayout.offset = allocation.offset;
+		alignedDataLayout.bytesPerRow = optimallyAlignedBytesPerRow;
+		alignedDataLayout.rowsPerImage = alignedRowsPerImage;
+
+		CopyFromStagingToTextureImpl(allocation.buffer, dstTexture, alignedDataLayout);
+	}
+
+	void QueueBase::APIWaitQueue(QueueBase* queue, uint64_t submitSerial)
+	{
+		WaitQueueImpl(queue, submitSerial);
 	}
 }

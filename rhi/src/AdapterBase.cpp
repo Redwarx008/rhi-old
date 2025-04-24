@@ -27,17 +27,14 @@ namespace rhi
 		return mLimits;
 	}
 
-	InstanceBase* AdapterBase::GetInstance() const
+	InstanceBase* AdapterBase::APIGetInstance() const
 	{
-		InstanceBase* instance = GetInstanceInternal();
-		instance->AddRef();
-		return instance;
+		Ref<InstanceBase> instance = mInstance;
+		return instance.Detach();
 	}
 
-	InstanceBase* AdapterBase::GetInstanceInternal() const
+	Ref<InstanceBase> AdapterBase::GetInstance() const
 	{
-		InstanceBase* instance = mInstance.Get();
-		assert(!instance);
-		return instance;
+		return mInstance;
 	}
 }

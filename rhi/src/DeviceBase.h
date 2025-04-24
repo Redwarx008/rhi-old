@@ -14,6 +14,7 @@ namespace rhi
 	{
 	public:
 		//ISwapChain* CreateSwapChain(const SwapChainDesc& desc);
+		AdapterBase* APIGetAdapter() const;
 		QueueBase* APIGetQueue(QueueType queueType);
 		RenderPipelineBase* APICreateRenderPipeline(const RenderPipelineDesc& desc);
 		ComputePipelineBase* APICreateComputePipeline(const ComputePipelineDesc& desc);
@@ -27,6 +28,7 @@ namespace rhi
 		void APITick();
 
 		Ref<QueueBase> GetQueue(QueueType queueType);
+		virtual Ref<SwapChainBase> CreateSwapChain(Surface* surface, SwapChainBase* previous, const SurfaceConfiguration& config) = 0;
 		virtual Ref<RenderPipelineBase> CreateRenderPipeline(const RenderPipelineDesc& desc) = 0;
 		virtual Ref<ComputePipelineBase> CreateComputePipeline(const ComputePipelineDesc& desc) = 0;
 		virtual Ref<BindSetLayoutBase> CreateBindSetLayout(const BindSetLayoutDesc& desc) = 0;
@@ -37,6 +39,7 @@ namespace rhi
 		virtual Ref<SamplerBase> CreateSampler(const SamplerDesc& desc) = 0;
 		virtual Ref<CommandListBase> CreateCommandList(CommandEncoder* encoder) = 0;
 		virtual uint32_t GetOptimalBytesPerRowAlignment() const = 0;
+		virtual uint32_t GetOptimalBufferToTextureCopyOffsetAlignment() const = 0;
 		ResourceList* GetTrackedObjectList(ResourceType type);
 		bool IsDebugLayerEnabled() const;
 		BindSetLayoutBase* GetEmptyBindSetLayout();

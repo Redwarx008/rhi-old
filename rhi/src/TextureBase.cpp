@@ -52,44 +52,55 @@ namespace rhi
 		return mInternalUsage;
 	}
 
-	uint32_t TextureBase::GetWidth() const
+	SubresourceRange TextureBase::GetAllSubresources() const
+	{
+		return { GetAspectFromFormat(mFormat), 0, mDepth, 0, mMipLevelCount};
+	}
+
+	uint32_t TextureBase::APIGetWidth() const
 	{
 		return mWidth;
 	}
 
-	uint32_t TextureBase::GetHeight() const
+	uint32_t TextureBase::APIGetHeight() const
 	{
 		return mHeight;
 	}
 
-	uint32_t TextureBase::GetDepthOrArrayLayers() const
+	uint32_t TextureBase::APIGetDepthOrArrayLayers() const
 	{
 		return mDepth;
 	}
 
-	uint32_t TextureBase::GetMipLevelCount() const
+	uint32_t TextureBase::APIGetMipLevelCount() const
 	{
 		return mMipLevelCount;
 	}
 
-	uint32_t TextureBase::GetSampleCount() const
+	uint32_t TextureBase::APIGetSampleCount() const
 	{
 		return mSampleCount;
 	}
 
-	TextureDimension TextureBase::GetDimension() const
+	TextureDimension TextureBase::APIGetDimension() const
 	{
 		return mDimension;
 	}
 
-	TextureFormat TextureBase::GetFormat() const
+	TextureFormat TextureBase::APIGetFormat() const
 	{
 		return mFormat;
 	}
 
-	TextureUsage TextureBase::GetUsage() const
+	TextureUsage TextureBase::APIGetUsage() const
 	{
 		return mUsage;
+	}
+
+	TextureViewBase* TextureBase::APICreateView(const TextureViewDesc& desc)
+	{
+		Ref<TextureViewBase> textureView = CreateView(desc);
+		return textureView.Detach();
 	}
 
 	bool TextureBase::IsDestoryed() const
@@ -118,7 +129,7 @@ namespace rhi
 		mDimension(desc.dimension),
 		mFormat(desc.format),
 		mRange(ViewAspectConvert(mFormat, desc.aspect), desc.baseArrayLayer, desc.arrayLayerCount, desc.baseMipLevel, desc.mipLevelCount),
-		mUsage(GetTextureViewUsage(texture->GetUsage(), desc.usage)),
+		mUsage(GetTextureViewUsage(texture->APIGetUsage(), desc.usage)),
 		mInternalUsage(GetTextureViewUsage(texture->GetInternalUsage(), desc.usage)),
 		ResourceBase(texture->GetDevice(), desc.name)
 	{

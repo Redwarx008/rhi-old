@@ -47,7 +47,7 @@ namespace rhi::vulkan
 			{
 				VkDescriptorImageInfo& imageInfo = writeImageInfo[i];
 				imageInfo.imageView = checked_cast<TextureView>(desc.entries[i].textureView)->GetHandle();
-				imageInfo.imageLayout = ImageLayoutConvert(TextureUsage::SampledBinding, desc.entries[i].textureView->GetTexture()->GetFormat());
+				imageInfo.imageLayout = ImageLayoutConvert(TextureUsage::SampledBinding, desc.entries[i].textureView->GetTexture()->APIGetFormat());
 				write.pImageInfo = &imageInfo;
 				break;
 			}
@@ -80,7 +80,7 @@ namespace rhi::vulkan
 			{
 				VkDescriptorImageInfo& imageInfo = writeImageInfo[i];
 				imageInfo.imageView = checked_cast<TextureView>(desc.entries[i].textureView)->GetHandle();
-				imageInfo.imageLayout = ImageLayoutConvert(TextureUsage::StorageBinding, desc.entries[i].textureView->GetTexture()->GetFormat());
+				imageInfo.imageLayout = ImageLayoutConvert(TextureUsage::StorageBinding, desc.entries[i].textureView->GetTexture()->APIGetFormat());
 				imageInfo.sampler = checked_cast<Sampler>(desc.entries[i].sampler)->GetHandle();
 				write.pImageInfo = &imageInfo;
 				break;

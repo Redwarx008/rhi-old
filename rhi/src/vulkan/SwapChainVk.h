@@ -1,63 +1,53 @@
 #pragma once
 
-#include "rhi/rhi.h"
+#include "../SwapchainBase.h"
 
-#include <vulkan/vulkan.h>
 #include <vector>
-#include <array>
-#include <queue>
 #include <memory>
-
-#include "../Ref.hpp"
+#include <vulkan/vulkan.h>
 
 namespace rhi::vulkan
 {
-	static constexpr uint32_t g_MaxConcurrentFrames = 2;
-
-	//template <typename T>
-	//class Ref;
-	class TextureVk;
 	class Device;
-	class CommandList;
-	class SwapChain final : public ISwapChain
+	class SwapChainTexture;
+	class SwapChain final : public SwapChainBase
 	{
 	public:
-		static Ref<SwapChain> Create(const SwapChainDesc& swapChainCI);
+		static Ref<SwapChain> Create(Device* device, Surface* surface, SwapChainBase* previous, const SurfaceConfiguration& config);
 		~SwapChain();
-		SwapChain(Device* device);
-		void recreateSwapChain() override;
-		//ITextureView* getCurrentRenderTargetView() override;
-		//ITextureView* getDepthStencilView() override;
-		//Format getRenderTargetFormat() override { return m_SwapChainFormat; }
-		//Format getDepthStencilFormat() override { return m_DepthStencilFormat; }
-
+		VkSwapchainKHR GetHandle() const;
+		SurfaceAcquireNextTextureStatus AcquireNextTexture() override;
+		Ref<TextureBase> GetCurrentTexture() override;
+		void Present() override;
+		void DestroySwapChain();
 	private:
-		void createSurface(void* platformWindow);
-		void createSwapChainInternal();
-		void destroySwapChain();
+		SwapChain(Device* device, Surface* surface, const SurfaceConfiguration& config);
+		bool Initialize(SwapChainBase* previous);
+		VkSurfaceKHR CreateSurface(Surface* surface);
+		void CreateSwapChainInternal(SwapChainBase* previous);
+		SurfaceAcquireNextTextureStatus AcquireNextTextureImpl(bool isReentrant);
 
-		uint32_t m_SwapChainImageWidth = 0;
-		uint32_t m_SwapChainImageHeight = 0;
+		VkSurfaceKHR mVkSurface = VK_NULL_HANDLE;
+		VkSwapchainKHR mHandle = VK_NULL_HANDLE;
 
-		TextureFormat m_SwapChainFormat = TextureFormat::Undefined;
-		TextureFormat m_DepthStencilFormat = TextureFormat::Undefined;
+		struct SemaphoreAndFence
+		{
+			VkSemaphore semaphore;
+			VkFence fence;
+		};
 
-		bool m_VSyncEnabled = false;
+		std::vector<SemaphoreAndFence> mAquireImageSemaphoreAndFences;
 
-		VkSurfaceKHR m_WindowSurface = VK_NULL_HANDLE;
-		VkSwapchainKHR m_SwapChain = VK_NULL_HANDLE;
+		uint32_t mCurrentFrameIndex = 0;
 
-		uint32_t m_CurrentFrameInFlight = 0;
-		uint32_t m_SwapChainImageIndex = UINT32_MAX;
+		struct PerTexture
+		{
+			Ref<SwapChainTexture> texture;
+			VkSemaphore renderingDoneSemaphore;
+		};
 
-		std::queue<uint64_t> m_LastSubmittedIDPerFrame;
+		std::vector<PerTexture> mTextures;
 
-		std::array<VkSemaphore, g_MaxConcurrentFrames + 1> m_ImageAvailableSemaphores{};
-		std::array<VkSemaphore, g_MaxConcurrentFrames + 1> m_RenderCompleteSemaphores{};
-
-		std::vector<std::unique_ptr<TextureVk>> m_ColorAttachments;
-		std::unique_ptr<TextureVk> m_DepthStencilAttachments;
-
-		Ref<Device> mDevice;
+		uint32_t mImageIndex = UINT32_MAX;
 	};
 }

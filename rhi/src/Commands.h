@@ -4,6 +4,7 @@
 #include <string_view>
 #include "CommandAllocator.h"
 #include "common/Constants.h"
+#include "common/Ref.hpp"
 
 namespace rhi
 {

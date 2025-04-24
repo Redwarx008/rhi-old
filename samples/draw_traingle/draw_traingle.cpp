@@ -102,8 +102,8 @@ public:
 		m_RenderDevice = std::unique_ptr<IDevice>(createDevice(rdCI));
 
 		SwapChainDesc spCI{};
-		spCI.initialWidth = m_windowWidth;
-		spCI.initialHeight = m_windowHeight;
+		spCI.width = m_windowWidth;
+		spCI.height = m_windowHeight;
 		spCI.windowHandle = glfwGetWin32Window(m_Window);
 		spCI.renderDevice = m_RenderDevice.get();
 		spCI.enableVSync = true;

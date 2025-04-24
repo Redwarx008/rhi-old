@@ -23,8 +23,8 @@ namespace rhi
 		TextureUsage usage,
 		ShaderStage shaderStages)
 	{
-		Aspect formatAspects = GetAspectFromFormat(texture->GetFormat());
-		auto it = mTextureSyncInfos.try_emplace(texture, formatAspects, texture->GetDepthOrArrayLayers(), texture->GetMipLevelCount());
+		Aspect formatAspects = GetAspectFromFormat(texture->APIGetFormat());
+		auto it = mTextureSyncInfos.try_emplace(texture, formatAspects, texture->APIGetDepthOrArrayLayers(), texture->APIGetMipLevelCount());
 
 		SubresourceStorage<TextureSyncInfo>& textureSyncInfo = it.first->second;
 		textureSyncInfo.Update(range, [usage, shaderStages](const SubresourceRange&, TextureSyncInfo& storedSyncInfo)

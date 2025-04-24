@@ -4,8 +4,11 @@
 #include "DeviceVk.h"
 #include "ErrorsVk.h"
 #include "BufferVk.h"
+#include "TextureVk.h"
 #include "DescriptorSetAllocator.h"
 #include "../common/Utils.h"
+#include "../Subresource.h"
+#include "VulkanUtils.h"
 
 namespace rhi::vulkan
 {
@@ -231,6 +234,16 @@ namespace rhi::vulkan
 		return mQueueFamilyIndex;
 	}
 
+	VkQueue Queue::GetHandle() const
+	{
+		return mHandle;
+	}
+
+	VkSemaphore Queue::GetTrackingSubmitSemaphore() const
+	{
+		return mTrackingSubmitSemaphore;
+	}
+
 	Device* Queue::GetDevice() const
 	{
 		return mDevice;
@@ -258,5 +271,39 @@ namespace rhi::vulkan
 		copy.size = size;
 
 		vkCmdCopyBuffer(commanBuffer, checked_cast<Buffer>(src)->GetHandle(), dstBuffer->GetHandle(), 1, &copy);
+	}
+
+	void Queue::CopyFromStagingToTextureImpl(BufferBase* src, const TextureSlice& dst, const TextureDataLayout& dataLayout)
+	{
+		VkCommandBuffer commanBuffer = GetPendingRecordingContext()->commandBufferAndPool.bufferHandle;
+
+		Buffer* buffer = checked_cast<Buffer>(src);
+
+		Texture* texture = checked_cast<Texture>(dst.texture);
+
+		Aspect aspect = AspectConvert(texture->APIGetFormat(), dst.aspect);
+
+		VkBufferImageCopy region = ComputeBufferImageCopyRegion(dataLayout, dst.size, 
+			texture, dst.mipLevel, dst.origin, aspect);
+
+		SubresourceRange range = { aspect, dst.origin.z, dst.size.depthOrArrayLayers, dst.mipLevel, 1 };
+
+		texture->TransitionUsageNow(this, TextureUsage::CopyDst, range);
+
+		vkCmdCopyBufferToImage(commanBuffer, buffer->GetHandle(), texture->GetHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+	}
+
+	void Queue::WaitQueueImpl(QueueBase* queue, uint64_t submitSerial)
+	{
+		Queue* waitQueue = checked_cast<Queue>(queue);
+		ASSERT(waitQueue->GetPendingSubmitSerial() > submitSerial);
+		CommandRecordContext* recordContext = GetPendingRecordingContext();
+		ASSERT(recordContext->commandBufferAndPool.bufferHandle != VK_NULL_HANDLE);
+		VkSemaphoreSubmitInfo& semaphoreInfo = recordContext->waitSemaphoreSubmitInfos.emplace_back();
+		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+		semaphoreInfo.pNext = nullptr;
+		semaphoreInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+		semaphoreInfo.semaphore = waitQueue->GetTrackingSubmitSemaphore();
+		semaphoreInfo.value = submitSerial;
 	}
 }

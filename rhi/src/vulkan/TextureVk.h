@@ -17,19 +17,16 @@ namespace rhi::vulkan
 	class Queue;
 	class TextureView;
 
-	class Texture final : public TextureBase
+	class Texture : public TextureBase
 	{
 	public:
 		static Ref<Texture> Create(Device* device, const TextureDesc& desc);
-		// interface 
-		TextureViewBase* CreateView(const TextureViewDesc& desc) override;
+
+		Ref<TextureViewBase> CreateView(const TextureViewDesc& desc) override;
 
 		// internal 
 		VkImage GetHandle() const;
-		//void TransitionUsageNow(TextureUsage usage,
-		//	ShaderStage shaderStages,
-		//	const SubresourceRange& range,
-		//	std::vector<VkImageMemoryBarrier>& barriers);
+
 		void TransitionOwnership(Queue* queue, const SubresourceRange& range, Queue* recevingQueue);
 		void TransitionUsageAndGetResourceBarrier(Queue* queue,
 			TextureUsage usage,
@@ -37,17 +34,31 @@ namespace rhi::vulkan
 			const SubresourceRange& range);
 		void TransitionUsageForMultiRange(Queue* queue, const SubresourceStorage<TextureSyncInfo>& syncInfos);
 
-	private:
+		void TransitionUsageNow(Queue* queue, TextureUsage usage, const SubresourceRange& range, ShaderStage shaderStages = ShaderStage::None);
+	protected:
 		explicit Texture(Device* device, const TextureDesc& desc) noexcept;
+		~Texture();
+		VkImage mHandle = VK_NULL_HANDLE;
+		SubresourceStorage<TextureSyncInfo> mSubresourceLastSyncInfos;
+	private:
 		bool Initialize();
 		void DestroyImpl() override;
 
-		VkImage mHandle = VK_NULL_HANDLE;
 		VmaAllocation mAllocation = VK_NULL_HANDLE;
 		VkFormat mVkFormat; // we will get it in the hot path, so cache it.
-		SubresourceStorage<TextureSyncInfo> mSubresourceLastSyncInfos;
 
 		friend class TextureView;
+	};
+
+	class SwapChainTexture final : public Texture
+	{
+	public:
+		static Ref<SwapChainTexture> Create(Device* device, const TextureDesc& desc, VkImage nativeImage);
+	private:
+		explicit SwapChainTexture(Device* device, const TextureDesc& desc) noexcept;
+		~SwapChainTexture();
+		void Initialize(VkImage nativeImage);
+		void DestroyImpl() override;
 	};
 
 	class TextureView final : public TextureViewBase

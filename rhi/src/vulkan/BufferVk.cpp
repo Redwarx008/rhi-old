@@ -6,6 +6,7 @@
 #include "CommandListVk.h"
 #include "ResourceToDelete.h"
 #include "VulkanUtils.h"
+#include "RefCountedHandle.h"
 #include "../common/Utils.h"
 #include "../common/Error.h"
 #include "../common/Constants.h"
@@ -263,26 +264,21 @@ namespace rhi::vulkan
 		else
 		{
 			// Buffers in concurrent mode may be used by multiple queues and there is no way to tell who was last to use .
-			auto concurrentBufferAllocation = new ConcurrentBufferAllocation(mHandle, mAllocation);
+			Ref<RefCountedHandle<BufferAllocation>> bufferAllocation = AcquireRef(new RefCountedHandle<BufferAllocation>(device, { mHandle, mAllocation },
+				[](Device* device, BufferAllocation handle)
+				{
+					vmaDestroyBuffer(device->GetMemoryAllocator(), handle.buffer, handle.allocation);
+				}
+			));
 
 			for (uint32_t i = 0; i < mUsageTrackInQueues.size(); ++i)
 			{
 				Queue* queue = checked_cast<Queue>(device->GetQueue(static_cast<QueueType>(i)).Get());
 				if (!queue)
 				{
-					break;
+					continue;
 				}
-				if (mUsageTrackInQueues[i].lastUsageSerial < queue->GetCompletedSerial())
-				{
-					concurrentBufferAllocation->refQueueCount += 1;
-					queue->GetDeleter()->DeleteWhenUnused(concurrentBufferAllocation);
-				}
-			}
-
-			if (concurrentBufferAllocation->refQueueCount == 0)
-			{
-				// we can destroy it immediately.
-				vmaDestroyBuffer(device->GetMemoryAllocator(), mHandle, mAllocation);
+				queue->GetDeleter()->DeleteWhenUnused(bufferAllocation);
 			}
 		}
 

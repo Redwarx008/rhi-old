@@ -1,25 +1,30 @@
 #include "VkResourceDeleter.h"
 #include "DeviceVk.h"
 #include "QueueVk.h"
-
-#include <assert.h>
+#include "InstanceVk.h"
+#include "AdapterVk.h"
+#include "../common/Utils.h"
+#include "../common/Error.h"
 namespace rhi::vulkan
 {
 	VkResourceDeleter::VkResourceDeleter(Queue* queue) : mQueue(queue) {}
 
 	VkResourceDeleter::~VkResourceDeleter()
 	{
-        assert(mBuffersToDelete.Empty());
-        assert(mDescriptorPoolsToDelete.Empty());
-        assert(mFencesToDelete.Empty());
-        assert(mImagesToDelete.Empty());
-        assert(mImageViewsToDelete.Empty());
-        assert(mPipelinesToDelete.Empty());
-        assert(mPipelineLayoutsToDelete.Empty());
-        assert(mQueryPoolsToDelete.Empty());
-        assert(mSamplersToDelete.Empty());
-        assert(mSemaphoresToDelete.Empty());
-        assert(mShaderModulesToDelete.Empty());
+        ASSERT(mBuffersToDelete.Empty());
+        ASSERT(mDescriptorPoolsToDelete.Empty());
+        ASSERT(mFencesToDelete.Empty());
+        ASSERT(mImagesToDelete.Empty());
+        ASSERT(mImageViewsToDelete.Empty());
+        ASSERT(mPipelinesToDelete.Empty());
+        ASSERT(mPipelineLayoutsToDelete.Empty());
+        //assert(mQueryPoolsToDelete.Empty());
+        ASSERT(mSamplersToDelete.Empty());
+        ASSERT(mSemaphoresToDelete.Empty());
+        ASSERT(mShaderModulesToDelete.Empty());
+        ASSERT(mBufferAllocationToDelete.Empty());
+        ASSERT(mImageAllocationToDelete.Empty());
+        ASSERT(mSurfaceAndSwapchainToDelete.Empty());
 	}
 
     void VkResourceDeleter::Tick(uint64_t completedSerial)
@@ -27,6 +32,10 @@ namespace rhi::vulkan
         Device* device = mQueue->GetDevice();
         VkDevice vkDeivce = device->GetHandle();
         VmaAllocator vmaAllocator = device->GetMemoryAllocator();
+
+        mImageAllocationToDelete.ClearUpTo(completedSerial);
+
+        mBufferAllocationToDelete.ClearUpTo(completedSerial);
 
         for (BufferAllocation bufferAllocation : mBuffersToDelete.IterateUpTo(completedSerial))
         {
@@ -75,27 +84,32 @@ namespace rhi::vulkan
         }
         mDescriptorPoolsToDelete.ClearUpTo(completedSerial);
 
-        for (ConcurrentBufferAllocation* bufferAllocation : mConcurrentBuffersToDelete.IterateUpTo(completedSerial))
+        for (VkSemaphore semaphore : mSemaphoresToDelete.IterateUpTo(completedSerial))
         {
-            --bufferAllocation->refQueueCount;
-            if (bufferAllocation->refQueueCount == 0)
-            {
-                vmaDestroyBuffer(vmaAllocator, bufferAllocation->buffer, bufferAllocation->allocation);
-                delete bufferAllocation;
-            }
+            vkDestroySemaphore(vkDeivce, semaphore, nullptr);
         }
-        mConcurrentBuffersToDelete.ClearUpTo(completedSerial);
+        mSemaphoresToDelete.ClearUpTo(completedSerial);
 
-        for (ConcurrentImageAllocation* imageAllocation : mConcurrentImagesToDelete.IterateUpTo(completedSerial))
+        for (VkFence fence : mFencesToDelete.IterateUpTo(completedSerial))
         {
-            --imageAllocation->refQueueCount;
-            if (imageAllocation->refQueueCount == 0)
+            vkDestroyFence(vkDeivce, fence, nullptr);
+        }
+        mFencesToDelete.ClearUpTo(completedSerial);
+
+        for (auto& [surface, swapChain] : mSurfaceAndSwapchainToDelete.IterateUpTo(completedSerial))
+        {
+            if (swapChain != VK_NULL_HANDLE)
             {
-                vmaDestroyImage(vmaAllocator, imageAllocation->image, imageAllocation->allocation);
-                delete imageAllocation;
+                vkDestroySwapchainKHR(device->GetHandle(), swapChain, nullptr);
+            }
+            
+            if (surface != VK_NULL_HANDLE)
+            {
+                Instance* instance = checked_cast<Instance>(device->APIGetAdapter()->APIGetInstance());
+                vkDestroySurfaceKHR(instance->GetHandle(), surface, nullptr);
             }
         }
-        mConcurrentImagesToDelete.ClearUpTo(completedSerial);
+
     }
 
     void VkResourceDeleter::DeleteWhenUnused(BufferAllocation bufferAllocation)
@@ -138,18 +152,28 @@ namespace rhi::vulkan
         mShaderModulesToDelete.Push(mQueue->GetPendingSubmitSerial(), module);
     }
 
+    void VkResourceDeleter::DeleteWhenUnused(std::tuple<VkSurfaceKHR, VkSwapchainKHR> surfaceAndSwapChain)
+    {
+        mSurfaceAndSwapchainToDelete.Push(mQueue->GetPendingSubmitSerial(), surfaceAndSwapChain);
+    }
+
     void VkResourceDeleter::DeleteWhenUnused(VkSemaphore semaphore)
     {
         mSemaphoresToDelete.Push(mQueue->GetPendingSubmitSerial(), semaphore);
     }
 
-    void VkResourceDeleter::DeleteWhenUnused(ConcurrentBufferAllocation* buffer)
+    void VkResourceDeleter::DeleteWhenUnused(VkFence fence)
     {
-        mConcurrentBuffersToDelete.Push(mQueue->GetPendingSubmitSerial(), buffer);
+        mFencesToDelete.Push(mQueue->GetPendingSubmitSerial(), fence);
     }
 
-    void VkResourceDeleter::DeleteWhenUnused(ConcurrentImageAllocation* image)
+    void VkResourceDeleter::DeleteWhenUnused(Ref<RefCountedHandle<BufferAllocation>> bufferAllocation)
     {
-        mConcurrentImagesToDelete.Push(mQueue->GetPendingSubmitSerial(), image);
+        mImageAllocationToDelete.Push(mQueue->GetPendingSubmitSerial(), bufferAllocation);
+    }
+
+    void VkResourceDeleter::DeleteWhenUnused(Ref<RefCountedHandle<ImageAllocation>> imageAllocatio)
+    {
+        mBufferAllocationToDelete.Push(mQueue->GetPendingSubmitSerial(), imageAllocatio);
     }
 }

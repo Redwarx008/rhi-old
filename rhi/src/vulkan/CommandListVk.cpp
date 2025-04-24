@@ -92,16 +92,16 @@ namespace rhi::vulkan
 		VkRenderingInfo renderingInfo{};
 		renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
 
-		uint32_t renderWidth = checked_cast<TextureView>(renderPassCmd->colorAttachments[0].view)->GetTexture()->GetWidth();
-		uint32_t renderHeight = checked_cast<TextureView>(renderPassCmd->colorAttachments[0].view)->GetTexture()->GetHeight();
+		uint32_t renderWidth = checked_cast<TextureView>(renderPassCmd->colorAttachments[0].view)->GetTexture()->APIGetWidth();
+		uint32_t renderHeight = checked_cast<TextureView>(renderPassCmd->colorAttachments[0].view)->GetTexture()->APIGetHeight();
 		std::array<VkRenderingAttachmentInfo, cMaxColorAttachments> colorAttachmentInfos;
 
 		for (uint32_t i = 0; i < renderPassCmd->colorAttachmentCount; ++i)
 		{
 			TextureView* view = checked_cast<TextureView>(renderPassCmd->colorAttachments[i].view.Get());
-			INVALID_IF(view->GetTexture()->GetWidth() != renderWidth || view->GetTexture()->GetHeight() != renderHeight,
+			INVALID_IF(view->GetTexture()->APIGetWidth() != renderWidth || view->GetTexture()->APIGetHeight() != renderHeight,
 				"The color attachment size (width: %u, height: %u) does not match the size of the other attachments (width: %u, height: %u).", 
-				view->GetTexture()->GetWidth(), view->GetTexture()->GetHeight(), renderWidth, renderHeight);
+				view->GetTexture()->APIGetWidth(), view->GetTexture()->APIGetHeight(), renderWidth, renderHeight);
 			VkRenderingAttachmentInfo& attachment = colorAttachmentInfos[i];
 			attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 			attachment.imageView = view->GetHandle();

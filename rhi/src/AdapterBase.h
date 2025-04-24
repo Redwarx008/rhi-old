@@ -17,9 +17,9 @@ namespace rhi
 		virtual DeviceBase* CreateDevice(const DeviceDesc& desc) = 0;
 		AdapterInfo GetInfo() const;
 		Limits GetLimits() const;
-		InstanceBase* GetInstance() const;
+		InstanceBase* APIGetInstance() const;
 		//internal
-		InstanceBase* GetInstanceInternal() const;
+		Ref<InstanceBase> GetInstance() const;
 	protected:
 		AdapterBase(InstanceBase* instance);
 		~AdapterBase();

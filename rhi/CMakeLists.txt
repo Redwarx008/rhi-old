@@ -7,7 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Vulkan REQUIRED)
 
-OPTION(RHI_ENABLE_THREAD_RECORDING OFF)
 OPTION(USE_D2D_WSI "Build the project using Direct to Display swapchain" OFF)
 OPTION(USE_DIRECTFB_WSI "Build the project using DirectFB swapchain" OFF)
 OPTION(USE_WAYLAND_WSI "Build the project using Wayland swapchain" OFF)
@@ -163,14 +162,17 @@ set (src
 	 "src/CallbackTaskManager.h" 
 	 "src/CallbackTaskManager.cpp" 
 	 "src/ComputePipelineBase.h"
-	 "src/ComputePipelineBase.cpp" "src/SwapchainBase.h")
+	 "src/ComputePipelineBase.cpp" 
+	 "src/SwapchainBase.h"
+	 "src/SwapchainBase.cpp"
+	 "src/Surface.h" "src/Surface.cpp")
 
 set(src_vk
 	"src/vulkan/VMA.cpp"
 	"src/vulkan/DeviceVk.h"
 	"src/vulkan/DeviceVk.cpp"
-	"src/vulkan/ResourceVk.h"
-	"src/vulkan/ResourceVk.cpp"
+	
+	
 	"src/vulkan/SwapChainVk.h"
 	"src/vulkan/SwapChainVk.cpp"
 	"src/vulkan/ErrorsVk.h"
@@ -212,7 +214,7 @@ set(src_vk
 	"src/vulkan/RenderPipelineVk.h" 
 	"src/vulkan/RenderPipelineVk.cpp" 
 	"src/vulkan/ComputePipelineVk.h" 
-	"src/vulkan/ComputePipelineVk.cpp")
+	"src/vulkan/ComputePipelineVk.cpp" "src/vulkan/RefCountedHandle.h" )
 
 add_library(rhi "")
 

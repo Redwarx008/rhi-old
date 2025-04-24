@@ -39,7 +39,8 @@ namespace rhi::vulkan
 	}
 
 	Device::Device(Adapter* adapter, const DeviceDesc& desc)
-		:DeviceBase(adapter, desc){ }
+		:DeviceBase(adapter, desc) {
+	}
 
 	bool Device::Initialize(const DeviceDesc& desc)
 	{
@@ -108,7 +109,7 @@ namespace rhi::vulkan
 		vkGetPhysicalDeviceQueueFamilyProperties(checked_cast<Adapter>(mAdapter)->GetHandle(), &queueFamilyCount, nullptr);
 		std::vector<VkQueueFamilyProperties> queueFamilyPropertieses(queueFamilyCount);
 		vkGetPhysicalDeviceQueueFamilyProperties(checked_cast<Adapter>(mAdapter)->GetHandle(), &queueFamilyCount, queueFamilyPropertieses.data());
-		
+
 		std::array<std::optional<uint32_t>, 3> queueFamlies;
 		for (uint32_t i = 0; i < queueFamilyPropertieses.size(); i++)
 		{
@@ -168,7 +169,7 @@ namespace rhi::vulkan
 		allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_3;
 		allocatorCreateInfo.physicalDevice = checked_cast<Adapter>(mAdapter)->GetHandle();
 		allocatorCreateInfo.device = mHandle;
-		allocatorCreateInfo.instance = checked_cast<Instance>(checked_cast<Adapter>(mAdapter)->GetInstance())->GetHandle();
+		allocatorCreateInfo.instance = checked_cast<Instance>(checked_cast<Adapter>(mAdapter)->APIGetInstance())->GetHandle();
 		err = vmaCreateAllocator(&allocatorCreateInfo, &mMemoryAllocator);
 		CHECK_VK_RESULT_FALSE(err);
 
@@ -183,13 +184,18 @@ namespace rhi::vulkan
 
 		mVkDeviceInfo.features = deviceFeatures;
 		vkGetPhysicalDeviceProperties(adapter->GetHandle(), &mVkDeviceInfo.properties);
-		
+
 		return true;
 	}
 
 	VkDevice Device::GetHandle() const
 	{
 		return mHandle;
+	}
+
+	VkPhysicalDevice Device::GetVkPhysicalDevice() const
+	{
+		return checked_cast<Adapter>(mAdapter)->GetHandle();
 	}
 
 	const VkDeviceInfo& Device::GetVkDeviceInfo() const
@@ -200,6 +206,11 @@ namespace rhi::vulkan
 	uint32_t Device::GetOptimalBytesPerRowAlignment() const
 	{
 		return mVkDeviceInfo.properties.limits.optimalBufferCopyRowPitchAlignment;
+	}
+
+	uint32_t Device::GetOptimalBufferToTextureCopyOffsetAlignment() const
+	{
+		return mVkDeviceInfo.properties.limits.optimalBufferCopyOffsetAlignment;
 	}
 
 	Device::~Device()
@@ -235,6 +246,10 @@ namespace rhi::vulkan
 		return mMemoryAllocator;
 	}
 
+	Ref<SwapChainBase> Device::CreateSwapChain(Surface* surface, SwapChainBase* previous, const SurfaceConfiguration& config)
+	{
+		return SwapChain::Create(this, surface, previous, config);
+	}
 
 	Ref<RenderPipelineBase> Device::CreateRenderPipeline(const RenderPipelineDesc& desc)
 	{
@@ -266,7 +281,7 @@ namespace rhi::vulkan
 		return Buffer::Create(this, desc);
 	}
 
-	Ref<ShaderBase> Device::CreateShader(const ShaderModuleDesc& desc)
+	Ref<ShaderModuleBase> Device::CreateShader(const ShaderModuleDesc& desc)
 	{
 		return ShaderModule::Create(this, desc);
 	}

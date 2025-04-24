@@ -3,6 +3,7 @@
 #include "QueueVk.h"
 #include "ErrorsVk.h"
 #include "VulkanUtils.h"
+#include "RefCountedHandle.h"
 #include "../common/EnumFlagIterator.hpp"
 #include "../common/Constants.h"
 #include "../PassResourceUsage.h"
@@ -519,12 +520,19 @@ namespace rhi::vulkan
 		return std::move(texture);
 	}
 
+	Ref<TextureViewBase> Texture::CreateView(const TextureViewDesc& desc)
+	{
+		return TextureView::Create(this, desc);
+	}
+
 	Texture::Texture(Device* device, const TextureDesc& desc) :
 		TextureBase(device, desc),
 		mVkFormat(GetVkFormat(mFormat)),
 		mSubresourceLastSyncInfos(GetAspectFromFormat(mFormat), mArraySize, mMipLevelCount)
 	{
 	}
+
+	Texture::~Texture() {}
 
 	bool Texture::Initialize()
 	{
@@ -725,7 +733,11 @@ namespace rhi::vulkan
 			});
 	}
 
-
+	void Texture::TransitionUsageNow(Queue* queue, TextureUsage usage, const SubresourceRange& range, ShaderStage shaderStages = ShaderStage::None)
+	{
+		TransitionUsageAndGetResourceBarrier(queue, usage, shaderStages, range);
+		queue->GetPendingRecordingContext()->EmitBarriers();
+	}
 
 	VkImage Texture::GetHandle() const
 	{
@@ -745,25 +757,56 @@ namespace rhi::vulkan
 
 		Device* device = checked_cast<Device>(mDevice.Get());
 
-		auto imageAllocation = new ConcurrentImageAllocation(mHandle, mAllocation);
+		Ref<RefCountedHandle<ImageAllocation>> imageAllocation = AcquireRef(new RefCountedHandle<ImageAllocation>(device, { mHandle, mAllocation },
+			[](Device* device, ImageAllocation handle)
+			{
+				vmaDestroyImage(device->GetMemoryAllocator(), handle.image, handle.allocation);
+			}
+		));
 
 		for (uint32_t i = 0; i < isUsedInQueue.size(); ++i)
 		{
 			if (isUsedInQueue[i])
 			{
-				imageAllocation->refQueueCount += 1;
 				checked_cast<Queue>(device->GetQueue(static_cast<QueueType>(i)))->GetDeleter()->DeleteWhenUnused(imageAllocation);
 			}
 		}
 
-		if (imageAllocation->refQueueCount == 0)
-		{
-			// we can destroy it immediately.
-			vmaDestroyImage(device->GetMemoryAllocator(), mHandle, mAllocation);
-		}
-
 		mHandle = VK_NULL_HANDLE;
 		mAllocation = VK_NULL_HANDLE;
+		mDestoryed = true;
+	}
+
+	Ref<SwapChainTexture> SwapChainTexture::Create(Device* device, const TextureDesc& desc, VkImage nativeImage)
+	{
+		Ref<SwapChainTexture> texture = AcquireRef(new SwapChainTexture(device, desc));
+		texture->Initialize(nativeImage);
+		return texture;
+	}
+
+	SwapChainTexture::SwapChainTexture(Device* device, const TextureDesc& desc) :
+		Texture(device, desc)
+	{
+
+	}
+
+	SwapChainTexture::~SwapChainTexture() {}
+
+	void SwapChainTexture::Initialize(VkImage nativeImage)
+	{
+		TextureBase::Initialize();
+
+		mHandle = nativeImage;
+		mSubresourceLastSyncInfos.Fill({ cSwapChainImageAcquireUsage, ShaderStage::None });
+
+		Device* device = checked_cast<Device>(mDevice.Get());
+
+		SetDebugName(device, mHandle, "Texture", GetName());
+	}
+
+	void SwapChainTexture::DestroyImpl()
+	{
+		mHandle = VK_NULL_HANDLE;
 		mDestoryed = true;
 	}
 

@@ -54,7 +54,7 @@ namespace rhi
 	{
 		INVALID_IF(mState != State::OutsideOfPass, "The command must be outside of the compute pass and render pass.");
 		ASSERT(HasFlag(srcBuffer->APIGetUsage(), BufferUsage::CopySrc));
-		ASSERT(HasFlag(dstTextureSlice.texture->GetUsage(), TextureUsage::CopyDst));
+		ASSERT(HasFlag(dstTextureSlice.texture->APIGetUsage(), TextureUsage::CopyDst));
 		ASSERT(dataLayout.bytesPerRow != 0 && dataLayout.rowsPerImage != 0);
 
 
@@ -66,13 +66,13 @@ namespace rhi
 		cmd->origin = dstTextureSlice.origin;
 		cmd->size = dstTextureSlice.size;
 		cmd->mipLevel = dstTextureSlice.mipLevel;
-		cmd->aspect = AspectConvert(cmd->dstTexture->GetFormat(), dstTextureSlice.aspect);
+		cmd->aspect = AspectConvert(cmd->dstTexture->APIGetFormat(), dstTextureSlice.aspect);
 	}
 
 	void CommandEncoder::APICopyTextureToBuffer(const TextureSlice& srcTextureSlice, BufferBase* dstBuffer, const TextureDataLayout& dataLayout)
 	{
 		INVALID_IF(mState != State::OutsideOfPass, "The command must be outside of the compute pass and render pass.");
-		ASSERT(HasFlag(srcTextureSlice.texture->GetUsage(), TextureUsage::CopySrc));
+		ASSERT(HasFlag(srcTextureSlice.texture->APIGetUsage(), TextureUsage::CopySrc));
 		ASSERT(HasFlag(dstBuffer->APIGetUsage(), BufferUsage::CopyDst));
 		ASSERT(dataLayout.bytesPerRow != 0 && dataLayout.rowsPerImage != 0);
 
@@ -80,7 +80,7 @@ namespace rhi
 		CopyTextureToBufferCmd* cmd = allocator.Allocate<CopyTextureToBufferCmd>(Command::CopyTextureToBuffer);
 		cmd->srcTexture = srcTextureSlice.texture;
 		cmd->dataLayout = dataLayout;
-		cmd->aspect = AspectConvert(cmd->srcTexture->GetFormat(), srcTextureSlice.aspect);
+		cmd->aspect = AspectConvert(cmd->srcTexture->APIGetFormat(), srcTextureSlice.aspect);
 		cmd->origin = srcTextureSlice.origin;
 		cmd->size = srcTextureSlice.size;
 		cmd->mipLevel = srcTextureSlice.mipLevel;
@@ -89,21 +89,21 @@ namespace rhi
 	void CommandEncoder::APICopyTextureToTexture(const TextureSlice& srcTextureSlice, const TextureSlice& dstTextureSlice)
 	{
 		INVALID_IF(mState != State::OutsideOfPass, "The command must be outside of the compute pass and render pass.");
-		ASSERT(HasFlag(srcTextureSlice.texture->GetUsage(), TextureUsage::CopySrc));
-		ASSERT(HasFlag(dstTextureSlice.texture->GetUsage(), TextureUsage::CopyDst));
+		ASSERT(HasFlag(srcTextureSlice.texture->APIGetUsage(), TextureUsage::CopySrc));
+		ASSERT(HasFlag(dstTextureSlice.texture->APIGetUsage(), TextureUsage::CopyDst));
 
 		CommandAllocator& allocator = mEncodingContext.GetCommandAllocator();
 		CopyTextureToTextureCmd* cmd = allocator.Allocate<CopyTextureToTextureCmd>(Command::CopyTextureToTexture);
 		cmd->srcTexture = srcTextureSlice.texture;
 		cmd->srcOrigin = srcTextureSlice.origin;
 		cmd->srcSize = srcTextureSlice.size;
-		cmd->srcAspect = AspectConvert(cmd->srcTexture->GetFormat(), srcTextureSlice.aspect);
+		cmd->srcAspect = AspectConvert(cmd->srcTexture->APIGetFormat(), srcTextureSlice.aspect);
 		cmd->srcMipLevel = srcTextureSlice.mipLevel;
 
 		cmd->dstTexture = dstTextureSlice.texture;
 		cmd->dstOrigin = dstTextureSlice.origin;
 		cmd->dstSize = dstTextureSlice.size;
-		cmd->dstAspect = AspectConvert(cmd->dstTexture->GetFormat(), dstTextureSlice.aspect);
+		cmd->dstAspect = AspectConvert(cmd->dstTexture->APIGetFormat(), dstTextureSlice.aspect);
 		cmd->dstMipLevel = dstTextureSlice.mipLevel;
 	}
 

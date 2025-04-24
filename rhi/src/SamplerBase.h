@@ -12,7 +12,7 @@ namespace rhi
 	public:
 		ResourceType GetType() const override;
 	protected:
-		explicit SamplerBase(DeviceBase* device, const SamplerDesc& desc) noexcept;
+		explicit SamplerBase(DeviceBase* device, const SamplerDesc& desc);
 		~SamplerBase();
 		FilterMode mMagFilter = FilterMode::Linear;
 		FilterMode mMinFilter = FilterMode::Linear;

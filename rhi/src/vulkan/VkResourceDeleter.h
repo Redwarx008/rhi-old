@@ -2,7 +2,10 @@
 
 #include <vulkan/vulkan.h>
 #include "ResourceToDelete.h"
+#include "RefCountedHandle.h"
 #include "../common/SerialQueue.hpp"
+
+#include<tuple>
 
 namespace rhi::vulkan
 {
@@ -25,9 +28,11 @@ namespace rhi::vulkan
         //void DeleteWhenUnused(VkQueryPool querypool);
         void DeleteWhenUnused(VkSampler sampler);
         void DeleteWhenUnused(VkSemaphore semaphore);
+        void DeleteWhenUnused(VkFence fence);
         void DeleteWhenUnused(VkShaderModule module);
-        void DeleteWhenUnused(ConcurrentBufferAllocation* buffer);
-        void DeleteWhenUnused(ConcurrentImageAllocation* image);
+        void DeleteWhenUnused(std::tuple<VkSurfaceKHR, VkSwapchainKHR> surfaceAndSwapChain);
+        void DeleteWhenUnused(Ref<RefCountedHandle<BufferAllocation>> bufferAllocation);
+        void DeleteWhenUnused(Ref<RefCountedHandle<ImageAllocation>> imageAllocation);
 
     private:
         Queue* mQueue;
@@ -38,12 +43,13 @@ namespace rhi::vulkan
         SerialQueue<uint64_t, VkImageView> mImageViewsToDelete;
         SerialQueue<uint64_t, VkPipeline> mPipelinesToDelete;
         SerialQueue<uint64_t, VkPipelineLayout> mPipelineLayoutsToDelete;
-        SerialQueue<uint64_t, VkQueryPool> mQueryPoolsToDelete;
+        //SerialQueue<uint64_t, VkQueryPool> mQueryPoolsToDelete;
         SerialQueue<uint64_t, VkSampler> mSamplersToDelete;
         SerialQueue<uint64_t, VkSemaphore> mSemaphoresToDelete;
         SerialQueue<uint64_t, VkShaderModule> mShaderModulesToDelete;
+        SerialQueue<uint64_t, std::tuple<VkSurfaceKHR, VkSwapchainKHR>> mSurfaceAndSwapchainToDelete;
 
-        SerialQueue<uint64_t, ConcurrentBufferAllocation*> mConcurrentBuffersToDelete;
-        SerialQueue<uint64_t, ConcurrentImageAllocation*> mConcurrentImagesToDelete;
+        SerialQueue<uint64_t, Ref<RefCountedHandle<ImageAllocation>>> mImageAllocationToDelete;
+        SerialQueue<uint64_t, Ref<RefCountedHandle<BufferAllocation>>> mBufferAllocationToDelete;
 	};
 }

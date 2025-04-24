@@ -28,6 +28,8 @@ namespace rhi::vulkan
 		MutexProtected<VkResourceDeleter>& GetDeleter();
 		Device* GetDevice() const;
 		uint32_t GetQueueFamilyIndex() const;
+		VkQueue GetHandle() const;
+		VkSemaphore GetTrackingSubmitSemaphore() const;
 		void EnqueueDeferredDeallocation(DescriptorSetAllocator* allocator);
 		void SubmitPendingCommands();
 	private:
@@ -38,6 +40,8 @@ namespace rhi::vulkan
 		uint64_t QueryCompletedSerial() override;
 		void MarkRecordingContextIsUsed() override;
 		void CopyFromStagingToBufferImpl(BufferBase* src, uint64_t srcOffset, BufferBase* dst, uint64_t destOffset, uint64_t size) override;
+		void CopyFromStagingToTextureImpl(BufferBase* src, const TextureSlice& dst, const TextureDataLayout& dataLayout) override;
+		void WaitQueueImpl(QueueBase* queue, uint64_t submitSerial) override;
 		void RecycleCompletedCommandBuffer(uint64_t completedSerial);
 		void SetTrackingSubmitSemaphore();
 		CommandPoolAndBuffer GetOrCreateCommandPoolAndBuffer();

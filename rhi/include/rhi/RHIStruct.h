@@ -30,6 +30,7 @@ namespace rhi
 	class TextureBase;
 	class TextureViewBase;
 	class DeviceBase;
+	class Surface;
 
 constexpr uint32_t MAX_COLOR_ATTACHMENTS = 8;
 
@@ -538,6 +539,23 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		Concurrent
 	};
 
+	enum class PresentMode : uint8_t
+	{
+		Fifo,
+		FifoRelaxed,
+		Immediate,
+		Mailbox
+	};
+
+	enum class SurfaceAcquireNextTextureStatus : uint8_t
+	{
+		Success,
+		Timeout,
+		Outdated,
+		SurfaceLost,
+		Error
+	};
+
 	typedef void(_stdcall* LoggingCallback) (LoggingSeverity severity, const char* msg, void* userData);
 	//using DebugMessageCallbackFunc = std::function<void(MessageSeverity severity, const char* msg)>;
 
@@ -570,26 +588,30 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 	};
 
 
-	struct TextureUpdateInfo
+	struct Color
 	{
-		uint32_t srcRowPitch = 0;
-		uint32_t srcDepthPitch = 0;
-		uint32_t arrayLayer = 0;
-		uint32_t mipLevel = 0;
-		Region3D dstRegion;
+		float r = 0.0f;
+		float g = 0.0f;
+		float b = 0.0f;
+		float a = 0.0f;
 	};
 
-	struct TextureCopy
+	struct Viewport
 	{
-		TextureBase* texture;
-		uint32_t mipLevel;
-		Origin3D origin;
-		TextureAspect aspect;
+		float    x;
+		float    y;
+		float    width;
+		float    height;
+		float    minDepth;
+		float    maxDepth;
 	};
 
-	struct BufferCopy
+	struct Rect
 	{
-
+		uint32_t x;
+		uint32_t y;
+		uint32_t width;
+		uint32_t height;
 	};
 
 	struct TextureDataLayout
@@ -608,29 +630,6 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		uint32_t mipLevel = 0;
 		TextureAspect aspect = TextureAspect::All;
 	};
-
-	struct TextureViewDesc
-	{
-		TextureDimension dimension = TextureDimension::Undefined;
-		union
-		{
-			uint32_t baseArrayLayer = 0;
-			uint32_t baseDepthLayer;
-		};
-
-		union
-		{
-			uint32_t arrayLayerCount = 1;
-			uint32_t depthLayerCount;
-		};
-
-		uint32_t baseMipLevel = 0;
-		uint32_t mipLevelCount = 1;
-
-		TextureAspect aspect;
-	};
-
-
 
 	struct SpecializationConstant
 	{
@@ -765,24 +764,6 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 
 	// pipeline
 
-	struct Viewport
-	{
-		float    x;
-		float    y;
-		float    width;
-		float    height;
-		float    minDepth;
-		float    maxDepth;
-	};
-
-	struct Rect
-	{
-		uint32_t x;
-		uint32_t y;
-		uint32_t width;
-		uint32_t height;
-	};
-
 	struct VertexBufferBinding
 	{
 		BufferBase* buffer = nullptr;
@@ -819,7 +800,7 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 
 	struct TextureDesc
 	{
-		TextureDimension dimension = TextureDimension::Undefined;
+		TextureDimension dimension = TextureDimension::Texture2D;
 		uint32_t width = 1;
 		uint32_t height = 1;
 		union
@@ -1044,12 +1025,6 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		ColorAttachment const * colorAttachments;
 		DepthStencilAattachment const * depthStencilAttachment = nullptr;
 	};
-
-	struct ComputeState
-	{
-		ComputePipelineBase* pipeline = nullptr;
-	};
-
 	// command list
 
 	struct DrawIndirectCommand
@@ -1076,52 +1051,12 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		uint32_t    z;
 	};
 
-	struct ClearColor
-	{
-		union
-		{
-			float float32[4];
-			int32_t int32[4];
-			uint32_t uint32[4]{};
-		};
-
-		explicit ClearColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
-		{
-			uint32[0] = r;
-			uint32[1] = g;
-			uint32[2] = b;
-			uint32[3] = a;
-		}
-		explicit ClearColor(int32_t r, int32_t g, int32_t b, int32_t a)
-		{
-			int32[0] = r;
-			int32[1] = g;
-			int32[2] = b;
-			int32[3] = a;
-		}
-		explicit ClearColor(float r, float g, float b, float a)
-		{
-			float32[0] = r;
-			float32[1] = g;
-			float32[2] = b;
-			float32[3] = a;
-		}
-	};
-
 	enum class ClearDepthStencilFlag : uint8_t
 	{
 		Depth = 0 << 0,
 		Stencil = 1 << 0
 	};
 	ENUM_CLASS_FLAG_OPERATORS(ClearDepthStencilFlag);
-
-	struct Color
-	{
-		float r = 0.0f;
-		float g = 0.0f;
-		float b = 0.0f;
-		float a = 0.0f;
-	};
 
 	struct AdapterInfo
 	{
@@ -1165,8 +1100,6 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		uint32_t maxComputeWorkgroupSizeY;
 		uint32_t maxComputeWorkgroupSizeZ;
 		uint32_t maxComputeWorkgroupsPerDimension;
-		uint32_t maxStorageBuffersPerShaderStage;
-		uint32_t maxStorageTexturesPerShaderStage;
 		uint32_t maxPushConstantsSize;
 		uint32_t maxDrawIndirectCount;
 		uint32_t maxViewports;
@@ -1190,15 +1123,12 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 	};
 
 	// swap chain
-
-	struct SwapChainDesc
+	struct SurfaceConfiguration
 	{
-		void* windowHandle;
-		TextureFormat preferredColorFormat = TextureFormat::BGRA8_SRGB;
-		// use Format::UNKOWN to create swapChain without depth buffer.
-		TextureFormat preferredDepthStencilFormat = TextureFormat::D32_UNORM_S8_UINT;
-		uint32_t initialWidth = 0;
-		uint32_t initialHeight = 0;
-		bool enableVSync = true;
+		DeviceBase* device;
+		TextureFormat format = TextureFormat::BGRA8_SRGB;
+		uint32_t width;
+		uint32_t height;
+		PresentMode presentMode = PresentMode::Fifo;
 	};
 }

@@ -29,7 +29,7 @@ namespace rhi
 
 	bool DeviceBase::IsDebugLayerEnabled() const
 	{
-		return mAdapter->GetInstanceInternal()->IsDebugLayerEnabled();
+		return mAdapter->GetInstance()->IsDebugLayerEnabled();
 	}
 
 	ResourceList* DeviceBase::GetTrackedObjectList(ResourceType type)
@@ -136,6 +136,12 @@ namespace rhi
 	QueueBase* DeviceBase::APIGetQueue(QueueType queueType)
 	{
 		return GetQueue(queueType).Detach();
+	}
+
+	AdapterBase* DeviceBase::APIGetAdapter() const
+	{
+		Ref<AdapterBase> adapter = mAdapter;
+		return adapter.Detach();
 	}
 
 	BindSetLayoutBase* DeviceBase::GetEmptyBindSetLayout()

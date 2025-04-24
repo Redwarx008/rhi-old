@@ -180,9 +180,9 @@ namespace rhi::vulkan
 		VkBufferImageCopy region{};
 		region.bufferOffset = dataLayout.offset;
 		// In Vulkan the row length is in texels
-		ASSERT(dataLayout.bytesPerRow % GetFormatInfo(texture->GetFormat()).bytesPerBlock == 0);
-		region.bufferRowLength = dataLayout.bytesPerRow / GetFormatInfo(texture->GetFormat()).bytesPerBlock * GetFormatInfo(texture->GetFormat()).blockSize;
-		region.bufferImageHeight = dataLayout.rowsPerImage * GetFormatInfo(texture->GetFormat()).blockSize;
+		ASSERT(dataLayout.bytesPerRow % GetFormatInfo(texture->APIGetFormat()).bytesPerBlock == 0);
+		region.bufferRowLength = dataLayout.bytesPerRow / GetFormatInfo(texture->APIGetFormat()).bytesPerBlock * GetFormatInfo(texture->APIGetFormat()).blockSize;
+		region.bufferImageHeight = dataLayout.rowsPerImage * GetFormatInfo(texture->APIGetFormat()).blockSize;
 		region.imageSubresource.aspectMask = ImageAspectFlagsConvert(aspect);
 		region.imageSubresource.mipLevel = mipLevel;
 		region.imageOffset.x = origin.x;
