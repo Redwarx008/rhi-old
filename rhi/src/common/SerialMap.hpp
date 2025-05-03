@@ -6,8 +6,9 @@
 #include <map>
 #include <algorithm>
 #include <type_traits>
+#include <stdexcept>
 
-namespace rhi
+namespace rhi::impl
 {
 	template<typename Serial, typename Value, typename Enable = std::enable_if_t<std::is_integral_v<Serial> || std::is_unsigned_v<Serial>>>
 	class SerialMap

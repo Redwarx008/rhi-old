@@ -3,12 +3,13 @@
 #include "../common/Ref.hpp"
 #include "../CommandListBase.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	class BeginRenderPassCmd;
+	class BeginComputePassCmd;
 }
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	class CommandRecordContext;
 	class Queue;
@@ -20,7 +21,8 @@ namespace rhi::vulkan
 		static Ref<CommandList> Create(Device* device, CommandEncoder* encoder);
 		void RecordCommands(Queue* queue);
 	private:
-		explicit CommandList(Device* device, CommandEncoder* encoder) noexcept;
+		explicit CommandList(Device* device, CommandEncoder* encoder);
 		void RecordRenderPass(Queue* queue, BeginRenderPassCmd* renderPassCmd);
+		void RecordComputePass(Queue* queue, BeginComputePassCmd* computePassCmd);
 	};
 }

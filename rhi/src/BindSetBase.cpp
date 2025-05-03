@@ -2,13 +2,13 @@
 
 #include "BindSetLayoutBase.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	BindSetBase::BindSetBase(DeviceBase* device, const BindSetDesc& desc) :
 		ResourceBase(device, desc.name),
 		mLayout(desc.layout)
 	{
-		mEntries.reserve(desc.entryCount);
+		mEntries.resize(desc.entryCount);
 		for (uint32_t i = 0; i < desc.entryCount; ++i)
 		{
 			mEntries[i] = desc.entries[i];
@@ -16,6 +16,11 @@ namespace rhi
 	}
 
 	BindSetBase::~BindSetBase() {}
+
+	void BindSetBase::APIDestroy()
+	{
+		Destroy();
+	}
 
 	ResourceType BindSetBase::GetType() const
 	{

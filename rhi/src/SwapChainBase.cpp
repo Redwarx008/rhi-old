@@ -1,9 +1,12 @@
 #include "SwapchainBase.h"
+#include "DeviceBase.h"
+#include "TextureBase.h"
 
-namespace rhi
+namespace rhi::impl
 {
-	SwapChainBase::SwapChainBase(DeviceBase* device, Surface* surface, const SurfaceConfiguration& config) :
+	SwapChainBase::SwapChainBase(DeviceBase* device, SurfaceBase* surface, const SurfaceConfiguration& config) :
 		mDevice(device),
+		mSurface(surface),
 		mWidth(config.width),
 		mHeight(config.height),
 		mFormat(config.format),
@@ -13,4 +16,9 @@ namespace rhi
 	}
 
 	SwapChainBase::~SwapChainBase() {}
+
+	TextureFormat SwapChainBase::GetFormat() const
+	{
+		return mFormat;
+	}
 }

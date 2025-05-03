@@ -1,10 +1,10 @@
 #pragma once
 
 #include "ResourceBase.h"
-#include "rhi/RHIStruct.h"
+#include "RHIStruct.h"
 #include "Subresource.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	class DeviceBase;
 	class TextureViewBase;
@@ -20,7 +20,8 @@ namespace rhi
 		TextureDimension APIGetDimension() const;
 		TextureFormat APIGetFormat() const;
 		TextureUsage APIGetUsage() const;
-		TextureViewBase* APICreateView(const TextureViewDesc& desc);
+		TextureViewBase* APICreateView(const TextureViewDesc* desc = nullptr);
+		void APIDestroy();
 		virtual Ref<TextureViewBase> CreateView(const TextureViewDesc& desc) = 0;
 		// internal 
 		ResourceType GetType() const override;
@@ -46,7 +47,7 @@ namespace rhi
 			uint32_t mDepth;
 			uint32_t mArraySize;
 		};
-		bool mDestoryed;
+		bool mDestoryed = false;
 
 		ResourceList mTextureViews;
 	};
@@ -67,8 +68,8 @@ namespace rhi
 		ResourceType GetType() const override;
 		TextureUsage GetInternalUsage() const;
 	protected:
-		explicit TextureViewBase(TextureBase* texture, const TextureViewDesc& desc) noexcept;
-		~TextureViewBase() = default;
+		explicit TextureViewBase(TextureBase* texture, const TextureViewDesc& desc);
+		~TextureViewBase();
 		void Initialize();
 		ResourceList* GetList() const override;
 

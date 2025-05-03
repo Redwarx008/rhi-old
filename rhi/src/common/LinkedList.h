@@ -8,7 +8,7 @@
 
 #include <cassert>
 
-namespace rhi
+namespace rhi::impl
 {
 	// Simple LinkedList type. (See the Q&A section to understand how this
 // differs from std::list).

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "rhi/RHIStruct.h"
+#include "RHIStruct.h"
 #include "common/RefCounted.h"
 #include "common/Ref.hpp"
 #include "common/SerialMap.hpp"
@@ -9,7 +9,7 @@
 #include <memory>
 #include <atomic>
 
-namespace rhi
+namespace rhi::impl
 {
 
 	class CommandListBase;
@@ -35,7 +35,7 @@ namespace rhi
 		void TrackTask(std::unique_ptr<CallbackTask>, uint64_t serial);
 		void CopyFromStagingToBuffer(BufferBase* src, uint64_t srcOffset, BufferBase* dst, uint64_t dstOffset, uint64_t size);
 	protected:
-		explicit QueueBase(DeviceBase* device) noexcept;
+		explicit QueueBase(DeviceBase* device, QueueType type);
 		~QueueBase();
 		virtual void TickImpl(uint64_t completedSerial) = 0;
 		virtual uint64_t SubmitImpl(CommandListBase* const* commands, uint32_t commandListCount) = 0;
@@ -51,7 +51,7 @@ namespace rhi
 
 		DeviceBase* mDevice;
 
-		QueueType mQueueType;
+		QueueType mQueueType = QueueType::Undefined;
 
 		std::atomic<uint64_t> mCompletedSerial = 0;
 		std::atomic<uint64_t> mLastSubmittedSerial = 0;

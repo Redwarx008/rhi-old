@@ -1,6 +1,6 @@
 #include "ShaderModuleBase.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	ShaderModuleBase::ShaderModuleBase(DeviceBase* device, const ShaderModuleDesc desc) :
 		ResourceBase(device, desc.name),

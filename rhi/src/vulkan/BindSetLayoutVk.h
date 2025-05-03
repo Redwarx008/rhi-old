@@ -7,7 +7,7 @@
 
 #include <vulkan/vulkan.h>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	class BindSet;
 
@@ -22,7 +22,7 @@ namespace rhi::vulkan
 		void DeallocateBindSet(BindSet* bindSet,
 			DescriptorSetAllocation* descriptorSetAllocation);
 	private:
-		explicit BindSetLayout(DeviceBase* device, const BindSetLayoutDesc& desc) noexcept;
+		explicit BindSetLayout(DeviceBase* device, const BindSetLayoutDesc& desc);
 		~BindSetLayout();
 		bool Initialize(const BindSetLayoutDesc& desc);
 		void DestroyImpl() override;
@@ -30,5 +30,5 @@ namespace rhi::vulkan
 		Ref<DescriptorSetAllocator> mDescriptorSetAllocator;
 	};
 
-	VkDescriptorType DescriptorTypeConvert(BindingType bindType);
+	VkDescriptorType ToVkDescriptorType(BindingType bindType, bool hasDynamicOffset);
 }

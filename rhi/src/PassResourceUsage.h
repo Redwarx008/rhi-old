@@ -1,10 +1,10 @@
 #pragma once
 
-#include "rhi/RHIStruct.h"
+#include "RHIStruct.h"
 #include "SubresourceStorage.hpp"
 #include "Subresource.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	class BufferBase;
 	class TextureBase;
@@ -22,6 +22,8 @@ namespace rhi
 		ShaderStage shaderStages;
 		QueueType queue;
 	};
+	// SubresourceStorage require the storage type has equality operator.
+	bool operator==(const TextureSyncInfo& a, const TextureSyncInfo& b);
 
 	struct SyncScopeResourceUsage
 	{

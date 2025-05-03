@@ -1,6 +1,6 @@
 #include "SamplerBase.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	SamplerBase::SamplerBase(DeviceBase* device, const SamplerDesc& desc) :
 		ResourceBase(device, desc.name),

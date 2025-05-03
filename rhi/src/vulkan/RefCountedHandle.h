@@ -1,11 +1,11 @@
 #pragma once
 
 #include "../common/RefCounted.h"
-#include "DeviceVk.h"
-#include <memory>
+#include <functional>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
+	class Device;
 	template<typename Handle>
 	class RefCountedHandle : public RefCounted
 	{

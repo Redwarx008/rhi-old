@@ -2,7 +2,7 @@
 
 #include "CommandEncoder.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	CommandListBase::CommandListBase(DeviceBase* device, CommandEncoder* encoder) :
 		mDevice(device),
@@ -19,6 +19,6 @@ namespace rhi
 
 	CommandListBase::~CommandListBase()
 	{
-
+		FreeCommands(&mCommandIter);
 	}
 }

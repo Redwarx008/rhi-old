@@ -8,7 +8,7 @@
 
 #include <memory>
 
-namespace rhi
+namespace rhi::impl
 {
 	class MapAsyncCallbackTask : public CallbackTask
 	{
@@ -40,6 +40,15 @@ namespace rhi
 		void* mMapUserdata;
 	};
 
+	BufferUsage AddInternalUsage(BufferUsage usage)
+	{
+		if ((usage & BufferUsage::Storage) != 0)
+		{
+			usage |= cReadOnlyStorageBuffer;
+		}
+		return usage;
+	}
+
 	BufferBase::BufferBase(DeviceBase* device, const BufferDesc& desc):
 		mSize(desc.size),
 		mUsage(desc.usage),
@@ -57,15 +66,6 @@ namespace rhi
 		ResourceBase::Initialize();
 	}
 
-	BufferUsage AddInternalUsage(BufferUsage usage)
-	{
-		if ((usage & BufferUsage::Storage) != 0)
-		{
-			usage |= cReadOnlyStorageBuffer;
-		}
-		return usage;
-	}
-
 	BufferUsage BufferBase::APIGetUsage() const
 	{
 		return mUsage;
@@ -74,6 +74,11 @@ namespace rhi
 	uint64_t BufferBase::APIGetSize() const
 	{
 		return mSize;
+	}
+
+	void BufferBase::APIDestroy()
+	{
+		Destroy();
 	}
 
 	ResourceType BufferBase::GetType() const

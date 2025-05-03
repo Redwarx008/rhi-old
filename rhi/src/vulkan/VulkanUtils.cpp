@@ -5,7 +5,7 @@
 #include "../common/Error.h"
 #include <sstream>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	void SetDebugNameInternal(Device* device, VkObjectType objectType, uint64_t objectHandle, const char* prefix, std::string_view name)
 	{
@@ -31,29 +31,30 @@ namespace rhi::vulkan
 		{
 			objectNameStream << "_" << name;
 		}
-		objectNameInfo.pObjectName = objectNameStream.str().c_str();
-		vkSetDebugUtilsObjectNameEXT(device->GetHandle(), &objectNameInfo);
+		std::string objectName = objectNameStream.str();
+		objectNameInfo.pObjectName = objectName.c_str();
+		device->Fn.vkSetDebugUtilsObjectNameEXT(device->GetHandle(), &objectNameInfo);
 	}
 
 	VkCompareOp CompareOpConvert(CompareOp op)
 	{
 		switch (op)
 		{
-		case rhi::CompareOp::Never:
+		case CompareOp::Never:
 			return VK_COMPARE_OP_NEVER;
-		case rhi::CompareOp::Less:
+		case CompareOp::Less:
 			return VK_COMPARE_OP_LESS;
-		case rhi::CompareOp::Equal:
+		case CompareOp::Equal:
 			return VK_COMPARE_OP_EQUAL;
-		case rhi::CompareOp::LessOrEqual:
+		case CompareOp::LessOrEqual:
 			return VK_COMPARE_OP_LESS_OR_EQUAL;
-		case rhi::CompareOp::Greater:
+		case CompareOp::Greater:
 			return VK_COMPARE_OP_GREATER;
-		case rhi::CompareOp::NotEqual:
+		case CompareOp::NotEqual:
 			return VK_COMPARE_OP_NOT_EQUAL;
-		case rhi::CompareOp::GreaterOrEqual:
+		case CompareOp::GreaterOrEqual:
 			return VK_COMPARE_OP_GREATER_OR_EQUAL;
-		case rhi::CompareOp::Always:
+		case CompareOp::Always:
 			return VK_COMPARE_OP_ALWAYS;
 		default:
 			break;
@@ -113,27 +114,27 @@ namespace rhi::vulkan
 		switch (stage)
 		{
 
-		case rhi::ShaderStage::Vertex:
+		case ShaderStage::Vertex:
 			return VK_SHADER_STAGE_VERTEX_BIT;
-		case rhi::ShaderStage::TessellationControl:
+		case ShaderStage::TessellationControl:
 			return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-		case rhi::ShaderStage::TessellationEvaluation:
+		case ShaderStage::TessellationEvaluation:
 			return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-		case rhi::ShaderStage::Geometry:
+		case ShaderStage::Geometry:
 			return VK_SHADER_STAGE_GEOMETRY_BIT;
-		case rhi::ShaderStage::Fragment:
+		case ShaderStage::Fragment:
 			return VK_SHADER_STAGE_FRAGMENT_BIT;
-		case rhi::ShaderStage::Task:
+		case ShaderStage::Task:
 			return VK_SHADER_STAGE_TASK_BIT_EXT;
-		case rhi::ShaderStage::Mesh:
+		case ShaderStage::Mesh:
 			return VK_SHADER_STAGE_MESH_BIT_EXT;
-		case rhi::ShaderStage::Compute:
+		case ShaderStage::Compute:
 			return VK_SHADER_STAGE_COMPUTE_BIT;
-		case rhi::ShaderStage::AllGraphics:
+		case ShaderStage::AllGraphics:
 			return VK_SHADER_STAGE_ALL_GRAPHICS;
-		case rhi::ShaderStage::All:
+		case ShaderStage::All:
 			return VK_SHADER_STAGE_ALL;
-		case rhi::ShaderStage::None:
+		case ShaderStage::None:
 		default:
 			ASSERT(!"Unreachable");
 			break;
@@ -148,25 +149,25 @@ namespace rhi::vulkan
 			switch (aspect)
 			{
 
-			case rhi::Aspect::Color:
+			case Aspect::Color:
 				flags |= VK_IMAGE_ASPECT_COLOR_BIT;
 				break;
-			case rhi::Aspect::Depth:
+			case Aspect::Depth:
 				flags |= VK_IMAGE_ASPECT_DEPTH_BIT;
 				break;
-			case rhi::Aspect::Stencil:
+			case Aspect::Stencil:
 				flags |= VK_IMAGE_ASPECT_STENCIL_BIT;
 				break;
-			case rhi::Aspect::Plane0:
+			case Aspect::Plane0:
 				flags |= VK_IMAGE_ASPECT_PLANE_0_BIT;
 				break;
-			case rhi::Aspect::Plane1:
+			case Aspect::Plane1:
 				flags |= VK_IMAGE_ASPECT_PLANE_1_BIT;
 				break;
-			case rhi::Aspect::Plane2:
+			case Aspect::Plane2:
 				flags |= VK_IMAGE_ASPECT_PLANE_2_BIT;
 				break;
-			case rhi::Aspect::None:
+			case Aspect::None:
 			default:
 				assert(!"UNREACHABLE");
 			}

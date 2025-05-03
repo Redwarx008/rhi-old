@@ -3,7 +3,7 @@
 #include <mutex>
 #include <functional>
 
-namespace rhi
+namespace rhi::impl
 {
     template<typename T>
     class Guard

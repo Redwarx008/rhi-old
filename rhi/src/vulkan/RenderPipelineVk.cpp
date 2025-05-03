@@ -9,7 +9,7 @@
 #include "../common/EnumFlagIterator.hpp"
 #include <vector>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	RenderPipeline::RenderPipeline(Device* device, const RenderPipelineDesc& desc) :
 		RenderPipelineBase(device, desc)
@@ -23,19 +23,19 @@ namespace rhi::vulkan
 	{
 		switch (type)
 		{
-		case rhi::PrimitiveType::PointList:
+		case rhi::impl::PrimitiveType::PointList:
 			return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
-		case rhi::PrimitiveType::LineList:
+		case rhi::impl::PrimitiveType::LineList:
 			return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-		case rhi::PrimitiveType::LineStrip:
+		case rhi::impl::PrimitiveType::LineStrip:
 			return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
-		case rhi::PrimitiveType::TriangleList:
+		case rhi::impl::PrimitiveType::TriangleList:
 			return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-		case rhi::PrimitiveType::TriangleStrip:
+		case rhi::impl::PrimitiveType::TriangleStrip:
 			return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-		case rhi::PrimitiveType::TriangleFan:
+		case rhi::impl::PrimitiveType::TriangleFan:
 			return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
-		case rhi::PrimitiveType::PatchList:
+		case rhi::impl::PrimitiveType::PatchList:
 			return VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
 		default:
 			ASSERT(!"Unreachable");
@@ -47,11 +47,11 @@ namespace rhi::vulkan
 	{
 		switch (mode)
 		{
-		case rhi::CullMode::None:
+		case rhi::impl::CullMode::None:
 			return VK_CULL_MODE_NONE;
-		case rhi::CullMode::Front:
+		case rhi::impl::CullMode::Front:
 			return VK_CULL_MODE_FRONT_BIT;
-		case rhi::CullMode::back:
+		case rhi::impl::CullMode::Back:
 			return VK_CULL_MODE_BACK_BIT;
 		default:
 			ASSERT(!"Unreachable");
@@ -63,9 +63,9 @@ namespace rhi::vulkan
 	{
 		switch (face)
 		{
-		case rhi::FrontFace::FrontCounterClockwise:
+		case rhi::impl::FrontFace::FrontCounterClockwise:
 			return VK_FRONT_FACE_COUNTER_CLOCKWISE;
-		case rhi::FrontFace::FrontClockwise:
+		case rhi::impl::FrontFace::FrontClockwise:
 			return VK_FRONT_FACE_CLOCKWISE;
 		default:
 			ASSERT(!"Unreachable");
@@ -77,11 +77,11 @@ namespace rhi::vulkan
 	{
 		switch (mode)
 		{
-		case rhi::FillMode::Fill:
+		case rhi::impl::FillMode::Fill:
 			return VK_POLYGON_MODE_FILL;
-		case rhi::FillMode::Line:
+		case rhi::impl::FillMode::Line:
 			return VK_POLYGON_MODE_LINE;
-		case rhi::FillMode::Point:
+		case rhi::impl::FillMode::Point:
 			return VK_POLYGON_MODE_POINT;
 		default:
 			ASSERT(!"Unreachable");
@@ -136,20 +136,6 @@ namespace rhi::vulkan
 		return static_cast<VkColorComponentFlags>(uint32_t(mask));
 	}
 
-	VkCompareOp CompareOpConvert(CompareOp op)
-	{
-		static_assert(uint32_t(CompareOp::Never) == uint32_t(VK_COMPARE_OP_NEVER));
-		static_assert(uint32_t(CompareOp::Less) == uint32_t(VK_COMPARE_OP_LESS));
-		static_assert(uint32_t(CompareOp::Equal) == uint32_t(VK_COMPARE_OP_EQUAL));
-		static_assert(uint32_t(CompareOp::LessOrEqual) == uint32_t(VK_COMPARE_OP_LESS_OR_EQUAL));
-		static_assert(uint32_t(CompareOp::Greater) == uint32_t(VK_COMPARE_OP_GREATER));
-		static_assert(uint32_t(CompareOp::NotEqual) == uint32_t(VK_COMPARE_OP_NOT_EQUAL));
-		static_assert(uint32_t(CompareOp::GreaterOrEqual) == uint32_t(VK_COMPARE_OP_GREATER_OR_EQUAL));
-		static_assert(uint32_t(CompareOp::Always) == uint32_t(VK_COMPARE_OP_ALWAYS));
-
-		return static_cast<VkCompareOp>(uint32_t(op));
-	}
-
 	VkStencilOp StencilOpConvert(StencilOp op)
 	{
 		static_assert(uint32_t(StencilOp::Keep) == uint32_t(VK_STENCIL_OP_KEEP));
@@ -175,6 +161,95 @@ namespace rhi::vulkan
 		res.writeMask = stencilOpState.writeMask;
 		res.reference = stencilOpState.referenceValue;
 		return res;
+	}
+
+	VkFormat VertexFormatConvert(VertexFormat format)
+	{
+		switch (format)
+		{
+		case rhi::impl::VertexFormat::Uint8:
+			return VK_FORMAT_R8_UINT;
+		case rhi::impl::VertexFormat::Uint8x2:
+			return VK_FORMAT_R8G8_UINT;
+		case rhi::impl::VertexFormat::Uint8x4:
+			return VK_FORMAT_R8G8B8A8_UINT;
+		case rhi::impl::VertexFormat::Sint8:
+			return VK_FORMAT_R8_SINT;
+		case rhi::impl::VertexFormat::Sint8x2:
+			return VK_FORMAT_R8G8_SINT;
+		case rhi::impl::VertexFormat::Sint8x4:
+			return VK_FORMAT_R8G8B8A8_SINT;
+		case rhi::impl::VertexFormat::Unorm8:
+			return VK_FORMAT_R8_UNORM;
+		case rhi::impl::VertexFormat::Unorm8x2:
+			return VK_FORMAT_R8G8_UNORM;
+		case rhi::impl::VertexFormat::Unorm8x4:
+			return VK_FORMAT_R8G8B8A8_UNORM;
+		case rhi::impl::VertexFormat::Snorm8:
+			return VK_FORMAT_R8_SNORM;
+		case rhi::impl::VertexFormat::Snorm8x2:
+			return VK_FORMAT_R8G8_SNORM;
+		case rhi::impl::VertexFormat::Snorm8x4:
+			return VK_FORMAT_R8G8B8A8_SNORM;
+		case rhi::impl::VertexFormat::Uint16:
+			return VK_FORMAT_R16_UINT;
+		case rhi::impl::VertexFormat::Uint16x2:
+			return VK_FORMAT_R16G16_UINT;
+		case rhi::impl::VertexFormat::Uint16x4:
+			return VK_FORMAT_R16G16B16A16_UINT;
+		case rhi::impl::VertexFormat::Sint16:
+			return VK_FORMAT_R16_SINT;
+		case rhi::impl::VertexFormat::Sint16x2:
+			return VK_FORMAT_R16G16_SINT;
+		case rhi::impl::VertexFormat::Sint16x4:
+			return VK_FORMAT_R16G16B16A16_SINT;
+		case rhi::impl::VertexFormat::Unorm16:
+			return VK_FORMAT_R16_UNORM;
+		case rhi::impl::VertexFormat::Unorm16x2:
+			return VK_FORMAT_R16G16_UNORM;
+		case rhi::impl::VertexFormat::Unorm16x4:
+			return VK_FORMAT_R16G16B16A16_UNORM;
+		case rhi::impl::VertexFormat::Snorm16:
+			return VK_FORMAT_R16_SNORM;
+		case rhi::impl::VertexFormat::Snorm16x2:
+			return VK_FORMAT_R16G16_SNORM;
+		case rhi::impl::VertexFormat::Snorm16x4:
+			return VK_FORMAT_R16G16B16A16_SNORM;
+		case rhi::impl::VertexFormat::Float16:
+			return VK_FORMAT_R16_SFLOAT;
+		case rhi::impl::VertexFormat::Float16x2:
+			return VK_FORMAT_R16G16_SFLOAT;
+		case rhi::impl::VertexFormat::Float16x4:
+			return VK_FORMAT_R16G16B16A16_SFLOAT;
+		case rhi::impl::VertexFormat::Float32:
+			return VK_FORMAT_R32_SFLOAT;
+		case rhi::impl::VertexFormat::Float32x2:
+			return VK_FORMAT_R32G32_SFLOAT;
+		case rhi::impl::VertexFormat::Float32x3:
+			return VK_FORMAT_R32G32B32_SFLOAT;
+		case rhi::impl::VertexFormat::Float32x4:
+			return VK_FORMAT_R32G32B32A32_SFLOAT;
+		case rhi::impl::VertexFormat::Uint32:
+			return VK_FORMAT_R32_UINT;
+		case rhi::impl::VertexFormat::Uint32x2:
+			return VK_FORMAT_R32G32_UINT;
+		case rhi::impl::VertexFormat::Uint32x3:
+			return VK_FORMAT_R32G32B32_UINT;
+		case rhi::impl::VertexFormat::Uint32x4:
+			return VK_FORMAT_R32G32B32A32_UINT;
+		case rhi::impl::VertexFormat::Sint32:
+			return VK_FORMAT_R32_SINT;
+		case rhi::impl::VertexFormat::Sint32x2:
+			return VK_FORMAT_R32G32_SINT;
+		case rhi::impl::VertexFormat::Sint32x3:
+			return VK_FORMAT_R32G32B32_SINT;
+		case rhi::impl::VertexFormat::Sint32x4:
+			return VK_FORMAT_R32G32B32A32_SINT;
+		case rhi::impl::VertexFormat::Unorm10_10_10_2:
+			return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+		default:
+			ASSERT(!"Unreachable");
+		}
 	}
 
 	bool RenderPipeline::Initialize()
@@ -264,7 +339,7 @@ namespace rhi::vulkan
 			auto& vertexInputAttribute = vertexInputAttributes.emplace_back();
 			vertexInputAttribute.binding = attribute.bindingBufferSlot;
 			vertexInputAttribute.location = attribute.location;
-			vertexInputAttribute.format = GetVkFormat(attribute.format);
+			vertexInputAttribute.format = VertexFormatConvert(attribute.format);
 			vertexInputAttribute.offset = attribute.offsetInElement;
 		}
 
@@ -292,7 +367,7 @@ namespace rhi::vulkan
 		std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachmentStates(mColorAttachmentFormats.size());
 		for (uint32_t i = 0; i < colorBlendAttachmentStates.size(); ++i)
 		{
-			VkPipelineColorBlendAttachmentState& blendState = colorBlendAttachmentStates.emplace_back();
+			VkPipelineColorBlendAttachmentState& blendState = colorBlendAttachmentStates[i];
 			blendState.blendEnable = mBlendState.colorAttachmentBlendStates[i].blendEnable;
 			blendState.srcColorBlendFactor = BlendFactorConvert(mBlendState.colorAttachmentBlendStates[i].srcColorBlend);
 			blendState.dstColorBlendFactor = BlendFactorConvert(mBlendState.colorAttachmentBlendStates[i].destColorBlend);
@@ -349,13 +424,14 @@ namespace rhi::vulkan
 		VkFormat colorAttachmentFormats[cMaxColorAttachments];
 		for (uint32_t i = 0; i < mColorAttachmentFormats.size(); ++i)
 		{
-			colorAttachmentFormats[i] = GetVkFormat(mColorAttachmentFormats[i]);
+			colorAttachmentFormats[i] = ToVkFormat(mColorAttachmentFormats[i]);
 		}
 		VkPipelineRenderingCreateInfo pipelineRenderingCI{};
 		pipelineRenderingCI.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
 		pipelineRenderingCI.colorAttachmentCount = mColorAttachmentFormats.size();
 		pipelineRenderingCI.pColorAttachmentFormats = colorAttachmentFormats;
-		pipelineRenderingCI.depthAttachmentFormat = GetVkFormat(mDepthStencilFormat);
+		pipelineRenderingCI.depthAttachmentFormat = ToVkFormat(mDepthStencilFormat);
+		pipelineRenderingCI.stencilAttachmentFormat = pipelineRenderingCI.depthAttachmentFormat;
 
 		VkGraphicsPipelineCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;

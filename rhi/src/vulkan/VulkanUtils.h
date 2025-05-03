@@ -2,10 +2,10 @@
 
 #include <vulkan/vulkan.h>
 #include <string>
-#include "rhi/RHIStruct.h"
+#include "../RHIStruct.h"
 #include "../Subresource.h"
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 
 	template<typename T>
@@ -53,9 +53,8 @@ namespace rhi::vulkan
 	template <typename HandleType>
 	void SetDebugName(Device* device, HandleType handle, const char* prefix, std::string_view name)
 	{
-		SetDebugNameInternal(device, ObjectTypeTraits<HandleType>::value, reinterpret_cast<uint64_t>(handle), prefix, name)
+		SetDebugNameInternal(device, ObjectTypeTraits<HandleType>::value, reinterpret_cast<uint64_t>(handle), prefix, name);
 	}
-
 
 	VkCompareOp CompareOpConvert(CompareOp op);
 

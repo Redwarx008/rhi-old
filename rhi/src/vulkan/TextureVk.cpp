@@ -8,7 +8,7 @@
 #include "../common/Constants.h"
 #include "../PassResourceUsage.h"
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	constexpr TextureUsage cShaderTextureUsages = TextureUsage::SampledBinding | TextureUsage::StorageBinding | cReadOnlyStorageTexture;
 
@@ -193,10 +193,13 @@ namespace rhi::vulkan
 
 		if ((usage & TextureUsage::RenderAttachment) != 0)
 		{
-			flags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 			if (formatInfo.hasDepth || formatInfo.hasStencil)
 			{
 				flags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+			}
+			else
+			{
+				flags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 			}
 		}
 
@@ -309,7 +312,7 @@ namespace rhi::vulkan
 		}
 	}
 
-	VkFormat GetVkFormat(TextureFormat format)
+	VkFormat ToVkFormat(TextureFormat format)
 	{
 		assert(format < TextureFormat::COUNT);
 		assert(_texFmtToVkFmtMap[uint32_t(format)].rhiFormat == format);
@@ -317,7 +320,7 @@ namespace rhi::vulkan
 		return _texFmtToVkFmtMap[uint32_t(format)].vkFormat;
 	}
 
-	TextureFormat GetFormat(VkFormat format)
+	TextureFormat ToTextureFormat(VkFormat format)
 	{
 		auto res = _VkFmtToTexFmtMap.find(format);
 		if (res != _VkFmtToTexFmtMap.end())
@@ -472,13 +475,13 @@ namespace rhi::vulkan
 
 		switch (usage)
 		{
-		case rhi::TextureUsage::None:
+		case TextureUsage::None:
 			return VK_IMAGE_LAYOUT_UNDEFINED;
-		case rhi::TextureUsage::CopySrc:
+		case TextureUsage::CopySrc:
 			return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-		case rhi::TextureUsage::CopyDst:
+		case TextureUsage::CopyDst:
 			return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		case rhi::TextureUsage::SampledBinding:
+		case TextureUsage::SampledBinding:
 			if (GetFormatInfo(format).IsDeepStencil())
 			{
 				return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
@@ -487,10 +490,10 @@ namespace rhi::vulkan
 			{
 				return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			}
-		case rhi::TextureUsage::StorageBinding:
+		case TextureUsage::StorageBinding:
 		case cReadOnlyStorageTexture:
 			return VK_IMAGE_LAYOUT_GENERAL;
-		case rhi::TextureUsage::RenderAttachment:
+		case TextureUsage::RenderAttachment:
 		{
 			if (GetFormatInfo(format).IsDeepStencil())
 			{
@@ -517,7 +520,7 @@ namespace rhi::vulkan
 		{
 			return nullptr;
 		}
-		return std::move(texture);
+		return texture;
 	}
 
 	Ref<TextureViewBase> Texture::CreateView(const TextureViewDesc& desc)
@@ -527,7 +530,7 @@ namespace rhi::vulkan
 
 	Texture::Texture(Device* device, const TextureDesc& desc) :
 		TextureBase(device, desc),
-		mVkFormat(GetVkFormat(mFormat)),
+		mVkFormat(ToVkFormat(mFormat)),
 		mSubresourceLastSyncInfos(GetAspectFromFormat(mFormat), mArraySize, mMipLevelCount)
 	{
 	}
@@ -567,7 +570,7 @@ namespace rhi::vulkan
 		}
 		// We always set VK_IMAGE_USAGE_TRANSFER_DST_BIT unconditionally because the Vulkan images
 		// that are used in vkCmdClearColorImage() must have been created with this flag
-		imageCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+		imageCreateInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
 		// Let the library select the optimal memory type, which will likely have VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT.
 		VmaAllocationCreateInfo allocCreateInfo = {};
@@ -733,7 +736,7 @@ namespace rhi::vulkan
 			});
 	}
 
-	void Texture::TransitionUsageNow(Queue* queue, TextureUsage usage, const SubresourceRange& range, ShaderStage shaderStages = ShaderStage::None)
+	void Texture::TransitionUsageNow(Queue* queue, TextureUsage usage, const SubresourceRange& range, ShaderStage shaderStages)
 	{
 		TransitionUsageAndGetResourceBarrier(queue, usage, shaderStages, range);
 		queue->GetPendingRecordingContext()->EmitBarriers();
@@ -757,18 +760,18 @@ namespace rhi::vulkan
 
 		Device* device = checked_cast<Device>(mDevice.Get());
 
-		Ref<RefCountedHandle<ImageAllocation>> imageAllocation = AcquireRef(new RefCountedHandle<ImageAllocation>(device, { mHandle, mAllocation },
-			[](Device* device, ImageAllocation handle)
-			{
-				vmaDestroyImage(device->GetMemoryAllocator(), handle.image, handle.allocation);
-			}
-		));
+		//Ref<RefCountedHandle<ImageAllocation>> imageAllocation = AcquireRef(new RefCountedHandle<ImageAllocation>(device, { mHandle, mAllocation },
+		//	[](Device* device, ImageAllocation handle)
+		//	{
+		//		vmaDestroyImage(device->GetMemoryAllocator(), handle.image, handle.allocation);
+		//	}
+		//));
 
 		for (uint32_t i = 0; i < isUsedInQueue.size(); ++i)
 		{
 			if (isUsedInQueue[i])
 			{
-				checked_cast<Queue>(device->GetQueue(static_cast<QueueType>(i)))->GetDeleter()->DeleteWhenUnused(imageAllocation);
+				//checked_cast<Queue>(device->GetQueue(static_cast<QueueType>(i)))->GetDeleter()->DeleteWhenUnused(imageAllocation);
 			}
 		}
 
@@ -806,6 +809,7 @@ namespace rhi::vulkan
 
 	void SwapChainTexture::DestroyImpl()
 	{
+		mTextureViews.Destroy();
 		mHandle = VK_NULL_HANDLE;
 		mDestoryed = true;
 	}
@@ -818,7 +822,7 @@ namespace rhi::vulkan
 			return nullptr;
 		}
 
-		return std::move(textureView);
+		return textureView;
 	}
 
 	TextureView::TextureView(TextureBase* texture, const TextureViewDesc& desc) :
@@ -850,7 +854,7 @@ namespace rhi::vulkan
 		createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		createInfo.image = checked_cast<Texture>(mTexture)->GetHandle();
 		createInfo.viewType = GetVkImageViewType(mDimension);
-		createInfo.format = GetVkFormat(mFormat);
+		createInfo.format = ToVkFormat(mFormat);
 		createInfo.components = VkComponentMapping{ VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
 										   VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
 		createInfo.subresourceRange.aspectMask = ImageAspectFlagsConvert(mRange.aspects);

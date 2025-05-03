@@ -1,6 +1,6 @@
 #pragma once
 
-namespace rhi
+namespace rhi::impl
 {
     template <typename Enum>
     class EnumFlagIterator {

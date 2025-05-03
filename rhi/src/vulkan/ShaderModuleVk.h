@@ -6,7 +6,7 @@
 #include <vulkan/vulkan.h>
 #include <vector>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	class Device;
 
@@ -16,7 +16,7 @@ namespace rhi::vulkan
 		static Ref<ShaderModule> Create(Device* device, const ShaderModuleDesc& desc);
 		VkShaderModule GetHandle() const;
 	private: 
-		explicit ShaderModule(Device* device, const ShaderModuleDesc& desc) noexcept;
+		explicit ShaderModule(Device* device, const ShaderModuleDesc& desc);
 		~ShaderModule();
 		bool Initialize(const ShaderModuleDesc& desc);
 		void DestroyImpl() override;

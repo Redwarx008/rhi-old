@@ -3,7 +3,7 @@
 #include "common/MutexProtected.hpp"
 #include <memory>
 
-namespace rhi
+namespace rhi::impl
 {
 	enum class CallbackState 
 	{

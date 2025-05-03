@@ -6,7 +6,7 @@
 #include <string>
 #include <vulkan/vulkan.h>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	inline std::string vkErrorToString(VkResult errorCode)
 	{
@@ -50,8 +50,8 @@ namespace rhi::vulkan
 	if (res != VK_SUCCESS)																	\
 	{																						\
 		LogMsg(LoggingSeverity::Error, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__, "\nVK Error Code : ", vkErrorToString(res));\
-	}																						\
-	return;																					 \
+		return;\
+	}																																										 \
 }\
 
 

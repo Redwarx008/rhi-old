@@ -3,7 +3,7 @@
 #include "../RenderPipelinebase.h"
 #include <vulkan/vulkan.h>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	class Device;
 	class RenderPipeline final : public RenderPipelineBase
@@ -12,7 +12,7 @@ namespace rhi::vulkan
 		static Ref<RenderPipeline> Create(Device* device, const RenderPipelineDesc& desc);
 		VkPipeline GetHandle() const;
 	private:
-		explicit RenderPipeline(Device* device, const RenderPipelineDesc& desc) noexcept;
+		explicit RenderPipeline(Device* device, const RenderPipelineDesc& desc);
 		~RenderPipeline();
 		bool Initialize();
 		void DestroyImpl() override;

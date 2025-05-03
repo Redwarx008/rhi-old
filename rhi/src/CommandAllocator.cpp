@@ -3,7 +3,7 @@
 
 #include <cassert>
 
-namespace rhi
+namespace rhi::impl
 {
     CommandAllocator::CommandAllocator()
     {
@@ -75,12 +75,12 @@ namespace rhi
 
         if (mBlocks.empty() && mBlocksPool.size() > 0)
         {
-            mBlocks = std::move((*mBlocksPool.end()));
-            mBlocksPool.erase(mBlocksPool.end());
+            mBlocks = std::move((*(mBlocksPool.end() - 1)));
+            mBlocksPool.erase((mBlocksPool.end() - 1));
         }
 
         // We can reuse the allocated memory.
-        if (mBlocks.size() > mCurrentBlockIndex)
+        if (int32_t lastBlockIndex = (static_cast<int>(mBlocks.size()) - 1) > mCurrentBlockIndex)
         {
             ++mCurrentBlockIndex;
             mCurrentPtr = AlignPtr(mBlocks[mCurrentBlockIndex].data.get(), alignof(uint32_t));
@@ -129,10 +129,10 @@ namespace rhi
 
         mCurrentPtr = reinterpret_cast<char*>(&mPlaceholderSpace[0]);
         mEndPtr = reinterpret_cast<char*>(&mPlaceholderSpace[1]); // just get address. no visit
-        mCurrentBlockIndex = 0;
+        mCurrentBlockIndex = -1;
     }
 
-    bool CommandAllocator::Clear()
+    void CommandAllocator::Clear()
     {
         Reset();
         mLastAllocationSize = cDefaultBaseAllocationSize;
@@ -145,8 +145,7 @@ namespace rhi
         assert(mCurrentPtr + sizeof(uint32_t) <= mEndPtr);
         *reinterpret_cast<uint32_t*>(mCurrentPtr) = cEndOfBlock;
 
-        mCurrentPtr = nullptr;
-        mEndPtr = nullptr;
+        Clear();
         return std::move(mBlocks);
     }
 

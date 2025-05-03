@@ -1,9 +1,9 @@
 #pragma once
 #include <cstdint>
 
-#include "rhi/RHIStruct.h"
+#include "RHIStruct.h"
 
-namespace rhi
+namespace rhi::impl
 {
     enum class Aspect : uint8_t 
     {

@@ -10,7 +10,7 @@
 #undef max
 #endif
 
-namespace rhi
+namespace rhi::impl
 {
 	constexpr uint32_t cEndOfBlock = std::numeric_limits<uint32_t>::max();
 	constexpr uint32_t cAdditionalData = std::numeric_limits<uint32_t>::max() - 1;
@@ -74,7 +74,7 @@ namespace rhi
 		~CommandAllocator();
 		CommandAllocator(CommandAllocator&&);
 		CommandAllocator& operator=(CommandAllocator&&);
-		bool Clear();
+		void Clear();
 		template <typename T, typename E>
 		T* Allocate(E commandId) {
 			static_assert(sizeof(E) == sizeof(uint32_t));
@@ -123,7 +123,7 @@ namespace rhi
 		void Reset();
 		std::vector<CommandBlocks> mBlocksPool;
 		CommandBlocks mBlocks;
-		size_t mCurrentBlockIndex = 0;
+		int64_t mCurrentBlockIndex = -1;
 		// Data used for the block range at initialization so that the first call to Allocate sees
 		// there is not enough space and calls GetNewBlock. This avoids having to special case the
 		// initialization in Allocate.

@@ -1,22 +1,22 @@
 #pragma once
 
-#include "rhi/RHIStruct.h"
+#include "RHIStruct.h"
 #include "PassEncoder.h"
 #include "SyncScopeUsageTracker.h"
 #include "EncodingContext.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	class CommandEncoder;
 	class RenderPipelineBase;
-	class RenderPassEncoder final : public PassEncoder
+	class RenderPassEncoder : public PassEncoder
 	{
 	public:
 		static Ref<RenderPassEncoder> Create(CommandEncoder* encoder, EncodingContext& encodingContext, SyncScopeUsageTracker&& usageTracker);
 
 		void APISetPipeline(RenderPipelineBase* pipeline);
-		void APISetVertexBuffers(uint32_t firstSlot, uint32_t bufferCount, BufferBase* const* buffers, uint64_t* offsets);
-		void APISetIndexBuffer(BufferBase* buffer, uint64_t offset, uint64_t size, IndexFormat indexFormat);
+		void APISetVertexBuffers(uint32_t firstSlot, uint32_t bufferCount, BufferBase* const* buffers, uint64_t* offsets = nullptr);
+		void APISetIndexBuffer(BufferBase* buffer, IndexFormat indexFormat, uint64_t offset = 0, uint64_t size = CWholeSize);
 		void APISetScissorRect(uint32_t firstScissor, const Rect* scissors, uint32_t scissorCount);
 		void APISetStencilReference(uint32_t reference);
 		void APISetBlendConstant(const Color& blendConstants);
@@ -29,8 +29,8 @@ namespace rhi
 		void APIMultiDrawIndirect(BufferBase* indirectBuffer, uint64_t indirectOffset, uint32_t maxDrawCount, BufferBase* drawCountBuffer = nullptr, uint64_t drawCountBufferOffset = 0);
 		void APIMultiDrawIndexedIndirect(BufferBase* indirectBuffer, uint64_t indirectOffset, uint32_t maxDrawCount, BufferBase* drawCountBuffer = nullptr, uint64_t drawCountBufferOffset = 0);
 		void APIEnd();
-	private:
-		explicit RenderPassEncoder(CommandEncoder* encoder, EncodingContext& encodingContext, SyncScopeUsageTracker&& usageTracker) noexcept;
+	protected:
+		explicit RenderPassEncoder(CommandEncoder* encoder, EncodingContext& encodingContext, SyncScopeUsageTracker&& usageTracker);
 		~RenderPassEncoder();
 		SyncScopeUsageTracker mUsageTracker;
 	};

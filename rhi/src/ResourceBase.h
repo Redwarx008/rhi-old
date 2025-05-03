@@ -8,7 +8,7 @@
 #include "common/RefCounted.h"
 #include "common/MutexProtected.hpp"
 
-namespace rhi
+namespace rhi::impl
 {
 	class ResourceBase;
 
@@ -59,7 +59,7 @@ namespace rhi
 	{
 	public:
 		explicit ResourceBase(DeviceBase* device, std::string_view name);
-		~ResourceBase() = default;
+		~ResourceBase();
 		DeviceBase* GetDevice() const;
 		virtual ResourceType GetType() const = 0;
 		std::string_view GetName() const;

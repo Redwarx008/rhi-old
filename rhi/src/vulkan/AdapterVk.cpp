@@ -2,7 +2,7 @@
 #include "DeviceVk.h"
 #include "../common/Constants.h"
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	AdapterType AdapterTypeConvert(VkPhysicalDeviceType type)
 	{
@@ -88,7 +88,7 @@ namespace rhi::vulkan
 
 
 
-	DeviceBase* Adapter::CreateDevice(const DeviceDesc& desc)
+	DeviceBase* Adapter::APICreateDevice(const DeviceDesc& desc)
 	{
 		return Device::Create(this, desc).Detach();
 	}

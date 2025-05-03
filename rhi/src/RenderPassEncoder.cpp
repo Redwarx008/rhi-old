@@ -5,7 +5,7 @@
 #include "common/Error.h"
 
 
-namespace rhi
+namespace rhi::impl
 {
 	RenderPassEncoder::RenderPassEncoder(CommandEncoder* encoder, EncodingContext& encodingContext, SyncScopeUsageTracker&& usageTracker) :
 		PassEncoder(encoder, encodingContext),
@@ -52,13 +52,15 @@ namespace rhi
 			ASSERT(HasFlag(buffers[i]->APIGetUsage(), BufferUsage::Vertex));
 			VertexBuffer& vertexBuffer = cmd->buffers[i];
 			vertexBuffer.buffer = buffers[i];
-			vertexBuffer.offset = offsets[i];
+			vertexBuffer.offset = offsets == nullptr ? 0ull : offsets[i];
+
+			mUsageTracker.BufferUsedAs(buffers[i], BufferUsage::Vertex);
 		}
 		cmd->firstSlot = firstSlot;
 		cmd->bufferCount = bufferCount;
 	}
 
-	void RenderPassEncoder::APISetIndexBuffer(BufferBase* buffer, uint64_t offset, uint64_t size, IndexFormat indexFormat)
+	void RenderPassEncoder::APISetIndexBuffer(BufferBase* buffer, IndexFormat indexFormat, uint64_t offset, uint64_t size)
 	{
 		ASSERT(buffer != nullptr);
 		ASSERT(HasFlag(buffer->APIGetUsage(), BufferUsage::Index));
@@ -68,13 +70,15 @@ namespace rhi
 		cmd->buffer = buffer;
 		cmd->format = indexFormat;
 		cmd->offset = offset;
+
+		mUsageTracker.BufferUsedAs(buffer, BufferUsage::Index);
 	}
 
 	void RenderPassEncoder::APISetScissorRect(uint32_t firstScissor, const Rect* scissors, uint32_t scissorCount)
 	{
 		ASSERT(firstScissor + scissorCount <= cMaxColorAttachments);
 		CommandAllocator& allocator = mEncodingContext.GetCommandAllocator();
-		SetScissorRectsCmd* cmd = allocator.Allocate<SetScissorRectsCmd>(Command::SetScissorRect);
+		SetScissorRectsCmd* cmd = allocator.Allocate<SetScissorRectsCmd>(Command::SetScissorRects);
 		for (uint32_t i = 0; i < scissorCount; ++i)
 		{
 			cmd->scissors[i] = scissors[i];
@@ -111,14 +115,14 @@ namespace rhi
 	}
 
 
-	void RenderPassEncoder::APISetBindSet(BindSetBase* set, uint32_t setIndex, uint32_t dynamicOffsetCount = 0, const uint32_t* dynamicOffsets = nullptr)
+	void RenderPassEncoder::APISetBindSet(BindSetBase* set, uint32_t setIndex, uint32_t dynamicOffsetCount, const uint32_t* dynamicOffsets)
 	{
 		ASSERT(set != nullptr);
 		RecordSetBindSet(set, setIndex, dynamicOffsetCount, dynamicOffsets);
 		mUsageTracker.AddBindSet(set);
 	}
 
-	void RenderPassEncoder::APIDraw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstVertex = 0, uint32_t firstInstance = 0)
+	void RenderPassEncoder::APIDraw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
 	{
 		CommandAllocator& allocator = mEncodingContext.GetCommandAllocator();
 		DrawCmd* draw = allocator.Allocate<DrawCmd>(Command::Draw);
@@ -163,7 +167,7 @@ namespace rhi
 		mUsageTracker.BufferUsedAs(indirectBuffer, BufferUsage::Indirect);
 	}
 
-	void RenderPassEncoder::APIMultiDrawIndirect(BufferBase* indirectBuffer, uint64_t indirectOffset, uint32_t maxDrawCount, BufferBase* drawCountBuffer = nullptr, uint64_t drawCountBufferOffset = 0)
+	void RenderPassEncoder::APIMultiDrawIndirect(BufferBase* indirectBuffer, uint64_t indirectOffset, uint32_t maxDrawCount, BufferBase* drawCountBuffer, uint64_t drawCountBufferOffset)
 	{
 		ASSERT(indirectBuffer != nullptr);
 		ASSERT(HasFlag(indirectBuffer->APIGetUsage(), BufferUsage::Indirect));
@@ -184,7 +188,7 @@ namespace rhi
 		}
 	}
 
-	void RenderPassEncoder::APIMultiDrawIndexedIndirect(BufferBase* indirectBuffer, uint64_t indirectOffset, uint32_t maxDrawCount, BufferBase* drawCountBuffer = nullptr, uint64_t drawCountBufferOffset = 0)
+	void RenderPassEncoder::APIMultiDrawIndexedIndirect(BufferBase* indirectBuffer, uint64_t indirectOffset, uint32_t maxDrawCount, BufferBase* drawCountBuffer, uint64_t drawCountBufferOffset)
 	{
 		ASSERT(indirectBuffer != nullptr);
 		ASSERT(HasFlag(indirectBuffer->APIGetUsage(), BufferUsage::Indirect));

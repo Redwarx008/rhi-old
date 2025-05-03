@@ -5,7 +5,7 @@
 #include "ErrorsVk.h"
 #include "VulkanUtils.h"
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	ComputePipeline::ComputePipeline(Device* device, const ComputePipelineDesc& desc) :
 		ComputePipelineBase(device, desc)

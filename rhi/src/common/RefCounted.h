@@ -3,7 +3,7 @@
 #include <atomic>
 #include <cstdint>
 
-namespace rhi
+namespace rhi::impl
 {
 	class RefCounted
 	{

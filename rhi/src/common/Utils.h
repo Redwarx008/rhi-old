@@ -4,7 +4,8 @@
 #include <cassert>
 #include <type_traits>
 #include "Ref.hpp"
-namespace rhi
+
+namespace rhi::impl
 {
 	inline void combineStrSS(std::stringstream& ss)
 	{
@@ -177,7 +178,7 @@ namespace rhi
 
 		Underlying underlyingValue = static_cast<Underlying>(value);
 
-		return underlyingValue != 0 && (underlyingValue & (underlyingValue - 1)) == 0;
+		return (underlyingValue & (underlyingValue - 1)) == 0;
 	}
 
 	template <typename T>
@@ -187,7 +188,7 @@ namespace rhi
 			~(alignment - 1));
 	}
 
-	bool IsPtrAligned(const void* ptr, size_t alignment) {
+	inline bool IsPtrAligned(const void* ptr, size_t alignment) {
 		assert(IsPowerOfTwo(alignment));
 		assert(alignment != 0);
 		return (reinterpret_cast<size_t>(ptr) & (alignment - 1)) == 0;

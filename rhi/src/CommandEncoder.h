@@ -1,6 +1,6 @@
 #pragma once
 
-#include "rhi/RHIStruct.h"
+#include "RHIStruct.h"
 #include "Commands.h"
 #include "EncodingContext.h"
 #include "CommandListBase.h"
@@ -8,9 +8,9 @@
 #include "common/RefCounted.h"
 #include <memory>
 
-namespace rhi
+namespace rhi::impl
 {
-	class CommandEncoder final : public RefCounted
+	class CommandEncoder : public RefCounted
 	{
 	public:
 		static Ref<CommandEncoder> Create(DeviceBase* device);
@@ -23,7 +23,7 @@ namespace rhi
 		void APICopyTextureToBuffer(const TextureSlice& srcTextureSlice, BufferBase* dstBuffer, const TextureDataLayout& dataLayout);
 		void APICopyTextureToTexture(const TextureSlice& srcTextureSlice, const TextureSlice& dstTextureSlice);
 		void APIMapBufferAsync(BufferBase* buffer, MapMode usage, BufferMapCallback callback, void* userData);
-		void APIBeginDebugLabel(std::string_view label, Color color = Color());
+		void APIBeginDebugLabel(std::string_view label, const Color* color);
 		void APIEndDebugLabel();
 		RenderPassEncoder* APIBeginRenderPass(const RenderPassDesc& desc);
 		ComputePassEncoder* APIBeginComputePass();

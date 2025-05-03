@@ -4,7 +4,7 @@
 #include <absl/container/flat_hash_map.h>
 
 
-namespace rhi
+namespace rhi::impl
 {
 	class BindSetBase;
 

@@ -1,6 +1,6 @@
 #include "CallbackTaskManager.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	void CallbackTask::Execute()
 	{

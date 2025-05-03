@@ -4,11 +4,11 @@
 #include "common/Utils.h"
 #include "common/Error.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	UploadAllocator::RingBuffer::RingBuffer(uint64_t maxSize) :mMaxBlockSize(maxSize) {}
 
-	UploadAllocator::RingBuffer::~RingBuffer() = default;
+	UploadAllocator::RingBuffer::~RingBuffer() {};
 
 	uint64_t UploadAllocator::RingBuffer::Allocate(uint64_t allocationSize, uint64_t serial, uint64_t offsetAlignment)
 	{
@@ -103,13 +103,15 @@ namespace rhi
 
 	UploadAllocator::UploadAllocator(DeviceBase* device) : mDevice(device) {}
 
+	UploadAllocator::~UploadAllocator() {}
+
 	UploadAllocation UploadAllocator::Allocate(uint64_t allocationSize, uint64_t serial, uint64_t offsetAlignment)
 	{
 		if (allocationSize > cRingBufferSize)
 		{
 			BufferDesc desc{};
 			desc.usage = BufferUsage::CopySrc | BufferUsage::MapWrite;
-			desc.size = AlignUp(allocationSize, 4);
+			desc.size = AlignUp(allocationSize, 4u);
 			desc.name = "UploadStageBuffer";
 
 			Ref<BufferBase> buffer = mDevice->CreateBuffer(desc);
@@ -153,7 +155,7 @@ namespace rhi
 		{
 			BufferDesc desc{};
 			desc.usage = BufferUsage::CopySrc | BufferUsage::MapWrite;
-			desc.size = AlignUp(targetRingBuffer->GetSize(), 4);
+			desc.size = AlignUp(targetRingBuffer->GetSize(), 4u);
 			desc.name = "UploadStageBuffer";
 
 			Ref<BufferBase> buffer = mDevice->CreateBuffer(desc);

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "rhi/RHIStruct.h"
+#include "RHIStruct.h"
 #include "common/Ref.hpp"
 #include "common/SerialQueue.hpp"
 #include <cstdint>
@@ -8,7 +8,11 @@
 #include <list>
 #include <memory>
 
-namespace rhi
+#if defined (max)
+#undef max
+#endif
+
+namespace rhi::impl
 {
 	struct UploadAllocation
 	{
@@ -21,7 +25,7 @@ namespace rhi
 	{
 	public:
 		explicit UploadAllocator(DeviceBase* device);
-		~UploadAllocator() = default;
+		~UploadAllocator();
 
 		UploadAllocation Allocate(uint64_t allocationSize, uint64_t serial, uint64_t offsetAlignment);
 		void Deallocate(uint64_t lastCompletedSerial);

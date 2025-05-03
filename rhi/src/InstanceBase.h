@@ -1,23 +1,24 @@
 #pragma once
 
-#include "rhi/RHIStruct.h"
+#include "RHIStruct.h"
 #include "common/RefCounted.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	class AdapterBase;
-
+	class SurfaceBase;
 	class InstanceBase : public RefCounted
 	{
 	public:
 		//api
-		virtual void EnumerateAdapters(AdapterBase** const adapters, uint32_t* adapterCount) = 0;
+		virtual SurfaceBase* APICreateSurface(void* hwnd, void* hinstance) = 0;
+		virtual void APIEnumerateAdapters(AdapterBase** const adapters, uint32_t* adapterCount) = 0;
 		// internal
 		bool IsDebugLayerEnabled() const;
 	protected:
 		InstanceBase() = default;
 		~InstanceBase() = default;
 
-		bool mDebugLayerEnabled;
+		bool mDebugLayerEnabled = false;
 	};
 }

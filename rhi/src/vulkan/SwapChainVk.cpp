@@ -1,30 +1,29 @@
 #include "SwapChainVk.h"
 
+#include "SurfaceVk.h"
 #include "InstanceVk.h"
 #include "DeviceVk.h"
 #include "QueueVk.h"
 #include "TextureVk.h"
-#include "CommandListVk.h"
 #include "ErrorsVk.h"
 #include "../common/Constants.h"
-#include "../Surface.h"
 
 #include <algorithm>
 #include <memory>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	VkPresentModeKHR ToVulkanPresentMode(PresentMode mode)
 	{
 		switch (mode)
 		{
-		case rhi::PresentMode::Fifo:
+		case PresentMode::Fifo:
 			return VK_PRESENT_MODE_FIFO_KHR;
-		case rhi::PresentMode::FifoRelaxed:
+		case PresentMode::FifoRelaxed:
 			return VK_PRESENT_MODE_FIFO_RELAXED_KHR;
-		case rhi::PresentMode::Immediate:
+		case PresentMode::Immediate:
 			return VK_PRESENT_MODE_IMMEDIATE_KHR;
-		case rhi::PresentMode::Mailbox:
+		case PresentMode::Mailbox:
 			return VK_PRESENT_MODE_MAILBOX_KHR;
 		}
 		ASSERT(!"Unreachable");
@@ -62,7 +61,7 @@ namespace rhi::vulkan
 		ASSERT(!"Unreachable");
 	}
 
-	Ref<SwapChain> SwapChain::Create(Device* device, Surface* surface, SwapChainBase* previous, const SurfaceConfiguration& config)
+	Ref<SwapChain> SwapChain::Create(Device* device, SurfaceBase* surface, SwapChainBase* previous, const SurfaceConfiguration& config)
 	{
 		Ref<SwapChain> swapChain = AcquireRef(new SwapChain(device, surface, config));
 		if (!swapChain->Initialize(previous))
@@ -72,7 +71,7 @@ namespace rhi::vulkan
 		return swapChain;
 	}
 
-	SwapChain::SwapChain(Device* device, Surface* surface, const SurfaceConfiguration& config) :
+	SwapChain::SwapChain(Device* device, SurfaceBase* surface, const SurfaceConfiguration& config) :
 		SwapChainBase(device, surface, config)
 	{
 
@@ -85,49 +84,27 @@ namespace rhi::vulkan
 
 	bool SwapChain::Initialize(SwapChainBase* previous)
 	{
-		if (mVkSurface == VK_NULL_HANDLE)
-		{
-			mVkSurface = CreateSurface(mSurface);
-		}
-
-		CreateSwapChainInternal(previous);
+		return CreateSwapChainInternal(previous);
 	}
 
-	VkSurfaceKHR SwapChain::CreateSurface(Surface* surface)
+	bool SwapChain::CreateSwapChainInternal(SwapChainBase* previous)
 	{
-		VkSurfaceKHR surfaceHandle;
-		Instance* instance = checked_cast<Instance>(surface->GetInstance());
-		Device* device = checked_cast<Device>(mDevice.Get());
-#if defined(WIN32)
-		VkWin32SurfaceCreateInfoKHR createInfo{};
-		createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-		createInfo.hinstance = static_cast<HINSTANCE>(surface->GetHInstance());
-		createInfo.hwnd = static_cast<HWND>(surface->GetHWND());
-		VkResult err = vkCreateWin32SurfaceKHR(instance->GetHandle(), &createInfo, nullptr, &surfaceHandle);
-		CHECK_VK_RESULT(err, "CreateWin32Surface");
-#elif defined(USE_WAYLAND_WSI)
-#else
-		ASSERT(!"No specified platform.");
-#endif
-	}
+		Surface* surface = checked_cast<Surface>(mSurface);
+		Device* device = checked_cast<Device>(mDevice);
 
-	void SwapChain::CreateSwapChainInternal(SwapChainBase* previous)
-	{
-		Device* device = checked_cast<Device>(mDevice.Get());
-
-		ASSERT(mVkSurface);
+		ASSERT(surface->GetHandle());
 		// Get list of supported surface formats
 		uint32_t formatCount;
-		vkGetPhysicalDeviceSurfaceFormatsKHR(device->GetVkPhysicalDevice(), mVkSurface, &formatCount, nullptr);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(device->GetVkPhysicalDevice(), surface->GetHandle(), &formatCount, nullptr);
 		ASSERT(formatCount > 0);
 
 		std::vector<VkSurfaceFormatKHR> surfaceFormats(formatCount);
-		vkGetPhysicalDeviceSurfaceFormatsKHR(device->GetVkPhysicalDevice(), mVkSurface, &formatCount, surfaceFormats.data());
+		vkGetPhysicalDeviceSurfaceFormatsKHR(device->GetVkPhysicalDevice(), surface->GetHandle(), &formatCount, surfaceFormats.data());
 
 		VkSurfaceFormatKHR selectedFormat = surfaceFormats[0];
 		std::vector<VkFormat> preferredImageFormats = 
 		{
-			GetVkFormat(mFormat),
+			ToVkFormat(mFormat),
 			VK_FORMAT_R8G8B8A8_SRGB,
 			VK_FORMAT_B8G8R8A8_UNORM,
 			VK_FORMAT_R8G8B8A8_UNORM,
@@ -145,10 +122,10 @@ namespace rhi::vulkan
 			}
 		}
 
-		if (selectedFormat.format != GetVkFormat(mFormat))
+		if (selectedFormat.format != ToVkFormat(mFormat))
 		{
-			LOG_WARNING("Requested color format is not supported and replaced by %s", GetFormatInfo(GetFormat(selectedFormat.format)).name);
-			mFormat = GetFormat(selectedFormat.format);
+			LOG_WARNING("Requested color format is not supported and replaced by %s", GetFormatInfo(ToTextureFormat(selectedFormat.format)).name);
+			mFormat = ToTextureFormat(selectedFormat.format);
 		}
 
 		// Store the current swap chain handle so we can use it later on to ease up recreation
@@ -160,15 +137,15 @@ namespace rhi::vulkan
 
 		// Get physical device surface properties and formats
 		VkSurfaceCapabilitiesKHR surfCaps;
-		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->GetVkPhysicalDevice(), mVkSurface, &surfCaps);
+		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->GetVkPhysicalDevice(), surface->GetHandle(), &surfCaps);
 
 		// Get available present modes
 		uint32_t presentModeCount;
-		vkGetPhysicalDeviceSurfacePresentModesKHR(device->GetVkPhysicalDevice(), mVkSurface, &presentModeCount, NULL);
+		vkGetPhysicalDeviceSurfacePresentModesKHR(device->GetVkPhysicalDevice(), surface->GetHandle(), &presentModeCount, NULL);
 		assert(presentModeCount > 0);
 
 		std::vector<VkPresentModeKHR> presentModes(presentModeCount);
-		vkGetPhysicalDeviceSurfacePresentModesKHR(device->GetVkPhysicalDevice(), mVkSurface, &presentModeCount, presentModes.data());
+		vkGetPhysicalDeviceSurfacePresentModesKHR(device->GetVkPhysicalDevice(), surface->GetHandle(), &presentModeCount, presentModes.data());
 
 		VkExtent2D swapchainExtent = {};
 		// If width (and height) equals the special value 0xFFFFFFFF, the size of the surface will be set by the swapchain
@@ -184,7 +161,8 @@ namespace rhi::vulkan
 			// If the surface size is defined, the swap chain size must match
 			swapchainExtent = surfCaps.currentExtent;
 		}
-
+		mWidth = swapchainExtent.width;
+		mHeight = swapchainExtent.height;
 		// Select a present mode for the swapchain
 
 		VkPresentModeKHR presentMode;
@@ -271,7 +249,7 @@ namespace rhi::vulkan
 
 		VkSwapchainCreateInfoKHR swapchainCI = {};
 		swapchainCI.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-		swapchainCI.surface = mVkSurface;
+		swapchainCI.surface = surface->GetHandle();
 		swapchainCI.minImageCount = desiredNumberOfSwapchainImages;
 		swapchainCI.imageFormat = selectedFormat.format;
 		swapchainCI.imageColorSpace = selectedFormat.colorSpace;
@@ -299,7 +277,7 @@ namespace rhi::vulkan
 		}
 
 		VkResult err = vkCreateSwapchainKHR(device->GetHandle(), &swapchainCI, nullptr, &mHandle);
-		CHECK_VK_RESULT(err, "CreateSwapchain");
+		CHECK_VK_RESULT_FALSE(err, "CreateSwapchain");
 
 		// If an existing swap chain is re-created, destroy the old swap chain
 		// This also cleans up all the presentable images
@@ -325,7 +303,7 @@ namespace rhi::vulkan
 		vkGetSwapchainImagesKHR(device->GetHandle(), mHandle, &imageCount, NULL);
 		std::vector<VkImage> images{ imageCount };
 		err = vkGetSwapchainImagesKHR(device->GetHandle(), mHandle, &imageCount, images.data());
-		CHECK_VK_RESULT(err, "GetSwapchainImages");
+		CHECK_VK_RESULT_FALSE(err, "GetSwapchainImages");
 
 		mTextures.resize(imageCount);
 		mAquireImageSemaphoreAndFences.resize(imageCount);
@@ -333,12 +311,13 @@ namespace rhi::vulkan
 		{
 			TextureDesc desc{};
 			desc.dimension = TextureDimension::Texture2D;
-			desc.width = swapchainExtent.width;
-			desc.height = swapchainExtent.height;
+			desc.width = mWidth;
+			desc.height = mHeight;
 			desc.format = mFormat;
 			desc.usage = TextureUsage::RenderAttachment;
-
 			mTextures[i].texture = SwapChainTexture::Create(device, desc, images[i]);
+			mTextures[i].defualtView = mTextures[i].texture->APICreateView();
+
 			VkSemaphoreCreateInfo semaphoreCI{};
 			semaphoreCI.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 			vkCreateSemaphore(device->GetHandle(), &semaphoreCI, nullptr, &mAquireImageSemaphoreAndFences[i].semaphore);
@@ -348,11 +327,14 @@ namespace rhi::vulkan
 			fenceCI.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 			vkCreateFence(device->GetHandle(), &fenceCI, nullptr, &mAquireImageSemaphoreAndFences[i].fence);
 		}
+
+		return true;
 	}
 
 	void SwapChain::DestroySwapChain()
 	{
-		Device* device = checked_cast<Device>(mDevice.Get());
+		Surface* surface = checked_cast<Surface>(mSurface);
+		Device* device = checked_cast<Device>(mDevice);
 		Queue* queue = checked_cast<Queue>(device->GetQueue(QueueType::Graphics).Get());
 		
 		for (auto& [semaphore, fence] : mAquireImageSemaphoreAndFences)
@@ -366,21 +348,23 @@ namespace rhi::vulkan
 			queue->GetDeleter()->DeleteWhenUnused(perTexture.renderingDoneSemaphore);
 		}
 
-		// We will postpone the determination of whether it is null until it is about to be deleted, 
-		// where the destruction order will be guaranteed.
-		queue->GetDeleter()->DeleteWhenUnused({ mVkSurface, mHandle });
-		mHandle = VK_NULL_HANDLE;
-		mVkSurface = VK_NULL_HANDLE;
+		if (mHandle != VK_NULL_HANDLE)
+		{
+			//queue->GetDeleter()->DeleteWhenUnused(mHandle);
+			vkDestroySwapchainKHR(device->GetHandle(), mHandle, nullptr);
+			mHandle = VK_NULL_HANDLE;
+		}
+		mTextures.clear();
 	}
 
 	SurfaceAcquireNextTextureStatus SwapChain::AcquireNextTexture()
 	{
-		AcquireNextTextureImpl(false);
+		return AcquireNextTextureImpl(false);
 	}
 
 	SurfaceAcquireNextTextureStatus SwapChain::AcquireNextTextureImpl(bool isReentrant)
 	{
-		Device* device = checked_cast<Device>(mDevice.Get());
+		Device* device = checked_cast<Device>(mDevice);
 
 		SurfaceAcquireNextTextureStatus status{};
 
@@ -401,6 +385,17 @@ namespace rhi::vulkan
 			break;
 		}
 		case VK_SUBOPTIMAL_KHR:
+		{
+			status = SurfaceAcquireNextTextureStatus::Suboptimal;
+			if (isReentrant)
+			{
+				status = SurfaceAcquireNextTextureStatus::SurfaceLost;
+				break;
+			}
+			// Re-initialize the VkSwapchain and try getting the texture again.
+			Initialize(this);
+			return AcquireNextTextureImpl(true);
+		}
 		case VK_ERROR_OUT_OF_DATE_KHR:
 		{
 			status = SurfaceAcquireNextTextureStatus::Outdated;
@@ -433,6 +428,11 @@ namespace rhi::vulkan
 		waitInfo.value = 0;
 	}
 
+	Ref<TextureViewBase> SwapChain::GetCurrentTextureView()
+	{
+		return mTextures[mImageIndex].defualtView;
+	}
+
 	Ref<TextureBase> SwapChain::GetCurrentTexture()
 	{
 		return mTextures[mImageIndex].texture;
@@ -440,7 +440,7 @@ namespace rhi::vulkan
 
 	void SwapChain::Present()
 	{
-		Device* device = checked_cast<Device>(mDevice.Get());
+		Device* device = checked_cast<Device>(mDevice);
 		Queue* queue = checked_cast<Queue>(device->GetQueue(QueueType::Graphics).Get());
 
 		VkSemaphore semaphore = mTextures[mImageIndex].renderingDoneSemaphore;
@@ -448,7 +448,7 @@ namespace rhi::vulkan
 		VkSemaphoreSubmitInfo& signalInfo = queue->GetPendingRecordingContext()->signalSemaphoreSubmitInfos.emplace_back();
 		signalInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
 		signalInfo.pNext = nullptr;
-		signalInfo.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+		signalInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 		signalInfo.semaphore = semaphore;
 		signalInfo.value = 0;
 

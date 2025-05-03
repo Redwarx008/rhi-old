@@ -1,21 +1,22 @@
 #pragma once
 
-#include "rhi/RHIStruct.h"
+#include "RHIStruct.h"
 #include "common/Ref.hpp"
 #include "common/RefCounted.h"
 #include "ResourceBase.h"
 #include "FeatureSet.h"
 #include "CallbackTaskManager.h"
+#include "QueueBase.h"
 #include <array>
 
-namespace rhi
+namespace rhi::impl
 {
 	class DeviceBase : public RefCounted
 	{
 	public:
-		//ISwapChain* CreateSwapChain(const SwapChainDesc& desc);
 		AdapterBase* APIGetAdapter() const;
 		QueueBase* APIGetQueue(QueueType queueType);
+		PipelineLayoutBase* APICreatePipelineLayout(const PipelineLayoutDesc& desc);
 		RenderPipelineBase* APICreateRenderPipeline(const RenderPipelineDesc& desc);
 		ComputePipelineBase* APICreateComputePipeline(const ComputePipelineDesc& desc);
 		BindSetLayoutBase* APICreateBindSetLayout(const BindSetLayoutDesc& desc);
@@ -28,7 +29,8 @@ namespace rhi
 		void APITick();
 
 		Ref<QueueBase> GetQueue(QueueType queueType);
-		virtual Ref<SwapChainBase> CreateSwapChain(Surface* surface, SwapChainBase* previous, const SurfaceConfiguration& config) = 0;
+		virtual Ref<SwapChainBase> CreateSwapChain(SurfaceBase* surface, SwapChainBase* previous, const SurfaceConfiguration& config) = 0;
+		virtual Ref<PipelineLayoutBase> CreatePipelineLayout(const PipelineLayoutDesc& desc) = 0;
 		virtual Ref<RenderPipelineBase> CreateRenderPipeline(const RenderPipelineDesc& desc) = 0;
 		virtual Ref<ComputePipelineBase> CreateComputePipeline(const ComputePipelineDesc& desc) = 0;
 		virtual Ref<BindSetLayoutBase> CreateBindSetLayout(const BindSetLayoutDesc& desc) = 0;
@@ -46,7 +48,7 @@ namespace rhi
 		CallbackTaskManager& GetCallbackTaskManager();
 	protected:
 		explicit DeviceBase(AdapterBase* adapter, const DeviceDesc& desc);
-		~DeviceBase() noexcept = default;
+		~DeviceBase();
 		bool HasRequiredFeature(FeatureName feature);
 		void CreateEmptyBindSetLayout();
 		void DestroyObjects();

@@ -11,7 +11,7 @@
 #include "../SubresourceStorage.hpp"
 #include "../SyncScopeUsageTracker.h"
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	class Device;
 	class Queue;
@@ -36,7 +36,7 @@ namespace rhi::vulkan
 
 		void TransitionUsageNow(Queue* queue, TextureUsage usage, const SubresourceRange& range, ShaderStage shaderStages = ShaderStage::None);
 	protected:
-		explicit Texture(Device* device, const TextureDesc& desc) noexcept;
+		explicit Texture(Device* device, const TextureDesc& desc);
 		~Texture();
 		VkImage mHandle = VK_NULL_HANDLE;
 		SubresourceStorage<TextureSyncInfo> mSubresourceLastSyncInfos;
@@ -55,7 +55,7 @@ namespace rhi::vulkan
 	public:
 		static Ref<SwapChainTexture> Create(Device* device, const TextureDesc& desc, VkImage nativeImage);
 	private:
-		explicit SwapChainTexture(Device* device, const TextureDesc& desc) noexcept;
+		explicit SwapChainTexture(Device* device, const TextureDesc& desc);
 		~SwapChainTexture();
 		void Initialize(VkImage nativeImage);
 		void DestroyImpl() override;
@@ -75,9 +75,9 @@ namespace rhi::vulkan
 		VkImageView mHandle = VK_NULL_HANDLE;
 	};
 
-	VkFormat GetVkFormat(TextureFormat format);
+	VkFormat ToVkFormat(TextureFormat format);
 
-	TextureFormat GetFormat(VkFormat format);
+	TextureFormat ToTextureFormat(VkFormat format);
 
 	VkImageUsageFlags GetVkImageUsageFlags(TextureUsage usage, TextureFormat format);
 

@@ -1,9 +1,12 @@
 #pragma once
 
-#include "rhi/RHIStruct.h"
+
+#include "../RHIStruct.h"
+#include "Utils.h"
+#include <iostream>
 #include <absl/strings/str_format.h>
 
-namespace rhi
+namespace rhi::impl
 {
 	extern LoggingCallback gDebugMessageCallback;
 	extern void* gDebugMessageCallbackUserData;

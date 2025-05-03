@@ -1,12 +1,15 @@
 #pragma once
 
-#include <array>
-#include <string_view>
 #include "CommandAllocator.h"
 #include "common/Constants.h"
 #include "common/Ref.hpp"
+#include "Subresource.h"
+#include "BufferBase.h"
+#include "BindSetBase.h"
+#include <array>
+#include <string_view>
 
-namespace rhi
+namespace rhi::impl
 {
 	enum class Command
 	{
@@ -29,7 +32,7 @@ namespace rhi
         SetRenderPipeline,
         SetComputePipeline,
         SetViewport,
-        SetScissorRect,
+        SetScissorRects,
         SetIndexBuffer,
         SetVertexBuffer,
         SetPushConstant,
@@ -45,6 +48,8 @@ namespace rhi
 
     struct RenderPassColorAttachment
     {
+        RenderPassColorAttachment();
+        ~RenderPassColorAttachment();
         Ref<TextureViewBase> view;
         Ref<TextureViewBase> resolveView;
         LoadOp loadOp;
@@ -55,6 +60,8 @@ namespace rhi
 
     struct RenderPassDepthStencilAttachment
     {
+        RenderPassDepthStencilAttachment();
+        ~RenderPassDepthStencilAttachment();
         Ref<TextureViewBase> view;
         LoadOp depthLoadOp;
         StoreOp depthStoreOp;
@@ -67,8 +74,8 @@ namespace rhi
 
     struct BeginRenderPassCmd
     {
-        BeginRenderPassCmd() = default;
-        ~BeginRenderPassCmd() = default;
+        BeginRenderPassCmd();
+        ~BeginRenderPassCmd();
         std::array<RenderPassColorAttachment, cMaxColorAttachments> colorAttachments;
         RenderPassDepthStencilAttachment depthStencilAttachment;
         uint8_t colorAttachmentCount;
@@ -77,15 +84,14 @@ namespace rhi
 
     struct BeginComputePassCmd
     {
-        BeginComputePassCmd() = default;
-        ~BeginComputePassCmd() = default;
-        std::string label;
+        BeginComputePassCmd();
+        ~BeginComputePassCmd();
     };
 
     struct ClearBufferCmd 
     {
-        ClearBufferCmd() = default;
-        ~ClearBufferCmd() = default;
+        ClearBufferCmd();
+        ~ClearBufferCmd();
 
         Ref<BufferBase> buffer;
         uint32_t value;
@@ -95,8 +101,8 @@ namespace rhi
 
     struct CopyBufferToBufferCmd
     {
-        CopyBufferToBufferCmd() = default;
-        ~CopyBufferToBufferCmd() = default;
+        CopyBufferToBufferCmd();
+        ~CopyBufferToBufferCmd();
 
         Ref<BufferBase> srcBuffer;
         uint64_t srcOffset;
@@ -107,8 +113,8 @@ namespace rhi
 
     struct CopyBufferToTextureCmd
     {
-        CopyBufferToTextureCmd() = default;
-        ~CopyBufferToTextureCmd() = default;
+        CopyBufferToTextureCmd();
+        ~CopyBufferToTextureCmd();
 
         Ref<BufferBase> srcBuffer;
         TextureDataLayout dataLayout;
@@ -121,8 +127,8 @@ namespace rhi
 
     struct CopyTextureToBufferCmd
     {
-        CopyTextureToBufferCmd() = default;
-        ~CopyTextureToBufferCmd() = default;
+        CopyTextureToBufferCmd();
+        ~CopyTextureToBufferCmd();
 
         Ref<TextureBase> srcTexture;
         TextureDataLayout dataLayout;
@@ -135,8 +141,8 @@ namespace rhi
 
     struct CopyTextureToTextureCmd
     {
-        CopyTextureToTextureCmd() = default;
-        ~CopyTextureToTextureCmd() = default;
+        CopyTextureToTextureCmd();
+        ~CopyTextureToTextureCmd();
 
         Ref<TextureBase> srcTexture;
         uint32_t srcMipLevel;
@@ -153,8 +159,8 @@ namespace rhi
 
     struct MapBufferAsyncCmd
     {
-        MapBufferAsyncCmd() = default;
-        ~MapBufferAsyncCmd() = default;
+        MapBufferAsyncCmd();
+        ~MapBufferAsyncCmd();
 
         Ref<BufferBase> buffer;
         MapMode mapMode;
@@ -164,8 +170,8 @@ namespace rhi
 
     struct BeginDebugLabelCmd
     {
-        BeginDebugLabelCmd() = default;
-        ~BeginDebugLabelCmd() = default;
+        BeginDebugLabelCmd();
+        ~BeginDebugLabelCmd();
         
         uint32_t labelLength;
         Color color;
@@ -173,41 +179,32 @@ namespace rhi
 
     struct EndDebugLabelCmd
     {
-        EndDebugLabelCmd() = default;
-        ~EndDebugLabelCmd() = default;
+        EndDebugLabelCmd();
+        ~EndDebugLabelCmd();
     };
 
-    inline const char* EnsureValidString(CommandAllocator& allocator, std::string_view s, uint32_t* length) {
-        *length = s.length() + 1;
-
-        // Include extra null-terminator character. The string_view may not be null-terminated. It also
-        // may already have a null-terminator inside of it, in which case adding the null-terminator is
-        // unnecessary. However, this is unlikely, so always include the extra character.
-        char* out = allocator.AllocateData<char>(s.length() + 1);
-        memcpy(out, s.data(), s.length());
-        out[s.length()] = '\0';
-
-        return out;
-    }
+    const char* EnsureValidString(CommandAllocator& allocator, std::string_view s, uint32_t* length);
 
     struct SetRenderPipelineCmd
     {
-        SetRenderPipelineCmd() = default;
-        ~SetRenderPipelineCmd() = default;
+        SetRenderPipelineCmd();
+        ~SetRenderPipelineCmd();
 
         Ref<RenderPipelineBase> pipeline;
     };
 
     struct VertexBuffer
     {
+        VertexBuffer();
+        ~VertexBuffer();
         Ref<BufferBase> buffer;
         uint64_t offset;
     };
 
     struct SetVertexBufferCmd
     {
-        SetVertexBufferCmd() = default;
-        ~SetVertexBufferCmd() = default;
+        SetVertexBufferCmd();
+        ~SetVertexBufferCmd();
 
         std::array<VertexBuffer, cMaxVertexBuffers> buffers;
         uint32_t bufferCount;
@@ -216,8 +213,8 @@ namespace rhi
 
     struct SetIndexBufferCmd
     {
-        SetIndexBufferCmd() = default;
-        ~SetIndexBufferCmd() = default;
+        SetIndexBufferCmd();
+        ~SetIndexBufferCmd();
 
         Ref<BufferBase> buffer;
         IndexFormat format;
@@ -227,8 +224,8 @@ namespace rhi
 
     struct SetScissorRectsCmd
     {
-        SetScissorRectsCmd() = default;
-        ~SetScissorRectsCmd() = default;
+        SetScissorRectsCmd();
+        ~SetScissorRectsCmd();
 
         std::array<Rect, cMaxColorAttachments> scissors;
         uint32_t scissorCount;
@@ -247,8 +244,8 @@ namespace rhi
 
     struct SetBindSetCmd
     {
-        SetBindSetCmd() = default;
-        ~SetBindSetCmd() = default;
+        SetBindSetCmd();
+        ~SetBindSetCmd();
 
         Ref<BindSetBase> set;
         uint32_t setIndex;
@@ -257,8 +254,8 @@ namespace rhi
 
     struct SetPushConstantCmd
     {
-        SetPushConstantCmd() = default;
-        ~SetPushConstantCmd() = default;
+        SetPushConstantCmd();
+        ~SetPushConstantCmd();
         uint32_t size;
     };
 
@@ -282,8 +279,8 @@ namespace rhi
 
     struct DrawIndirectCmd 
     {
-        DrawIndirectCmd() = default;
-        ~DrawIndirectCmd() = default;
+        DrawIndirectCmd();
+        ~DrawIndirectCmd();
 
         Ref<BufferBase> indirectBuffer;
         uint64_t indirectOffset;
@@ -295,8 +292,8 @@ namespace rhi
 
     struct MultiDrawIndirectCmd
     {
-        MultiDrawIndirectCmd() = default;
-        ~MultiDrawIndirectCmd() = default;
+        MultiDrawIndirectCmd();
+        ~MultiDrawIndirectCmd();
 
         Ref<BufferBase> indirectBuffer;
         uint64_t indirectOffset;
@@ -311,16 +308,49 @@ namespace rhi
 
     struct EndRenderPassCmd
     {
-
+        EndRenderPassCmd();
+        ~EndRenderPassCmd();
     };
 
     struct SetViewportCmd
     {
-        SetViewportCmd() = default;
-        ~SetViewportCmd() = default;
+        SetViewportCmd();
+        ~SetViewportCmd();
 
         std::array<Viewport, cMaxColorAttachments> viewports;
         uint32_t viewportCount;
         uint32_t firstViewport;
     };
+
+    struct SetComputePipelineCmd
+    {
+        SetComputePipelineCmd();
+        ~SetComputePipelineCmd();
+
+        Ref<ComputePipelineBase> pipeline;
+    };
+
+    struct DispatchCmd
+    {
+        uint32_t x;
+        uint32_t y;
+        uint32_t z;
+    };
+
+    struct DispatchIndirectCmd
+    {
+        DispatchIndirectCmd();
+        ~DispatchIndirectCmd();
+
+        Ref<BufferBase> indirectBuffer;
+        uint64_t indirectOffset;
+    };
+
+    struct EndComputePassCmd
+    {
+        EndComputePassCmd();
+        ~EndComputePassCmd();
+    };
+
+    void FreeCommands(CommandIterator* commands);
 }

@@ -1,22 +1,20 @@
 #pragma once
 
-#include "rhi/RHI.h"
+#include "RHIStruct.h"
 #include <string>
 #include "common/Ref.hpp"
 #include "common/RefCounted.h"
 
 
-namespace rhi
+namespace rhi::impl
 {
-	class InstanceBase;
-	class DeviceBase;
 	class AdapterBase : public RefCounted
 	{
 	public:
 		//api
-		virtual DeviceBase* CreateDevice(const DeviceDesc& desc) = 0;
-		AdapterInfo GetInfo() const;
-		Limits GetLimits() const;
+		virtual DeviceBase* APICreateDevice(const DeviceDesc& desc) = 0;
+		void APIGetInfo(AdapterInfo* info) const;
+		void APIGetLimits(Limits* limits) const;
 		InstanceBase* APIGetInstance() const;
 		//internal
 		Ref<InstanceBase> GetInstance() const;

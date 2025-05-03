@@ -3,11 +3,10 @@
 #include <vulkan/vulkan.h>
 #include "ResourceToDelete.h"
 #include "RefCountedHandle.h"
+#include "../common/Ref.hpp"
 #include "../common/SerialQueue.hpp"
 
-#include<tuple>
-
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	class Queue;
 
@@ -30,7 +29,7 @@ namespace rhi::vulkan
         void DeleteWhenUnused(VkSemaphore semaphore);
         void DeleteWhenUnused(VkFence fence);
         void DeleteWhenUnused(VkShaderModule module);
-        void DeleteWhenUnused(std::tuple<VkSurfaceKHR, VkSwapchainKHR> surfaceAndSwapChain);
+        void DeleteWhenUnused(VkSwapchainKHR swapChain);
         void DeleteWhenUnused(Ref<RefCountedHandle<BufferAllocation>> bufferAllocation);
         void DeleteWhenUnused(Ref<RefCountedHandle<ImageAllocation>> imageAllocation);
 
@@ -47,7 +46,7 @@ namespace rhi::vulkan
         SerialQueue<uint64_t, VkSampler> mSamplersToDelete;
         SerialQueue<uint64_t, VkSemaphore> mSemaphoresToDelete;
         SerialQueue<uint64_t, VkShaderModule> mShaderModulesToDelete;
-        SerialQueue<uint64_t, std::tuple<VkSurfaceKHR, VkSwapchainKHR>> mSurfaceAndSwapchainToDelete;
+        SerialQueue<uint64_t, VkSwapchainKHR> mSwapchainToDelete;
 
         SerialQueue<uint64_t, Ref<RefCountedHandle<ImageAllocation>>> mImageAllocationToDelete;
         SerialQueue<uint64_t, Ref<RefCountedHandle<BufferAllocation>>> mBufferAllocationToDelete;

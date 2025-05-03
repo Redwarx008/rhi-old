@@ -5,7 +5,7 @@
 
 #include <vulkan/vulkan.h>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	class Device;
 
@@ -15,10 +15,11 @@ namespace rhi::vulkan
 		static Ref<Sampler> Create(Device* device, const SamplerDesc& desc);
 		VkSampler GetHandle() const;
 	private:
-		explicit  Sampler(Device* device, const SamplerDesc& desc) noexcept;
+		explicit  Sampler(Device* device, const SamplerDesc& desc);
 		~Sampler();
 		bool Initialize(const SamplerDesc& desc);
 		void DestroyImpl() override;
-		VkSampler mHandle;
+
+		VkSampler mHandle = VK_NULL_HANDLE;
 	};
 }

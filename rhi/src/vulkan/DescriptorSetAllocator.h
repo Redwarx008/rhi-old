@@ -10,7 +10,7 @@
 #include <mutex>
 #include <array>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	class Queue;
 	class Device;
@@ -19,12 +19,12 @@ namespace rhi::vulkan
 	class DescriptorSetAllocator : public RefCounted
 	{
 	public:
-		static Ref<DescriptorSetAllocator> Create(Device* device, std::unordered_map<VkDescriptorType, uint32_t> descriptorCountPerType);
+		static Ref<DescriptorSetAllocator> Create(Device* device, std::unordered_map<VkDescriptorType, uint32_t>&& descriptorCountPerType);
 		DescriptorSetAllocation Allocate(BindSetLayout* layout);
 		void Deallocate(DescriptorSetAllocation* allocationInfo, bool usedInGraphicsQueue, bool usedInComputeQueue);
 		void FinishDeallocation(Queue* queue, uint64_t completedSerial);
 	private:
-		explicit DescriptorSetAllocator(Device* device, std::unordered_map<VkDescriptorType, uint32_t> descriptorCountPerType);
+		explicit DescriptorSetAllocator(Device* device, std::unordered_map<VkDescriptorType, uint32_t>&& descriptorCountPerType);
 		~DescriptorSetAllocator();
 
 		void AllocateDescriptorPool(BindSetLayout* layout);

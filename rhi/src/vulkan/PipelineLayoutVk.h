@@ -5,7 +5,7 @@
 
 #include <vulkan/vulkan.h>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	class Device;
 
@@ -16,7 +16,7 @@ namespace rhi::vulkan
 		VkPipelineLayout GetHandle() const;
 		VkShaderStageFlags GetPushConstantVisibility() const;
 	private:
-		explicit PipelineLayout(Device* device, const PipelineLayoutDesc& desc) noexcept;
+		explicit PipelineLayout(Device* device, const PipelineLayoutDesc& desc);
 		~PipelineLayout();
 		bool Initialize(const PipelineLayoutDesc& desc);
 		void DestroyImpl() override;

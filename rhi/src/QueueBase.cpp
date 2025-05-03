@@ -5,10 +5,12 @@
 #include "common/Utils.h"
 #include "common/Error.h"
 
-namespace rhi
+namespace rhi::impl
 {
-	QueueBase::QueueBase(DeviceBase* device) :
-		mDevice(device)
+	QueueBase::QueueBase(DeviceBase* device, QueueType type) :
+		mDevice(device),
+		mQueueType(type),
+		mUploadAllocator(std::make_unique<UploadAllocator>(device))
 	{
 
 	}
@@ -104,7 +106,7 @@ namespace rhi
 
 	void QueueBase::APIWriteBuffer(BufferBase* buffer, const void* data, uint64_t dataSize, uint64_t offset)
 	{
-		ASSERT(HasFlag(buffer->APIGetUsage(), BufferUsage::CopyDst));
+		//ASSERT(HasFlag(buffer->APIGetUsage(), BufferUsage::CopyDst));
 		INVALID_IF(dataSize > buffer->APIGetSize() - offset || offset > buffer->APIGetSize(),
 			"Write range (bufferOffset: %u, size: %u) does not fit in %s size (%u).",
 			offset, dataSize, buffer, buffer->APIGetSize());

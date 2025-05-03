@@ -5,7 +5,7 @@
 #include <vector>
 #include <unordered_set>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	class Buffer;
 

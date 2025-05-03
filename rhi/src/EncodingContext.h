@@ -2,8 +2,10 @@
 
 #include "CommandAllocator.h"
 #include "SyncScopeUsageTracker.h"
+
 #include <vector>
-namespace rhi
+
+namespace rhi::impl
 {
 	class RenderPassEncoder;
 

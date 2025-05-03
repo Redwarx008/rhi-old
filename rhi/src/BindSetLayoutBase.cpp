@@ -1,11 +1,12 @@
 #include "BindSetLayoutBase.h"
+#include "DeviceBase.h"
 
 #include "common/Error.h"
 #include "common/Constants.h"
-#include "DeviceBase.h"
+
 #include <algorithm>
 
-namespace rhi
+namespace rhi::impl
 {
 
 	BindSetLayoutBase::BindSetLayoutBase(DeviceBase* device, const BindSetLayoutDesc& desc) :
@@ -19,24 +20,22 @@ namespace rhi
 	{
 		ResourceBase::Initialize();
 
-		mEntries.reserve(desc.entryCount);
+		uint32_t maxBinding = 0;
 		for (uint32_t i = 0; i < desc.entryCount; ++i)
 		{
-			mEntries.push_back(desc.entries[i]);
+			maxBinding = (std::max(maxBinding, desc.entries[i].binding));
 		}
 
-		std::sort(mEntries.begin(), mEntries.end(), [](const BindSetLayoutEntry& a, const BindSetLayoutEntry& b)
-			{
-				return a.binding < b.binding;
-			});
+		ASSERT(maxBinding < cMaxBindingsPerBindSet);
+		mBindingIndexToInfoMap.resize(maxBinding + 1);
 
-		ASSERT(mEntries.cend()->binding < cMaxBindingsPerBindSet);
-		mBindingIndexToInfoMap.reserve(mEntries.cend()->binding);
 
-		for (const auto& entry : mEntries)
+		for (uint32_t i = 0; i < desc.entryCount; ++i)
 		{
+			auto& entry = desc.entries[i];
 			mBindingIndexToInfoMap[entry.binding].type = entry.type;
 			mBindingIndexToInfoMap[entry.binding].visibility = entry.visibleStages;
+			mBindingIndexToInfoMap[entry.binding].hasDynamicOffset = entry.hasDynamicOffset;
 		}
 	}
 
@@ -55,5 +54,11 @@ namespace rhi
 	{
 		ASSERT(binding < mBindingIndexToInfoMap.size());
 		return mBindingIndexToInfoMap[binding].visibility;
+	}
+
+	bool BindSetLayoutBase::HasDynamicOffset(uint32_t binding) const
+	{
+		ASSERT(binding < mBindingIndexToInfoMap.size());
+		return mBindingIndexToInfoMap[binding].hasDynamicOffset;
 	}
 }

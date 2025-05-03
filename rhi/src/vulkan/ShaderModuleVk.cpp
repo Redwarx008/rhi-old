@@ -6,7 +6,7 @@
 
 //#include <spirv_reflect.h>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	ShaderModule::ShaderModule(Device* device, const ShaderModuleDesc& desc) :
 		ShaderModuleBase(device, desc)

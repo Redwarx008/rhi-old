@@ -6,7 +6,7 @@
 #include "common/Constants.h"
 #include "common/Error.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	void SyncScopeUsageTracker::BufferUsedAs(BufferBase* buffer,
 		BufferUsage usage,
@@ -49,40 +49,40 @@ namespace rhi
 			ShaderStage visibility = set->GetLayout()->GetVisibility(bindingEntry.binding);
 			switch (type)
 			{
-			case rhi::BindingType::CombinedTextureSampler:
-			case rhi::BindingType::SampledTexture:
+			case BindingType::CombinedTextureSampler:
+			case BindingType::SampledTexture:
 			{
 				TextureViewUsedAs(bindingEntry.textureView, TextureUsage::SampledBinding, visibility);
 				break;
 			}
-			case rhi::BindingType::StorageTexture:
+			case BindingType::StorageTexture:
 			{
 				TextureViewUsedAs(bindingEntry.textureView, TextureUsage::StorageBinding, visibility);
 				break;
 			}
-			case rhi::BindingType::ReadOnlyStorageTexture:
+			case BindingType::ReadOnlyStorageTexture:
 			{
 				TextureViewUsedAs(bindingEntry.textureView, cReadOnlyStorageTexture, visibility);
 				break;
 			}
-			case rhi::BindingType::UniformBuffer:
+			case BindingType::UniformBuffer:
 			{
 				BufferUsedAs(bindingEntry.buffer, BufferUsage::Uniform, visibility);
 				break;
 			}
-			case rhi::BindingType::StorageBuffer:
+			case BindingType::StorageBuffer:
 			{
 				BufferUsedAs(bindingEntry.buffer, BufferUsage::Storage, visibility);
 				break;
 			}
-			case rhi::BindingType::ReadOnlyStorageBuffer:
+			case BindingType::ReadOnlyStorageBuffer:
 			{
 				BufferUsedAs(bindingEntry.buffer, cReadOnlyStorageBuffer, visibility);
 				break;
 			}
-			case rhi::BindingType::Sampler:
+			case BindingType::Sampler:
 				break;
-			case rhi::BindingType::None:
+			case BindingType::None:
 			default:
 				ASSERT(!"Unreachable");
 				break;

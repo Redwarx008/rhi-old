@@ -1,10 +1,9 @@
 #pragma once
 
-#include "rhi/RHIStruct.h"
-
 #include <bitset>
+#include "RHIStruct.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	
 	class FeatureSet
@@ -19,7 +18,7 @@ namespace rhi
 			return mSet[static_cast<uint32_t>(feature)];
 		}
 	private:
-		static const uint32_t cFeatureCount = 14;
+		static const uint32_t cFeatureCount = static_cast<uint32_t>(FeatureName::Count);
 		std::bitset<cFeatureCount> mSet;
 	};
 }

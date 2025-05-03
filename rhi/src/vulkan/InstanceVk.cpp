@@ -1,5 +1,6 @@
 #include "InstanceVk.h"
 #include "AdapterVk.h"
+#include "SurfaceVk.h"
 #include "ErrorsVk.h"
 
 #include <vector>
@@ -7,7 +8,7 @@
 #include <string>
 #include <sstream>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	static VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessageCallback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -230,17 +231,16 @@ namespace rhi::vulkan
 		return true;
 	}
 
-	void Instance::EnumerateAdapters(AdapterBase** const adapters, uint32_t* adapterCount)
+	void Instance::APIEnumerateAdapters(AdapterBase** const adapters, uint32_t* adapterCount)
 	{
 		uint32_t deviceCount = 0;
 		vkEnumeratePhysicalDevices(mHandle, &deviceCount, nullptr);
 
-		if (deviceCount == 0)
+		*adapterCount = deviceCount;
+		if (adapters == nullptr)
 		{
-			LOG_ERROR("No physical device with Vulkan support found");
 			return;
 		}
-		*adapterCount = deviceCount;
 
 		std::vector<VkPhysicalDevice> physicalDevices(deviceCount);
 		vkEnumeratePhysicalDevices(mHandle, &deviceCount, physicalDevices.data());
@@ -249,6 +249,12 @@ namespace rhi::vulkan
 		{
 			adapters[i] = new Adapter(this, physicalDevices[i]);
 		}
+	}
+
+	SurfaceBase* Instance::APICreateSurface(void* hwnd, void* hinstance)
+	{
+		Ref<SurfaceBase> surface = Surface::CreateFromWindowsHWND(this, hwnd, hinstance);
+		return surface.Detach();
 	}
 
 	VkInstance Instance::GetHandle() const

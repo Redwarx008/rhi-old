@@ -1,11 +1,11 @@
 #pragma once
 
-#include "rhi/RHIStruct.h"
+#include "RHIStruct.h"
 #include "ResourceBase.h"
 
 #include <array>
 
-namespace rhi
+namespace rhi::impl
 {
 	class DeviceBase;
 
@@ -24,12 +24,13 @@ namespace rhi
 		BufferUsage APIGetUsage() const;
 		uint64_t APIGetSize() const;
 		virtual void* APIGetMappedPointer() = 0;
+		void APIDestroy();
 		// internal methods
 		ResourceType GetType() const override;
 		void OnMapAsync(QueueBase* queue, MapMode usage, BufferMapCallback callback, void* userData);
 		void OnMapCallbackCompleted(BufferMapAsyncStatus status);
 	protected:
-		explicit BufferBase(DeviceBase* device, const BufferDesc& desc) noexcept;
+		explicit BufferBase(DeviceBase* device, const BufferDesc& desc);
 		~BufferBase();
 		void Initialize();
 		struct UsageTrackInQueue;
@@ -40,7 +41,7 @@ namespace rhi
 		const ShareMode mShareMode;
 		const uint64_t mSize = 0;
 
-		State mState;
+		State mState = State::Unmapped;
 
 		QueueType mLastUsedQueue = QueueType::Graphics;
 

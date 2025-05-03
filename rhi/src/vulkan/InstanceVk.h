@@ -5,7 +5,7 @@
 
 #include <vulkan/vulkan.h>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	class Instance final : public InstanceBase
 	{
@@ -13,8 +13,8 @@ namespace rhi::vulkan
 		static Ref<Instance> Create(const InstanceDesc& desc);
 		~Instance();
 
-		void EnumerateAdapters(AdapterBase** const adapters, uint32_t* adapterCount) override;
-
+		void APIEnumerateAdapters(AdapterBase** const adapters, uint32_t* adapterCount) override;
+		SurfaceBase* APICreateSurface(void* hwnd, void* hinstance) override;
 		VkInstance GetHandle() const;
 	private:
 		Instance() = default;

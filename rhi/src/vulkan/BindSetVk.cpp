@@ -10,7 +10,7 @@
 #include <array>
 #include <absl/container/inlined_vector.h>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	Ref<BindSet> BindSet::Create(Device* device, const BindSetDesc& desc)
 	{
@@ -39,7 +39,7 @@ namespace rhi::vulkan
 			
 			BindingType bindingType = desc.layout->GetBindingType(desc.entries[i].binding);
 
-			write.descriptorType = DescriptorTypeConvert(bindingType);
+			write.descriptorType = ToVkDescriptorType(bindingType, desc.layout->HasDynamicOffset(desc.entries[i].binding));
 
 			switch (bindingType)
 			{

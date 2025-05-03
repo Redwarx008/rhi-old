@@ -1,14 +1,14 @@
 #pragma once
 
 #include "PipelineBase.h"
-#include "rhi/RHIStruct.h"
+#include "RHIStruct.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	class RenderPipelineBase : public PipelineBase
 	{
 	public:
-		explicit RenderPipelineBase(DeviceBase* device, const RenderPipelineDesc& desc) noexcept;
+		explicit RenderPipelineBase(DeviceBase* device, const RenderPipelineDesc& desc);
 		~RenderPipelineBase();
 		ResourceType GetType() const override;
 	protected:

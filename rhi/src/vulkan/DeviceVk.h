@@ -3,10 +3,12 @@
 #include "../DeviceBase.h"
 #include "../common/Ref.hpp"
 #include "CommandRecordContextVk.h"
+#include "VulkanEXTFunctions.h"
+
 #include <vk_mem_alloc.h>
 #include <array>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	class Adapter;
 
@@ -22,7 +24,8 @@ namespace rhi::vulkan
 		static Ref<Device> Create(Adapter* adapter, const DeviceDesc& desc);
 		// api implementation
 		//void WaitIdle() override;
-		Ref<SwapChainBase> CreateSwapChain(Surface* surface, SwapChainBase* previous, const SurfaceConfiguration& config) override;
+		Ref<SwapChainBase> CreateSwapChain(SurfaceBase* surface, SwapChainBase* previous, const SurfaceConfiguration& config) override;
+		Ref<PipelineLayoutBase> CreatePipelineLayout(const PipelineLayoutDesc& desc) override;
 		Ref<RenderPipelineBase> CreateRenderPipeline(const RenderPipelineDesc& desc) override;
 		Ref<ComputePipelineBase> CreateComputePipeline(const ComputePipelineDesc& desc) override;
 		Ref<BindSetLayoutBase> CreateBindSetLayout(const BindSetLayoutDesc& desc) override;
@@ -39,16 +42,19 @@ namespace rhi::vulkan
 		const VkDeviceInfo& GetVkDeviceInfo() const;
 		uint32_t GetOptimalBytesPerRowAlignment() const override;
 		uint32_t GetOptimalBufferToTextureCopyOffsetAlignment() const override;
+
+		VulkanExtFunctions Fn{};
 	private:
 		explicit Device(Adapter* adapter, const DeviceDesc& desc);
-		~Device() noexcept;
+		~Device();
 		bool Initialize(const DeviceDesc& desc);
-
+		void LoadExtFunctions();
+			
 		VkDevice mHandle = VK_NULL_HANDLE;
 
 		VmaAllocator mMemoryAllocator = VK_NULL_HANDLE;
 
-		VkDeviceInfo mVkDeviceInfo;
+		VkDeviceInfo mVkDeviceInfo{};
 	};
 }
 

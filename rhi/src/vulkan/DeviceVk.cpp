@@ -4,6 +4,7 @@
 #include "QueueVk.h"
 #include "SwapChainVk.h"
 #include "CommandListVk.h"
+#include "PipelineLayoutVk.h"
 #include "RenderPipelineVk.h"
 #include "ComputePipelineVk.h"
 #include "BindSetLayoutVk.h"
@@ -26,7 +27,7 @@
 
 
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	Ref<Device> Device::Create(Adapter* adapter, const DeviceDesc& desc)
 	{
@@ -38,8 +39,10 @@ namespace rhi::vulkan
 		return device;
 	}
 
-	Device::Device(Adapter* adapter, const DeviceDesc& desc)
-		:DeviceBase(adapter, desc) {
+	Device::Device(Adapter* adapter, const DeviceDesc& desc) :
+		DeviceBase(adapter, desc)
+	{
+
 	}
 
 	bool Device::Initialize(const DeviceDesc& desc)
@@ -103,6 +106,7 @@ namespace rhi::vulkan
 		feature12.timelineSemaphore = true;
 		feature12.uniformBufferStandardLayout = true;
 		feature12.scalarBlockLayout = true;
+		feature12.separateDepthStencilLayouts = true;
 		feature12.pNext = &feature13;
 
 		uint32_t queueFamilyCount = 0;
@@ -178,14 +182,27 @@ namespace rhi::vulkan
 		{
 			if (queueFamlies[i].has_value())
 			{
-				mQueues[i] = Queue::Create(this, queueFamlies[i].value());
+				mQueues[i] = Queue::Create(this, queueFamlies[i].value(), static_cast<QueueType>(i));
 			}
 		}
 
 		mVkDeviceInfo.features = deviceFeatures;
 		vkGetPhysicalDeviceProperties(adapter->GetHandle(), &mVkDeviceInfo.properties);
 
+		LoadExtFunctions();
+
 		return true;
+	}
+
+	void Device::LoadExtFunctions()
+	{
+		Instance* instance = checked_cast<Instance>(checked_cast<Adapter>(APIGetAdapter())->APIGetInstance());
+		if (instance->IsDebugLayerEnabled())
+		{
+			Fn.vkCmdBeginDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance->GetHandle(), "vkCmdBeginDebugUtilsLabelEXT"));
+			Fn.vkCmdEndDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance->GetHandle(), "vkCmdBeginDebugUtilsLabelEXT"));
+			Fn.vkSetDebugUtilsObjectNameEXT = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(vkGetInstanceProcAddr(instance->GetHandle(), "vkSetDebugUtilsObjectNameEXT"));
+		}
 	}
 
 	VkDevice Device::GetHandle() const
@@ -246,9 +263,14 @@ namespace rhi::vulkan
 		return mMemoryAllocator;
 	}
 
-	Ref<SwapChainBase> Device::CreateSwapChain(Surface* surface, SwapChainBase* previous, const SurfaceConfiguration& config)
+	Ref<SwapChainBase> Device::CreateSwapChain(SurfaceBase* surface, SwapChainBase* previous, const SurfaceConfiguration& config)
 	{
 		return SwapChain::Create(this, surface, previous, config);
+	}
+
+	Ref<PipelineLayoutBase> Device::CreatePipelineLayout(const PipelineLayoutDesc& desc)
+	{
+		return PipelineLayout::Create(this, desc);
 	}
 
 	Ref<RenderPipelineBase> Device::CreateRenderPipeline(const RenderPipelineDesc& desc)
@@ -276,6 +298,7 @@ namespace rhi::vulkan
 		return Texture::Create(this, desc);
 	}
 
+	
 	Ref<BufferBase> Device::CreateBuffer(const BufferDesc& desc)
 	{
 		return Buffer::Create(this, desc);

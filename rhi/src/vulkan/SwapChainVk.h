@@ -6,28 +6,27 @@
 #include <memory>
 #include <vulkan/vulkan.h>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	class Device;
 	class SwapChainTexture;
 	class SwapChain final : public SwapChainBase
 	{
 	public:
-		static Ref<SwapChain> Create(Device* device, Surface* surface, SwapChainBase* previous, const SurfaceConfiguration& config);
+		static Ref<SwapChain> Create(Device* device, SurfaceBase* surface, SwapChainBase* previous, const SurfaceConfiguration& config);
 		~SwapChain();
 		VkSwapchainKHR GetHandle() const;
 		SurfaceAcquireNextTextureStatus AcquireNextTexture() override;
+		Ref<TextureViewBase> GetCurrentTextureView() override;
 		Ref<TextureBase> GetCurrentTexture() override;
 		void Present() override;
 		void DestroySwapChain();
 	private:
-		SwapChain(Device* device, Surface* surface, const SurfaceConfiguration& config);
+		SwapChain(Device* device, SurfaceBase* surface, const SurfaceConfiguration& config);
 		bool Initialize(SwapChainBase* previous);
-		VkSurfaceKHR CreateSurface(Surface* surface);
-		void CreateSwapChainInternal(SwapChainBase* previous);
+		bool CreateSwapChainInternal(SwapChainBase* previous);
 		SurfaceAcquireNextTextureStatus AcquireNextTextureImpl(bool isReentrant);
 
-		VkSurfaceKHR mVkSurface = VK_NULL_HANDLE;
 		VkSwapchainKHR mHandle = VK_NULL_HANDLE;
 
 		struct SemaphoreAndFence
@@ -43,6 +42,7 @@ namespace rhi::vulkan
 		struct PerTexture
 		{
 			Ref<SwapChainTexture> texture;
+			Ref<TextureViewBase> defualtView;
 			VkSemaphore renderingDoneSemaphore;
 		};
 

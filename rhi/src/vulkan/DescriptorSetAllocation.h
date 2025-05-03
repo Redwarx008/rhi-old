@@ -2,7 +2,7 @@
 
 #include <vulkan/vulkan.h>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	struct DescriptorSetAllocation
 	{

@@ -5,15 +5,15 @@
 #include "ErrorsVk.h"
 #include "../common/Utils.h"
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	VkFilter SamplerFilterConvert(FilterMode filter)
 	{
 		switch (filter)
 		{
-		case rhi::FilterMode::Linear:
+		case rhi::impl::FilterMode::Linear:
 			return VK_FILTER_LINEAR;
-		case rhi::FilterMode::nearest:
+		case rhi::impl::FilterMode::Nearest:
 			return VK_FILTER_NEAREST;
 		default:
 			break;
@@ -25,9 +25,9 @@ namespace rhi::vulkan
 	{
 		switch (filter)
 		{
-		case rhi::FilterMode::Linear:
+		case rhi::impl::FilterMode::Linear:
 			return VK_SAMPLER_MIPMAP_MODE_LINEAR;
-		case rhi::FilterMode::nearest:
+		case rhi::impl::FilterMode::Nearest:
 			return VK_SAMPLER_MIPMAP_MODE_NEAREST;
 		default:
 			break;
@@ -39,15 +39,15 @@ namespace rhi::vulkan
 	{
 		switch (mode)
 		{
-		case rhi::SamplerAddressMode::ClampToEdge:
+		case rhi::impl::SamplerAddressMode::ClampToEdge:
 			return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-		case rhi::SamplerAddressMode::Repeat:
+		case rhi::impl::SamplerAddressMode::Repeat:
 			return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		case rhi::SamplerAddressMode::ClampToBorder:
+		case rhi::impl::SamplerAddressMode::ClampToBorder:
 			return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-		case rhi::SamplerAddressMode::MirroredRepeat:
+		case rhi::impl::SamplerAddressMode::MirroredRepeat:
 			return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-		case rhi::SamplerAddressMode::MirrorClampToEdge:
+		case rhi::impl::SamplerAddressMode::MirrorClampToEdge:
 			return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
 		default:
 			break;

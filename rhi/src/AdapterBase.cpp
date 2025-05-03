@@ -1,8 +1,8 @@
 #include "AdapterBase.h"
 #include "InstanceBase.h"
-#include <cassert>
+#include "common/Error.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	AdapterBase::AdapterBase(InstanceBase* instance) :
 		mInstance(instance)
@@ -10,21 +10,20 @@ namespace rhi
 
 	AdapterBase::~AdapterBase() {}
 
-	AdapterInfo AdapterBase::GetInfo() const
+	void AdapterBase::APIGetInfo(AdapterInfo* info) const
 	{
-		AdapterInfo info{};
-		info.apiVersion = mApiVersion;
-		info.driverVersion = mDriverVersion;
-		info.deviceID = mDeviceID;
-		info.vendorID = mVendorID;
-		info.adapterType = mAdapterType;
-		info.deviceName = mDeviceName;
-		return info;
+		ASSERT(info != nullptr);
+		info->apiVersion = mApiVersion;
+		info->driverVersion = mDriverVersion;
+		info->deviceID = mDeviceID;
+		info->vendorID = mVendorID;
+		info->adapterType = mAdapterType;
+		info->deviceName = mDeviceName;
 	}
 
-	Limits AdapterBase::GetLimits() const
+	void AdapterBase::APIGetLimits(Limits* limits) const
 	{
-		return mLimits;
+		*limits = mLimits;
 	}
 
 	InstanceBase* AdapterBase::APIGetInstance() const

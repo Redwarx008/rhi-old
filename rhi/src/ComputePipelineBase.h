@@ -1,9 +1,9 @@
 #pragma once
 
-#include "rhi/RHIStruct.h"
+#include "RHIStruct.h"
 #include "PipelineBase.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	class ComputePipelineBase : public PipelineBase
 	{

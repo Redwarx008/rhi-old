@@ -2,10 +2,19 @@
 #include "AdapterBase.h"
 #include "InstanceBase.h"
 #include "QueueBase.h"
-#include "ResourceBase.h"
+#include "ShaderModuleBase.h"
+#include "SamplerBase.h"
+#include "BufferBase.h"
+#include "TextureBase.h"
 #include "CommandEncoder.h"
+#include "BindSetBase.h"
+#include "BindSetLayoutBase.h"
+#include "RenderPipelineBase.h"
+#include "ComputePipelineBase.h"
+#include "PipelineLayoutBase.h"
 
-namespace rhi
+
+namespace rhi::impl
 {
 	DeviceBase::DeviceBase(AdapterBase* adapter, const DeviceDesc& desc)
 		:mAdapter(adapter)
@@ -13,6 +22,8 @@ namespace rhi
 		SetFeatures(desc);
 		// Todo: create cache object.
 	}
+
+	DeviceBase::~DeviceBase() {}
 
 	void DeviceBase::SetFeatures(const DeviceDesc& desc)
 	{
@@ -136,6 +147,12 @@ namespace rhi
 	QueueBase* DeviceBase::APIGetQueue(QueueType queueType)
 	{
 		return GetQueue(queueType).Detach();
+	}
+
+	PipelineLayoutBase* DeviceBase::APICreatePipelineLayout(const PipelineLayoutDesc& desc)
+	{
+		Ref<PipelineLayoutBase> layout = CreatePipelineLayout(desc);
+		return layout.Detach();
 	}
 
 	AdapterBase* DeviceBase::APIGetAdapter() const

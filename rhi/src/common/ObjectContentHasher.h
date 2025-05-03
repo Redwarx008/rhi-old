@@ -32,7 +32,7 @@
 #include <vector>
 
 
-namespace rhi
+namespace rhi::impl
 {
     // Wrapper around std::hash to make it a templated function instead of a functor. It is marginally
     // nicer, and avoids adding to the std namespace to add hashing of other types.

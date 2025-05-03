@@ -7,7 +7,7 @@
 #include "ErrorsVk.h"
 #include "BindSetLayoutVk.h"
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 
 	// Not a real GPU limit, but used to optimize parts of rhi which expect valid usage of the
@@ -19,7 +19,7 @@ namespace rhi::vulkan
 
 	static constexpr uint32_t cMaxDescriptorsPerPool = 512;
 
-	DescriptorSetAllocator::DescriptorSetAllocator(Device* device, std::unordered_map<VkDescriptorType, uint32_t> descriptorCountPerType) :
+	DescriptorSetAllocator::DescriptorSetAllocator(Device* device, std::unordered_map<VkDescriptorType, uint32_t>&& descriptorCountPerType) :
 		mDevice(device)
 	{
 		// Compute the total number of descriptors for this layout.
@@ -56,6 +56,12 @@ namespace rhi::vulkan
 				vkDestroyDescriptorPool(mDevice->GetHandle(), pool.vkPool, nullptr);
 			}
 		}
+	}
+
+	Ref<DescriptorSetAllocator> DescriptorSetAllocator::Create(Device* device, std::unordered_map<VkDescriptorType, uint32_t>&& descriptorCountPerType)
+	{
+		Ref<DescriptorSetAllocator> allocator = AcquireRef(new DescriptorSetAllocator(device, std::move(descriptorCountPerType)));
+		return allocator;
 	}
 
 	DescriptorSetAllocation DescriptorSetAllocator::Allocate(BindSetLayout* layout) 

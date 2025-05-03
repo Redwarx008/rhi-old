@@ -1,10 +1,11 @@
 #include "PassEncoder.h"
+#include "CommandEncoder.h"
 #include "PipelineBase.h"
 #include "PipelineLayoutBase.h"
 #include "Commands.h"
 #include "common/Error.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	PassEncoder::PassEncoder(CommandEncoder* encoder, EncodingContext& encodingContext) :
 		mCommandEncoder(encoder),
@@ -15,7 +16,7 @@ namespace rhi
 
 	PassEncoder::~PassEncoder() {}
 
-	void PassEncoder::RecordSetBindSet(BindSetBase* set, uint32_t setIndex, uint32_t dynamicOffsetCount = 0, const uint32_t* dynamicOffsets = nullptr)
+	void PassEncoder::RecordSetBindSet(BindSetBase* set, uint32_t setIndex, uint32_t dynamicOffsetCount, const uint32_t* dynamicOffsets)
 	{
 		INVALID_IF(mLastPipeline == nullptr, "Must set pipeline before set BindSet.");
 		CommandAllocator& allocator = mEncodingContext.GetCommandAllocator();
@@ -45,12 +46,12 @@ namespace rhi
 		memcpy(pData, data, size);
 	}
 
-	void PassEncoder::APIBeginDebugLabel(std::string_view label, Color color = Color())
+	void PassEncoder::APIBeginDebugLabel(std::string_view label, const Color* color)
 	{
 		CommandAllocator& allocator = mEncodingContext.GetCommandAllocator();
 		BeginDebugLabelCmd* cmd = allocator.Allocate<BeginDebugLabelCmd>(Command::BeginDebugLabel);
 		EnsureValidString(allocator, label, &cmd->labelLength);
-		cmd->color = color;
+		cmd->color = color == nullptr ? Color() : *color;
 		++mDebugLabelCount;
 	}
 

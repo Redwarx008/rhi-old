@@ -2,7 +2,7 @@
 
 #include "common/Utils.h"
 
-namespace rhi
+namespace rhi::impl
 {
     SubresourceRange::SubresourceRange(Aspect _aspects, uint32_t _baseArrayLayer, uint32_t _layerCount, uint32_t _baseMipLevel, uint32_t _levelCount)
         :
@@ -44,14 +44,14 @@ namespace rhi
         assert(HasOneFlag(aspect));
         switch (aspect)
         {
-        case rhi::Aspect::Color:
-        case rhi::Aspect::Depth:
-        case rhi::Aspect::Plane0:
+        case Aspect::Color:
+        case Aspect::Depth:
+        case Aspect::Plane0:
             return 0;
-        case rhi::Aspect::Stencil:
-        case rhi::Aspect::Plane1:
+        case Aspect::Stencil:
+        case Aspect::Plane1:
             return 1;
-        case rhi::Aspect::Plane2:
+        case Aspect::Plane2:
             return 2;
         default:
             assert(!"unreachable");
@@ -62,76 +62,77 @@ namespace rhi
     {
         switch (format)
         {
-        case rhi::TextureFormat::R8_UINT:
-        case rhi::TextureFormat::R8_SINT:
-        case rhi::TextureFormat::R8_UNORM:
-        case rhi::TextureFormat::R8_SNORM:
-        case rhi::TextureFormat::RG8_UINT:
-        case rhi::TextureFormat::RG8_SINT:
-        case rhi::TextureFormat::RG8_UNORM:
-        case rhi::TextureFormat::RG8_SNORM:
-        case rhi::TextureFormat::R16_UINT:
-        case rhi::TextureFormat::R16_SINT:
-        case rhi::TextureFormat::R16_UNORM:
-        case rhi::TextureFormat::R16_SNORM:
-        case rhi::TextureFormat::R16_FLOAT:
-        case rhi::TextureFormat::BGRA4_UNORM:
-        case rhi::TextureFormat::B5G6R5_UNORM:
-        case rhi::TextureFormat::B5G5R5A1_UNORM:
-        case rhi::TextureFormat::RGBA8_UINT:
-        case rhi::TextureFormat::RGBA8_SINT:
-        case rhi::TextureFormat::RGBA8_UNORM:
-        case rhi::TextureFormat::RGBA8_SNORM:
-        case rhi::TextureFormat::BGRA8_UNORM:
-        case rhi::TextureFormat::RGBA8_SRGB:
-        case rhi::TextureFormat::BGRA8_SRGB:
-        case rhi::TextureFormat::R10G10B10A2_UNORM:
-        case rhi::TextureFormat::R11G11B10_FLOAT:
-        case rhi::TextureFormat::RG16_UINT:
-        case rhi::TextureFormat::RG16_SINT:
-        case rhi::TextureFormat::RG16_UNORM:
-        case rhi::TextureFormat::RG16_SNORM:
-        case rhi::TextureFormat::RG16_FLOAT:
-        case rhi::TextureFormat::R32_UINT:
-        case rhi::TextureFormat::R32_SINT:
-        case rhi::TextureFormat::R32_FLOAT:
-        case rhi::TextureFormat::RGBA16_UINT:
-        case rhi::TextureFormat::RGBA16_SINT:
-        case rhi::TextureFormat::RGBA16_FLOAT:
-        case rhi::TextureFormat::RGBA16_UNORM:
-        case rhi::TextureFormat::RGBA16_SNORM:
-        case rhi::TextureFormat::RG32_UINT:
-        case rhi::TextureFormat::RG32_SINT:
-        case rhi::TextureFormat::RG32_FLOAT:
-        case rhi::TextureFormat::RGB32_UINT:
-        case rhi::TextureFormat::RGB32_SINT:
-        case rhi::TextureFormat::RGB32_FLOAT:
-        case rhi::TextureFormat::RGBA32_UINT:
-        case rhi::TextureFormat::RGBA32_SINT:
-        case rhi::TextureFormat::RGBA32_FLOAT:
-        case rhi::TextureFormat::BC1_UNORM:
-        case rhi::TextureFormat::BC1_UNORM_SRGB:
-        case rhi::TextureFormat::BC2_UNORM:
-        case rhi::TextureFormat::BC2_UNORM_SRGB:
-        case rhi::TextureFormat::BC3_UNORM:
-        case rhi::TextureFormat::BC3_UNORM_SRGB:
-        case rhi::TextureFormat::BC4_UNORM:
-        case rhi::TextureFormat::BC4_SNORM:
-        case rhi::TextureFormat::BC5_UNORM:
-        case rhi::TextureFormat::BC5_SNORM:
-        case rhi::TextureFormat::BC6H_UFLOAT:
-        case rhi::TextureFormat::BC6H_SFLOAT:
-        case rhi::TextureFormat::BC7_UNORM:
-        case rhi::TextureFormat::BC7_UNORM_SRGB:
+        case TextureFormat::R8_UINT:
+        case TextureFormat::R8_SINT:
+        case TextureFormat::R8_UNORM:
+        case TextureFormat::R8_SNORM:
+        case TextureFormat::RG8_UINT:
+        case TextureFormat::RG8_SINT:
+        case TextureFormat::RG8_UNORM:
+        case TextureFormat::RG8_SNORM:
+        case TextureFormat::R16_UINT:
+        case TextureFormat::R16_SINT:
+        case TextureFormat::R16_UNORM:
+        case TextureFormat::R16_SNORM:
+        case TextureFormat::R16_FLOAT:
+        case TextureFormat::BGRA4_UNORM:
+        case TextureFormat::B5G6R5_UNORM:
+        case TextureFormat::B5G5R5A1_UNORM:
+        case TextureFormat::RGBA8_UINT:
+        case TextureFormat::RGBA8_SINT:
+        case TextureFormat::RGBA8_UNORM:
+        case TextureFormat::RGBA8_SNORM:
+        case TextureFormat::BGRA8_UNORM:
+        case TextureFormat::RGBA8_SRGB:
+        case TextureFormat::BGRA8_SRGB:
+        case TextureFormat::R10G10B10A2_UNORM:
+        case TextureFormat::R11G11B10_FLOAT:
+        case TextureFormat::RG16_UINT:
+        case TextureFormat::RG16_SINT:
+        case TextureFormat::RG16_UNORM:
+        case TextureFormat::RG16_SNORM:
+        case TextureFormat::RG16_FLOAT:
+        case TextureFormat::R32_UINT:
+        case TextureFormat::R32_SINT:
+        case TextureFormat::R32_FLOAT:
+        case TextureFormat::RGBA16_UINT:
+        case TextureFormat::RGBA16_SINT:
+        case TextureFormat::RGBA16_FLOAT:
+        case TextureFormat::RGBA16_UNORM:
+        case TextureFormat::RGBA16_SNORM:
+        case TextureFormat::RG32_UINT:
+        case TextureFormat::RG32_SINT:
+        case TextureFormat::RG32_FLOAT:
+        case TextureFormat::RGB32_UINT:
+        case TextureFormat::RGB32_SINT:
+        case TextureFormat::RGB32_FLOAT:
+        case TextureFormat::RGBA32_UINT:
+        case TextureFormat::RGBA32_SINT:
+        case TextureFormat::RGBA32_FLOAT:
+        case TextureFormat::BC1_UNORM:
+        case TextureFormat::BC1_UNORM_SRGB:
+        case TextureFormat::BC2_UNORM:
+        case TextureFormat::BC2_UNORM_SRGB:
+        case TextureFormat::BC3_UNORM:
+        case TextureFormat::BC3_UNORM_SRGB:
+        case TextureFormat::BC4_UNORM:
+        case TextureFormat::BC4_SNORM:
+        case TextureFormat::BC5_UNORM:
+        case TextureFormat::BC5_SNORM:
+        case TextureFormat::BC6H_UFLOAT:
+        case TextureFormat::BC6H_SFLOAT:
+        case TextureFormat::BC7_UNORM:
+        case TextureFormat::BC7_UNORM_SRGB:
             return Aspect::Color;
-        case rhi::TextureFormat::D16_UNORM:
-        case rhi::TextureFormat::D32_UNORM:
+        case TextureFormat::D16_UNORM:
+        case TextureFormat::D32_UNORM:
             return Aspect::Depth;
-        case rhi::TextureFormat::D24_UNORM_S8_UINT:
-        case rhi::TextureFormat::D32_UNORM_S8_UINT:
+        case TextureFormat::D24_UNORM_S8_UINT:
+        case TextureFormat::D32_UNORM_S8_UINT:
             return Aspect::Depth | Aspect::Stencil;
         default:
             assert(!"Invalid Enumeration Value");
+            break;
         } // todo: add  multi-planar formats support.
     }
 
@@ -151,17 +152,17 @@ namespace rhi
         Aspect aspectsFromFormat = GetAspectFromFormat(format);
         switch (aspect)
         {
-        case rhi::TextureAspect::All:
+        case TextureAspect::All:
             return aspectsFromFormat;
-        case rhi::TextureAspect::Depth:
+        case TextureAspect::Depth:
             return aspectsFromFormat & Aspect::Depth;
-        case rhi::TextureAspect::Stencil:
+        case TextureAspect::Stencil:
             return aspectsFromFormat & Aspect::Stencil;
-        case rhi::TextureAspect::Plane0:
+        case TextureAspect::Plane0:
             return aspectsFromFormat & Aspect::Plane0;
-        case rhi::TextureAspect::Plane1:
+        case TextureAspect::Plane1:
             return aspectsFromFormat & Aspect::Plane1;
-        case rhi::TextureAspect::Plane2:
+        case TextureAspect::Plane2:
             return aspectsFromFormat & Aspect::Plane2;
         default:
             break;
@@ -176,11 +177,11 @@ namespace rhi
         {
             switch (aspect)
             {
-            case rhi::TextureAspect::Plane0:
+            case TextureAspect::Plane0:
                 return Aspect::Plane0;
-            case rhi::TextureAspect::Plane1:
+            case TextureAspect::Plane1:
                 return Aspect::Plane1;
-            case rhi::TextureAspect::Plane2:
+            case TextureAspect::Plane2:
                 return Aspect::Plane2;
             default:
                 break;

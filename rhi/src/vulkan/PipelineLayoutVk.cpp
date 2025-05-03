@@ -9,7 +9,7 @@
 #include "../common/Utils.h"
 #include <array>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	PipelineLayout::PipelineLayout(Device* device, const PipelineLayoutDesc& desc) :
 		PipelineLayoutBase(device, desc)

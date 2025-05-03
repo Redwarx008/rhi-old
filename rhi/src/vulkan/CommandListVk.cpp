@@ -5,6 +5,7 @@
 #include "BufferVk.h"
 #include "TextureVk.h"
 #include "RenderPipelineVk.h"
+#include "ComputePipelineVk.h"
 #include "PipelineLayoutVk.h"
 #include "BindSetVk.h"
 #include "ErrorsVk.h"
@@ -16,7 +17,7 @@
 #include <array>
 #include <optional>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	CommandList::CommandList(Device* device, CommandEncoder* encoder) :
 		CommandListBase(device, encoder)
@@ -34,9 +35,9 @@ namespace rhi::vulkan
 	{
 		switch (format)
 		{
-		case rhi::IndexFormat::Uint16:
+		case IndexFormat::Uint16:
 			return VK_INDEX_TYPE_UINT16;
-		case rhi::IndexFormat::Uint32:
+		case IndexFormat::Uint32:
 			return VK_INDEX_TYPE_UINT32;
 		}
 		ASSERT(!"Unreachable");
@@ -46,11 +47,11 @@ namespace rhi::vulkan
 	{
 		switch (op)
 		{
-		case rhi::LoadOp::Load:
+		case LoadOp::Load:
 			return VK_ATTACHMENT_LOAD_OP_LOAD;
-		case rhi::LoadOp::Clear:
+		case LoadOp::Clear:
 			return VK_ATTACHMENT_LOAD_OP_CLEAR;
-		case rhi::LoadOp::DontCare:
+		case LoadOp::DontCare:
 		default:
 			return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		}
@@ -60,9 +61,9 @@ namespace rhi::vulkan
 	{
 		switch (op)
 		{
-		case rhi::StoreOp::Store:
+		case StoreOp::Store:
 			return VK_ATTACHMENT_STORE_OP_STORE;
-		case rhi::StoreOp::Discard:
+		case StoreOp::Discard:
 		default:
 			return VK_ATTACHMENT_STORE_OP_DONT_CARE;
 		}
@@ -87,6 +88,8 @@ namespace rhi::vulkan
 
 	void CommandList::RecordRenderPass(Queue* queue, BeginRenderPassCmd* renderPassCmd)
 	{
+		Device* device = checked_cast<Device>(mDevice);
+
 		VkCommandBuffer commandBuffer = queue->GetPendingRecordingContext()->commandBufferAndPool.bufferHandle;
 
 		VkRenderingInfo renderingInfo{};
@@ -104,6 +107,7 @@ namespace rhi::vulkan
 				view->GetTexture()->APIGetWidth(), view->GetTexture()->APIGetHeight(), renderWidth, renderHeight);
 			VkRenderingAttachmentInfo& attachment = colorAttachmentInfos[i];
 			attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+			attachment.pNext = nullptr;
 			attachment.imageView = view->GetHandle();
 			attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 			attachment.loadOp = VulkanAttachmentLoadOp(renderPassCmd->colorAttachments[i].loadOp);
@@ -115,7 +119,9 @@ namespace rhi::vulkan
 				renderPassCmd->colorAttachments[i].clearColor.b,
 				renderPassCmd->colorAttachments[i].clearColor.a,
 			};
-
+			attachment.resolveMode = VK_RESOLVE_MODE_NONE;
+			attachment.resolveImageView = nullptr;
+			attachment.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 			if (renderPassCmd->colorAttachments[i].resolveView != nullptr)
 			{
 				attachment.resolveImageView = view->GetHandle();
@@ -184,7 +190,7 @@ namespace rhi::vulkan
 		{
 			switch (type)
 			{
-			case rhi::Command::SetRenderPipeline:
+			case Command::SetRenderPipeline:
 			{
 				SetRenderPipelineCmd* cmd = mCommandIter.NextCommand<SetRenderPipelineCmd>();
 				RenderPipeline* pipeline = checked_cast<RenderPipeline>(cmd->pipeline.Get());
@@ -192,10 +198,12 @@ namespace rhi::vulkan
 				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetHandle());
 				break;
 			}
-			case rhi::Command::SetBindSet:
+			case Command::SetBindSet:
 			{
 				SetBindSetCmd* cmd = mCommandIter.NextCommand<SetBindSetCmd>();
-				VkDescriptorSet set = checked_cast<BindSet>(cmd->set)->GetHandle();
+				BindSet* bindSet = checked_cast<BindSet>(cmd->set.Get());
+				bindSet->MarkUsedInQueue(queue->GetType());
+				VkDescriptorSet set = bindSet->GetHandle();
 				uint32_t* dynamicOffsets = nullptr;
 				if (cmd->dynamicOffsetCount > 0) {
 					dynamicOffsets = mCommandIter.NextData<uint32_t>(cmd->dynamicOffsetCount);
@@ -206,14 +214,14 @@ namespace rhi::vulkan
 					&set, cmd->dynamicOffsetCount, dynamicOffsets);
 				break;
 			}
-			case rhi::Command::SetIndexBuffer:
+			case Command::SetIndexBuffer:
 			{
 				SetIndexBufferCmd* cmd = mCommandIter.NextCommand<SetIndexBufferCmd>();
 				Buffer* indexBuffer = checked_cast<Buffer>(cmd->buffer.Get());
 				vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetHandle(), cmd->offset, VulkanIndexType(cmd->format));
 				break;
 			}
-			case rhi::Command::SetVertexBuffer:
+			case Command::SetVertexBuffer:
 			{
 				SetVertexBufferCmd* cmd = mCommandIter.NextCommand<SetVertexBufferCmd>();
 				std::array<VkBuffer, cMaxVertexBuffers> buffers;
@@ -226,33 +234,33 @@ namespace rhi::vulkan
 				vkCmdBindVertexBuffers(commandBuffer, cmd->firstSlot, cmd->bufferCount, buffers.data(), offsets.data());
 				break;
 			}
-			case rhi::Command::Draw:
+			case Command::Draw:
 			{
 				DrawCmd* cmd = mCommandIter.NextCommand<DrawCmd>();
 				vkCmdDraw(commandBuffer, cmd->vertexCount, cmd->instanceCount, cmd->firstVertex, cmd->firstInstance);
 				break;
 			}
-			case rhi::Command::DrawIndexed:
+			case Command::DrawIndexed:
 			{
 				DrawIndexedCmd* cmd = mCommandIter.NextCommand<DrawIndexedCmd>();
 				vkCmdDrawIndexed(commandBuffer, cmd->indexCount, cmd->instanceCount, cmd->firstIndex, cmd->baseVertex, cmd->firstInstance);
 				break;
 			}
-			case rhi::Command::DrawIndirect:
+			case Command::DrawIndirect:
 			{
 				DrawIndirectCmd* cmd = mCommandIter.NextCommand<DrawIndirectCmd>();
 				Buffer* buffer = checked_cast<Buffer>(cmd->indirectBuffer.Get());
 				vkCmdDrawIndirect(commandBuffer, buffer->GetHandle(), static_cast<VkDeviceSize>(cmd->indirectOffset), 1, 0);
 				break;
 			}
-			case rhi::Command::DrawIndexedIndirect:
+			case Command::DrawIndexedIndirect:
 			{
 				DrawIndexedIndirectCmd* cmd = mCommandIter.NextCommand<DrawIndexedIndirectCmd>();
 				Buffer* buffer = checked_cast<Buffer>(cmd->indirectBuffer.Get());
 				vkCmdDrawIndexedIndirect(commandBuffer, buffer->GetHandle(), static_cast<VkDeviceSize>(cmd->indirectOffset), 1, 0);
 				break;
 			}
-			case rhi::Command::MultiDrawIndirect:
+			case Command::MultiDrawIndirect:
 			{
 				MultiDrawIndirectCmd* cmd = mCommandIter.NextCommand<MultiDrawIndirectCmd>();
 				Buffer* indirectBuffer = checked_cast<Buffer>(cmd->indirectBuffer.Get());
@@ -270,7 +278,7 @@ namespace rhi::vulkan
 				}
 				break;
 			}
-			case rhi::Command::MultiDrawIndexedIndirect:
+			case Command::MultiDrawIndexedIndirect:
 			{
 				MultiDrawIndexedIndirectCmd* cmd = mCommandIter.NextCommand<MultiDrawIndexedIndirectCmd>();
 				Buffer* indirectBuffer = checked_cast<Buffer>(cmd->indirectBuffer.Get());
@@ -289,7 +297,7 @@ namespace rhi::vulkan
 				}
 				break;
 			}
-			case rhi::Command::SetPushConstant:
+			case Command::SetPushConstant:
 			{
 				SetPushConstantCmd* cmd = mCommandIter.NextCommand<SetPushConstantCmd>();
 				void* data = mCommandIter.NextData<uint32_t>(cmd->size);
@@ -298,13 +306,13 @@ namespace rhi::vulkan
 				vkCmdPushConstants(commandBuffer, pipelineLayout->GetHandle(), pipelineLayout->GetPushConstantVisibility(), 0, cmd->size, data);
 				break;
 			}
-			case rhi::Command::EndRenderPass:
+			case Command::EndRenderPass:
 			{
 				EndRenderPassCmd* cmd = mCommandIter.NextCommand<EndRenderPassCmd>();
 				vkCmdEndRendering(commandBuffer);
-				break;
+				return; //to void mCommandIter.reset()
 			}
-			case rhi::Command::SetViewport:
+			case Command::SetViewport:
 			{
 				SetViewportCmd* cmd = mCommandIter.NextCommand<SetViewportCmd>();
 				std::array<VkViewport, cMaxViewports> viewports;
@@ -322,7 +330,7 @@ namespace rhi::vulkan
 				vkCmdSetViewport(commandBuffer, cmd->firstViewport, cmd->viewportCount, viewports.data());
 				break;
 			}
-			case rhi::Command::SetScissorRect:
+			case Command::SetScissorRects:
 			{
 				SetScissorRectsCmd* cmd = mCommandIter.NextCommand<SetScissorRectsCmd>();
 				std::array<VkRect2D, cMaxViewports> scissorRect;
@@ -338,13 +346,13 @@ namespace rhi::vulkan
 				vkCmdSetScissor(commandBuffer, cmd->firstScissor, cmd->scissorCount, scissorRect.data());
 				break;
 			}
-			case rhi::Command::SetStencilReference:
+			case Command::SetStencilReference:
 			{
 				SetStencilReferenceCmd* cmd = mCommandIter.NextCommand<SetStencilReferenceCmd>();
 				vkCmdSetStencilReference(commandBuffer, VK_STENCIL_FRONT_AND_BACK, cmd->reference);
 				break;
 			}
-			case rhi::Command::SetBlendConstant:
+			case Command::SetBlendConstant:
 			{
 				SetBlendConstantCmd* cmd = mCommandIter.NextCommand<SetBlendConstantCmd>();
 				const std::array<float, 4> blendConstants =
@@ -359,7 +367,7 @@ namespace rhi::vulkan
 				break;
 			}
 
-			case rhi::Command::BeginDebugLabel:
+			case Command::BeginDebugLabel:
 			{
 				BeginDebugLabelCmd* cmd = mCommandIter.NextCommand<BeginDebugLabelCmd>();
 				const char* label = mCommandIter.NextData<char>(cmd->labelLength);
@@ -374,20 +382,117 @@ namespace rhi::vulkan
 					utilsLabel.color[2] = cmd->color.b;
 					utilsLabel.color[3] = cmd->color.a;
 
-					vkCmdBeginDebugUtilsLabelEXT(commandBuffer, &utilsLabel);
+					device->Fn.vkCmdBeginDebugUtilsLabelEXT(commandBuffer, &utilsLabel);
 				}
 				break;
 			}
-			case rhi::Command::EndDebugLabel:
+			case Command::EndDebugLabel:
 			{
 				EndDebugLabelCmd* cmd = mCommandIter.NextCommand<EndDebugLabelCmd>();
 				if (mDevice->IsDebugLayerEnabled())
 				{
-					vkCmdEndDebugUtilsLabelEXT(commandBuffer);
+					device->Fn.vkCmdEndDebugUtilsLabelEXT(commandBuffer);
 				}
 				break;
 			}
 
+			default:
+				ASSERT(!"Unreachable");
+				break;
+			}
+		}
+	}
+
+	void CommandList::RecordComputePass(Queue* queue, BeginComputePassCmd* computePassCmd)
+	{
+		Device* device = checked_cast<Device>(mDevice);
+
+		VkCommandBuffer commandBuffer = queue->GetPendingRecordingContext()->commandBufferAndPool.bufferHandle;
+		ComputePipeline* lastPipeline = nullptr;
+		Command type;
+		while (mCommandIter.NextCommandId(&type))
+		{
+			switch (type)
+			{
+			case Command::SetComputePipeline:
+			{
+				SetComputePipelineCmd* cmd = mCommandIter.NextCommand<SetComputePipelineCmd>();
+				ComputePipeline* pipeline = checked_cast<ComputePipeline>(cmd->pipeline.Get());
+				lastPipeline = pipeline;
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->GetHandle());
+				break;
+			}
+			case Command::SetBindSet:
+			{
+				SetBindSetCmd* cmd = mCommandIter.NextCommand<SetBindSetCmd>();
+				BindSet* bindSet = checked_cast<BindSet>(cmd->set.Get());
+				bindSet->MarkUsedInQueue(queue->GetType());
+				VkDescriptorSet set = bindSet->GetHandle();
+				uint32_t* dynamicOffsets = nullptr;
+				if (cmd->dynamicOffsetCount > 0) {
+					dynamicOffsets = mCommandIter.NextData<uint32_t>(cmd->dynamicOffsetCount);
+				}
+				ASSERT(lastPipeline != nullptr);
+				VkPipelineLayout layout = checked_cast<PipelineLayout>(lastPipeline->GetLayout())->GetHandle();
+				vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, cmd->setIndex, 1,
+					&set, cmd->dynamicOffsetCount, dynamicOffsets);
+				break;
+			}
+			case Command::Dispatch:
+			{
+				DispatchCmd* cmd = mCommandIter.NextCommand<DispatchCmd>();
+				vkCmdDispatch(commandBuffer, cmd->x, cmd->y, cmd->z);
+				break;
+			}
+			case Command::DispatchIndirect:
+			{
+				DispatchIndirectCmd* cmd = mCommandIter.NextCommand<DispatchIndirectCmd>();
+				Buffer* indirectBuffer = checked_cast<Buffer>(cmd->indirectBuffer.Get());
+				vkCmdDispatchIndirect(commandBuffer, indirectBuffer->GetHandle(), cmd->indirectOffset);
+				break;
+			}
+			case Command::SetPushConstant:
+			{
+				SetPushConstantCmd* cmd = mCommandIter.NextCommand<SetPushConstantCmd>();
+				void* data = mCommandIter.NextData<uint32_t>(cmd->size);
+				PipelineLayout* pipelineLayout = checked_cast<PipelineLayout>(lastPipeline->GetLayout());
+
+				vkCmdPushConstants(commandBuffer, pipelineLayout->GetHandle(), pipelineLayout->GetPushConstantVisibility(), 0, cmd->size, data);
+				break;
+			}
+			case Command::EndComputePass:
+			{
+				mCommandIter.NextCommand<EndComputePassCmd>();
+				break;
+			}
+			case Command::BeginDebugLabel:
+				{
+					BeginDebugLabelCmd* cmd = mCommandIter.NextCommand<BeginDebugLabelCmd>();
+					const char* label = mCommandIter.NextData<char>(cmd->labelLength);
+					if (mDevice->IsDebugLayerEnabled())
+					{
+						VkDebugUtilsLabelEXT utilsLabel;
+						utilsLabel.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+						utilsLabel.pNext = nullptr;
+						utilsLabel.pLabelName = label;
+						utilsLabel.color[0] = cmd->color.r;
+						utilsLabel.color[1] = cmd->color.g;
+						utilsLabel.color[2] = cmd->color.b;
+						utilsLabel.color[3] = cmd->color.a;
+
+						device->Fn.vkCmdBeginDebugUtilsLabelEXT(commandBuffer, &utilsLabel);
+					}
+					break;
+				}
+			case Command::EndDebugLabel:
+			{
+				EndDebugLabelCmd* cmd = mCommandIter.NextCommand<EndDebugLabelCmd>();
+				if (mDevice->IsDebugLayerEnabled())
+				{
+					device->Fn.vkCmdEndDebugUtilsLabelEXT(commandBuffer);
+				}
+				break;
+			}
 			default:
 				ASSERT(!"Unreachable");
 				break;
@@ -411,7 +516,7 @@ namespace rhi::vulkan
 		{
 			switch (type)
 			{
-			case rhi::Command::ClearBuffer:
+			case Command::ClearBuffer:
 			{
 				ClearBufferCmd* cmd = mCommandIter.NextCommand<ClearBufferCmd>();
 				if (cmd->size == 0)
@@ -425,7 +530,7 @@ namespace rhi::vulkan
 				break;
 			}
 
-			case rhi::Command::BeginRenderPass:
+			case Command::BeginRenderPass:
 			{
 				BeginRenderPassCmd* cmd = mCommandIter.NextCommand<BeginRenderPassCmd>();
 				TransitionSyncScope(queue, GetResourceUsages().renderPassUsages[nextRenderPassIndex]);
@@ -433,9 +538,14 @@ namespace rhi::vulkan
 				++nextRenderPassIndex;
 				break;
 			}
-			case rhi::Command::BeginComputePass:
+			case Command::BeginComputePass:
+			{
+				BeginComputePassCmd* cmd = mCommandIter.NextCommand<BeginComputePassCmd>();
+				TransitionSyncScope(queue, GetResourceUsages().computePassUsages[nextComputePassIndex]);
+				++nextComputePassIndex;
 				break;
-			case rhi::Command::BeginDebugLabel:
+			}
+			case Command::BeginDebugLabel:
 			{
 				BeginDebugLabelCmd* cmd = mCommandIter.NextCommand<BeginDebugLabelCmd>();
 				const char* label = mCommandIter.NextData<char>(cmd->labelLength);
@@ -450,12 +560,12 @@ namespace rhi::vulkan
 					utilsLabel.color[2] = cmd->color.b;
 					utilsLabel.color[3] = cmd->color.a;
 
-					vkCmdBeginDebugUtilsLabelEXT(commandBuffer, &utilsLabel);
+					device->Fn.vkCmdBeginDebugUtilsLabelEXT(commandBuffer, &utilsLabel);
 				}
 				break;
 			}
 
-			case rhi::Command::CopyBufferToBuffer:
+			case Command::CopyBufferToBuffer:
 			{
 				CopyBufferToBufferCmd* cmd = mCommandIter.NextCommand<CopyBufferToBufferCmd>();
 				if (cmd->size == 0)
@@ -478,7 +588,7 @@ namespace rhi::vulkan
 				break;
 			}
 
-			case rhi::Command::CopyBufferToTexture:
+			case Command::CopyBufferToTexture:
 			{
 				CopyBufferToTextureCmd* cmd = mCommandIter.NextCommand<CopyBufferToTextureCmd>();
 				if (cmd->size.width == 0 || cmd->size.height == 0 || cmd->size.depthOrArrayLayers == 0)
@@ -500,7 +610,7 @@ namespace rhi::vulkan
 				vkCmdCopyBufferToImage(commandBuffer, srcBuffer->GetHandle(), dstTexture->GetHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 				break;
 			}
-			case rhi::Command::CopyTextureToBuffer:
+			case Command::CopyTextureToBuffer:
 			{
 				CopyTextureToBufferCmd* cmd = mCommandIter.NextCommand<CopyTextureToBufferCmd>();
 				if (cmd->size.width == 0 || cmd->size.height == 0 || cmd->size.depthOrArrayLayers == 0)
@@ -524,7 +634,7 @@ namespace rhi::vulkan
 				break;
 			}
 
-			case rhi::Command::CopyTextureToTexture:
+			case Command::CopyTextureToTexture:
 			{
 				CopyTextureToTextureCmd* cmd = mCommandIter.NextCommand<CopyTextureToTextureCmd>();
 				
@@ -578,19 +688,19 @@ namespace rhi::vulkan
 					dstTexture->GetHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 				break;
 			}
-			case rhi::Command::EndComputePass:
-				break;
-			case rhi::Command::EndDebugLabel:
+			case Command::EndComputePass:
+				return;
+			case Command::EndDebugLabel:
 			{
 				EndDebugLabelCmd* cmd = mCommandIter.NextCommand<EndDebugLabelCmd>();
 				if (mDevice->IsDebugLayerEnabled())
 				{
-					vkCmdEndDebugUtilsLabelEXT(commandBuffer);
+					device->Fn.vkCmdEndDebugUtilsLabelEXT(commandBuffer);
 				}
 				break;
 			}
 
-			case rhi::Command::MapBufferAsync:
+			case Command::MapBufferAsync:
 			{
 				MapBufferAsyncCmd* cmd = mCommandIter.NextCommand<MapBufferAsyncCmd>();
 

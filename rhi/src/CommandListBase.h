@@ -5,7 +5,7 @@
 #include "PassResourceUsage.h"
 #include "CommandAllocator.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	class CommandEncoder;
 	class CommandListBase : public RefCounted

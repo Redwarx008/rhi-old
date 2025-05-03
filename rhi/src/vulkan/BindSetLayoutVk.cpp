@@ -1,6 +1,7 @@
 #include "BindSetLayoutVk.h"
 
 #include "../common/Utils.h"
+
 #include "ErrorsVk.h"
 #include "DeviceVk.h"
 #include "BindSetVk.h"
@@ -8,38 +9,37 @@
 
 #include <unordered_map>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
-	VkDescriptorType DescriptorTypeConvert(const BindSetLayoutEntry& entry)
+	VkDescriptorType ToVkDescriptorType(BindingType bindType, bool hasDynamicOffset)
 	{
-		BindingType bindType = entry.type;
 		switch (bindType)
 		{
-		case rhi::BindingType::SampledTexture:
+		case rhi::impl::BindingType::SampledTexture:
 			return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-		case rhi::BindingType::StorageTexture:
+		case rhi::impl::BindingType::StorageTexture:
 			return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-		case rhi::BindingType::UniformBuffer:
+		case rhi::impl::BindingType::UniformBuffer:
 		{
-			if (entry.hasDynamicOffset)
+			if (hasDynamicOffset)
 			{
 				return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 			}
 			return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		}
-		case rhi::BindingType::StorageBuffer:
+		case rhi::impl::BindingType::StorageBuffer:
 		{
-			if (entry.hasDynamicOffset)
+			if (hasDynamicOffset)
 			{
 				return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
 			}
 			return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 		}	
-		case rhi::BindingType::Sampler:
+		case rhi::impl::BindingType::Sampler:
 			return VK_DESCRIPTOR_TYPE_SAMPLER;
-		case rhi::BindingType::CombinedTextureSampler:
+		case rhi::impl::BindingType::CombinedTextureSampler:
 			return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		case rhi::BindingType::None:
+		case rhi::impl::BindingType::None:
 		default:
 			assert(!"unreachable");
 			break;
@@ -59,7 +59,7 @@ namespace rhi::vulkan
 		{
 			return nullptr;
 		}
-		return std::move(bindSetLayout);
+		return bindSetLayout;
 	}
 
 	BindSetLayout::~BindSetLayout() {}
@@ -69,14 +69,14 @@ namespace rhi::vulkan
 		BindSetLayoutBase::Initialize(desc);
 
 		std::vector<VkDescriptorSetLayoutBinding> vkBindings;
-		vkBindings.reserve(mEntries.size());
+		vkBindings.reserve(desc.entryCount);
 
-		for (const BindSetLayoutEntry& entry : mEntries)
+		for (uint32_t i = 0; i < desc.entryCount; ++i)
 		{
-
+			const BindSetLayoutEntry& entry = desc.entries[i];
 			VkDescriptorSetLayoutBinding& vkBinding = vkBindings.emplace_back();
 			vkBinding.binding = entry.binding;
-			vkBinding.descriptorType = DescriptorTypeConvert(entry);
+			vkBinding.descriptorType = ToVkDescriptorType(entry.type, entry.hasDynamicOffset);
 			vkBinding.descriptorCount = entry.arrayElementCount;
 			vkBinding.stageFlags = ShaderStageFlagsConvert(entry.visibleStages);
 			vkBinding.pImmutableSamplers = nullptr;
@@ -98,9 +98,10 @@ namespace rhi::vulkan
 
 		std::unordered_map<VkDescriptorType, uint32_t> descriptorCountPerType;
 
-		for (const BindSetLayoutEntry& entry : mEntries)
+		for (uint32_t i = 0; i < desc.entryCount; ++i)
 		{
-			VkDescriptorType vkType = DescriptorTypeConvert(entry);
+
+			VkDescriptorType vkType = ToVkDescriptorType(desc.entries[i].type, desc.entries[i].hasDynamicOffset);
 			descriptorCountPerType[vkType] += 1;
 		}
 
@@ -133,7 +134,7 @@ namespace rhi::vulkan
 	{
 		DescriptorSetAllocation descriptorSetAllocation = mDescriptorSetAllocator->Allocate(this);
 
-		return AcquireRef(new BindSet(checked_cast<Device*>(mDevice.Get()), desc, descriptorSetAllocation));
+		return AcquireRef(new BindSet(checked_cast<Device>(mDevice.Get()), desc, descriptorSetAllocation));
 	}
 
 	void BindSetLayout::DeallocateBindSet(BindSet* bindSet,

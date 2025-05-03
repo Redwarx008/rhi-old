@@ -1,21 +1,21 @@
 #pragma once
 
-#include "rhi/RHIStruct.h"
+#include "RHIStruct.h"
 #include "common/Constants.h"
 #include "common/Error.h"
 #include "common/Utils.h"
 #include <cmath>
 #include <array>
 
-namespace rhi
+namespace rhi::impl
 {
     template <typename T>
     class PerShaderStage
     {
     public:
-        PerShaderStage() = default;
+        PerShaderStage() {};
         explicit PerShaderStage(const T& initialValue) { mData.fill(initialValue); }
-
+        ~PerShaderStage() {}
         T& operator[](ShaderStage stageBit)
         {
             uint32_t bit = static_cast<uint32_t>(stageBit);

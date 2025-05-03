@@ -10,19 +10,20 @@
 #include "../Subresource.h"
 #include "VulkanUtils.h"
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 
-	Ref<Queue> Queue::Create(Device* device, uint32_t family)
+	Ref<Queue> Queue::Create(Device* device, uint32_t family, QueueType type)
 	{
-		Ref<Queue> queue = AcquireRef(new Queue(device, family));
+		Ref<Queue> queue = AcquireRef(new Queue(device, family, type));
 		queue->Initialize();
 		return queue;
 	}
 
-	Queue::Queue(Device* device, uint32_t family) :
-		QueueBase(device),
-		mQueueFamilyIndex(family)
+	Queue::Queue(Device* device, uint32_t family, QueueType type) :
+		QueueBase(device, type),
+		mQueueFamilyIndex(family),
+		mDeleter(this)
 	{
 		vkGetDeviceQueue(device->GetHandle(), mQueueFamilyIndex, 0, &mHandle);
 	}
@@ -65,7 +66,7 @@ namespace rhi::vulkan
 		semaphoreCI.pNext = &semaphoreTypeCI;
 
 		VkResult err = vkCreateSemaphore(device->GetHandle(), &semaphoreCI, nullptr, &mTrackingSubmitSemaphore);
-		CHECK_VK_RESULT(err, SetTrackingSubmitSemaphore);
+		CHECK_VK_RESULT(err, "SetTrackingSubmitSemaphore");
 	}
 
 	CommandRecordContext* Queue::GetPendingRecordingContext()
@@ -113,7 +114,7 @@ namespace rhi::vulkan
 			allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 			allocateInfo.commandBufferCount = 1;
 
-			err = vkAllocateCommandBuffers(device->GetHandle(), nullptr, &poolAndBuffer.bufferHandle);
+			err = vkAllocateCommandBuffers(device->GetHandle(), &allocateInfo, &poolAndBuffer.bufferHandle);
 			CHECK_VK_RESULT(err, "vkAllocateCommandBuffers");
 		}
 
@@ -137,7 +138,6 @@ namespace rhi::vulkan
 		CHECK_VK_RESULT_RETURN(err, "vkBeginCommandBuffer");
 
 		mRecordContext.commandBufferAndPool = poolAndBuffer;
-
 	}
 
 	void Queue::SubmitPendingCommands()
@@ -246,7 +246,7 @@ namespace rhi::vulkan
 
 	Device* Queue::GetDevice() const
 	{
-		return mDevice;
+		return checked_cast<Device>(mDevice);
 	}
 
 	MutexProtected<VkResourceDeleter>& Queue::GetDeleter()

@@ -5,10 +5,11 @@
 #include "BufferBase.h"
 #include "TextureBase.h"
 #include "RenderPassEncoder.h"
+#include "ComputePassEncoder.h"
 #include "DeviceBase.h"
 #include "Subresource.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	CommandEncoder::CommandEncoder(DeviceBase* device) :
 		mDevice(device)
@@ -19,13 +20,13 @@ namespace rhi
 	Ref<CommandEncoder> CommandEncoder::Create(DeviceBase* device)
 	{
 		Ref<CommandEncoder> encoder = AcquireRef(new CommandEncoder(device));
-		return std::move(encoder);
+		return encoder;
 	}
 
-	void CommandEncoder::APIClearBuffer(BufferBase* buffer, uint32_t value, uint64_t offset = 0, uint64_t size = ~0ull)
+	void CommandEncoder::APIClearBuffer(BufferBase* buffer, uint32_t value, uint64_t offset, uint64_t size)
 	{
 		INVALID_IF(mState != State::OutsideOfPass, "The command must be outside of the compute pass and render pass.");
-		ASSERT(HasFlag(buffer->APIGetUsage(), BufferUsage::CopyDst));
+		//ASSERT(HasFlag(buffer->APIGetUsage(), BufferUsage::CopyDst));
 
 		CommandAllocator& allocator = mEncodingContext.GetCommandAllocator();
 		ClearBufferCmd* cmd = allocator.Allocate<ClearBufferCmd>(Command::ClearBuffer);
@@ -39,7 +40,7 @@ namespace rhi
 	{
 		INVALID_IF(mState != State::OutsideOfPass, "The command must be outside of the compute pass and render pass.");
 		ASSERT(HasFlag(srcBuffer->APIGetUsage(), BufferUsage::CopySrc));
-		ASSERT(HasFlag(srcBuffer->APIGetUsage(), BufferUsage::CopyDst));
+		//ASSERT(HasFlag(srcBuffer->APIGetUsage(), BufferUsage::CopyDst));
 
 		CommandAllocator& allocator = mEncodingContext.GetCommandAllocator();
 		CopyBufferToBufferCmd* cmd = allocator.Allocate<CopyBufferToBufferCmd>(Command::CopyBufferToBuffer);
@@ -121,13 +122,13 @@ namespace rhi
 		cmd->userData = userData;
 	}
 
-	void CommandEncoder::APIBeginDebugLabel(std::string_view label, Color color = Color())
+	void CommandEncoder::APIBeginDebugLabel(std::string_view label, const Color* color)
 	{
 		INVALID_IF(mState != State::OutsideOfPass, "The command must be outside of the compute pass and render pass.");
 		CommandAllocator& allocator = mEncodingContext.GetCommandAllocator();
 		BeginDebugLabelCmd* cmd = allocator.Allocate<BeginDebugLabelCmd>(Command::BeginDebugLabel);
 		EnsureValidString(allocator, label, &cmd->labelLength);
-		cmd->color = color;
+		cmd->color = color == nullptr ? Color() : *color;
 		++mDebugLabelCount;
 	}
 
@@ -181,7 +182,7 @@ namespace rhi
 
 		mState = State::InRenderPass;
 		Ref<RenderPassEncoder> renderPassEncoder = RenderPassEncoder::Create(this, mEncodingContext, std::move(usageTracker));
-		return renderPassEncoder.Detach();
+		return renderPassEncoder;
 
 	}
 
@@ -190,8 +191,11 @@ namespace rhi
 	{
 		INVALID_IF(mState != State::OutsideOfPass, "The command must be outside of the compute pass and render pass.");
 
-
-
+		CommandAllocator& allocator = mEncodingContext.GetCommandAllocator();
+		BeginComputePassCmd* cmd = allocator.Allocate<BeginComputePassCmd>(Command::BeginComputePass);
+		mState = State::InComputePass;
+		Ref<ComputePassEncoder> computePassEncoder = ComputePassEncoder::Create(this, mEncodingContext);
+		return computePassEncoder;
 	}
 
 	RenderPassEncoder* CommandEncoder::APIBeginRenderPass(const RenderPassDesc& desc)

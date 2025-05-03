@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <type_traits>
 
-namespace rhi
+namespace rhi::impl
 {
     // Just copy from dawn :D.
     template <typename T, typename Traits>
@@ -54,7 +54,10 @@ namespace rhi
         // same as `other` because overload resolution rules would have chosen the *-assignement
         // operators defined with `other` == RefBase<T, Traits>.
         template <typename U, typename UTraits, typename = typename std::is_convertible<U, T>::type>
-        RefBase(const RefBase<U, UTraits>& other) : mValue(other.mValue) {
+        RefBase(const RefBase<U, UTraits>& other) :
+            mValue(other.mValue) 
+        {
+            //mValue = other.mValue;
             AddRef(other.mValue);
         }
 
@@ -105,11 +108,6 @@ namespace rhi
             mValue = value;
         }
 
-        [[nodiscard]] T* InitializeInto() {
-            DAWN_ASSERT(mValue == Traits::kNullValue);
-            return &mValue;
-        }
-
         // Cast operator.
         template <typename Other>
         Other Cast()&& {
@@ -157,7 +155,7 @@ namespace rhi
     struct RefCountedTraits {
         static constexpr T* kNullValue = nullptr;
         static void AddRef(T* value) { value->AddRef(); }
-        static void Release(T* value) { value->Release(); }
+         static void Release(T* value) { value->Release(); }
     };
 
     template <typename T>

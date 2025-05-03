@@ -13,7 +13,7 @@
 
 #include <algorithm>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	constexpr BufferUsage cShaderBufferUsages =
 		BufferUsage::Uniform | BufferUsage::Storage | cReadOnlyStorageBuffer;
@@ -165,7 +165,7 @@ namespace rhi::vulkan
 		{
 			return nullptr;
 		}
-		return std::move(buffer);
+		return buffer;
 	}
 
 	Buffer::Buffer(DeviceBase* device, const BufferDesc& desc)
@@ -173,6 +173,8 @@ namespace rhi::vulkan
 	{
 
 	}
+
+	Buffer::~Buffer() {}
 
 	bool Buffer::Initialize()
 	{
@@ -264,12 +266,12 @@ namespace rhi::vulkan
 		else
 		{
 			// Buffers in concurrent mode may be used by multiple queues and there is no way to tell who was last to use .
-			Ref<RefCountedHandle<BufferAllocation>> bufferAllocation = AcquireRef(new RefCountedHandle<BufferAllocation>(device, { mHandle, mAllocation },
-				[](Device* device, BufferAllocation handle)
-				{
-					vmaDestroyBuffer(device->GetMemoryAllocator(), handle.buffer, handle.allocation);
-				}
-			));
+			//Ref<RefCountedHandle<BufferAllocation>> bufferAllocation = AcquireRef(new RefCountedHandle<BufferAllocation>(device, { mHandle, mAllocation },
+			//	[](Device* device, BufferAllocation handle)
+			//	{
+			//		vmaDestroyBuffer(device->GetMemoryAllocator(), handle.buffer, handle.allocation);
+			//	}
+			//));
 
 			for (uint32_t i = 0; i < mUsageTrackInQueues.size(); ++i)
 			{
@@ -278,7 +280,7 @@ namespace rhi::vulkan
 				{
 					continue;
 				}
-				queue->GetDeleter()->DeleteWhenUnused(bufferAllocation);
+				//queue->GetDeleter()->DeleteWhenUnused(bufferAllocation);
 			}
 		}
 
@@ -451,7 +453,7 @@ namespace rhi::vulkan
 		}
 
 		VkBufferMemoryBarrier2 barrier{};
-		barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+		barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
 		barrier.srcAccessMask = srcAccess;
 		barrier.srcStageMask = srcStage;
 		barrier.dstAccessMask = AccessFlagsConvert(usage);

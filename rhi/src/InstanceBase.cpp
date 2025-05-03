@@ -1,6 +1,6 @@
 #include "InstanceBase.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	bool InstanceBase::IsDebugLayerEnabled() const
 	{

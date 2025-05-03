@@ -1,11 +1,11 @@
 #pragma once
 
 #include "ResourceBase.h"
-#include "rhi/RHIStruct.h"
+#include "RHIStruct.h"
 #include <string>
 #include <string_view>
 
-namespace rhi
+namespace rhi::impl
 {
 	class ShaderModuleBase : public ResourceBase
 	{

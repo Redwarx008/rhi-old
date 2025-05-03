@@ -29,7 +29,7 @@
 
 #include <array>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	void CommandRecordContext::AddBufferBarrier(VkBufferMemoryBarrier2 barrier)
 	{

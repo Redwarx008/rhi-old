@@ -2,10 +2,10 @@
 
 #include "ResourceBase.h"
 #include "common/Ref.hpp"
-#include "rhi/RHIStruct.h"
+#include "RHIStruct.h"
 #include "PerShaderStage.hpp"
 
-namespace rhi
+namespace rhi::impl
 {
 	class DeviceBase;
 	class BindSetLayoutBase;
@@ -13,6 +13,8 @@ namespace rhi
 
 	struct ShaderStageState
 	{
+		ShaderStageState();
+		~ShaderStageState();
 		Ref<ShaderModuleBase> shaderModule;
 		std::vector<SpecializationConstant> constants;
 	};
@@ -27,8 +29,8 @@ namespace rhi
 		bool HasShaderStage(ShaderStage stage) const;
 		const ShaderStageState& GetShaderStageState(ShaderStage stage) const;
 	protected:
-		explicit PipelineBase(DeviceBase* device, const RenderPipelineDesc& desc) noexcept;
-		explicit PipelineBase(DeviceBase* device, const ComputePipelineDesc& desc) noexcept;
+		explicit PipelineBase(DeviceBase* device, const RenderPipelineDesc& desc);
+		explicit PipelineBase(DeviceBase* device, const ComputePipelineDesc& desc);
 		~PipelineBase();
 		void AddShaderStageState(const ShaderState* shader, ShaderStage stage);
 

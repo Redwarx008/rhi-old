@@ -2,8 +2,9 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <string_view>
 
-#include <rhi/rhi.h>
+#include <rhi/rhi_cpp.h>
 #include <GLFW/glfw3.h>
 #define GLFW_EXPOSE_NATIVE_WIN32 1
 #include <GLFW/glfw3native.h>
@@ -23,16 +24,16 @@ static void loggingCallback(LoggingSeverity severity, const char* msg)
 	std::cerr << msg;
 }
 
-static std::vector<uint32_t> loadShaderData(const char* filePath)
+static std::vector<char> loadShaderData(const char* filePath)
 {
 	std::ifstream file(filePath, std::ios::ate | std::ios::binary);
-	std::vector<uint32_t> buffer;
+	std::vector<char> buffer;
 	if (!file.is_open()) {
 		return buffer;
 	}
 
 	size_t fileSize = (size_t)file.tellg();
-	buffer.resize(fileSize / sizeof(uint32_t));
+	buffer.resize(fileSize);
 	//spirv expects the buffer to be on uint32, so make sure to reserve an int vector big enough for the entire file
 
 	//put file cursor at beginning
@@ -83,8 +84,8 @@ public:
 		}
 
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-		m_Window = glfwCreateWindow(m_windowWidth, m_windowHeight, "draw_traingle", nullptr, nullptr);
-		if (!m_Window)
+		mWindow = glfwCreateWindow(mWindowWidth, mWindowHeight, "draw_traingle", nullptr, nullptr);
+		if (!mWindow)
 		{
 			std::cerr << "Failed to create a glfw window\n";
 			glfwTerminate();
@@ -92,181 +93,206 @@ public:
 		}
 
 		//glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-		glfwSetWindowUserPointer(m_Window, this);
-		glfwSetKeyCallback(m_Window, &GLFW_KeyCallback);
-		glfwSetCursorPosCallback(m_Window, &GLFW_CursorPosCallback);
+		glfwSetWindowUserPointer(mWindow, this);
+		glfwSetKeyCallback(mWindow, &GLFW_KeyCallback);
+		glfwSetCursorPosCallback(mWindow, &GLFW_CursorPosCallback);
 
-		DeviceDesc rdCI{};
-		rdCI.enableDebugLayer = true;
-		
-		m_RenderDevice = std::unique_ptr<IDevice>(createDevice(rdCI));
+		// create Instance
+		rhi::InstanceDesc instanceDesc{};
+		instanceDesc.backend = BackendType::Vulkan;
+		instanceDesc.enableDebugLayer = true;
+		rhi::Instance instance = rhi::CreateInstance(instanceDesc);
 
-		SwapChainDesc spCI{};
-		spCI.width = m_windowWidth;
-		spCI.height = m_windowHeight;
-		spCI.windowHandle = glfwGetWin32Window(m_Window);
-		spCI.renderDevice = m_RenderDevice.get();
-		spCI.enableVSync = true;
-		m_SwapChain = std::unique_ptr<ISwapChain>(CreateSwapChain(spCI));
+		// create Device
+		std::vector<rhi::Adapter> adapters = instance.EnumerateAdapters();
+		assert(adapters.size() != 0);
+
+		rhi::DeviceDesc deviceDesc{};
+		deviceDesc.name = "Draw traingle";
+		mDevice = adapters[0].CreateDevice(deviceDesc);
+
+		// create Surface
+		rhi::SurfaceConfiguration surfaceConfig{};
+		surfaceConfig.device = mDevice;
+		surfaceConfig.width = mWindowWidth;
+		surfaceConfig.height = mWindowHeight;
+		surfaceConfig.presentMode = PresentMode::Fifo;
+		surfaceConfig.format = TextureFormat::BGRA8_SRGB;
+		mSurface = instance.CreateSurfaceFromWindowsHWND(glfwGetWin32Window(mWindow), GetModuleHandle(nullptr));
+		mSurface.Configure(surfaceConfig);
+
+		mQueue = mDevice.GetQueue(QueueType::Graphics);
+		// create depth stencil texture
+		rhi::TextureDesc dsDesc{};
+		dsDesc.format = TextureFormat::D32_UNORM_S8_UINT;
+		dsDesc.width = mWindowWidth;
+		dsDesc.height = mWindowHeight;
+		dsDesc.dimension = TextureDimension::Texture2D;
+		dsDesc.usage = TextureUsage::RenderAttachment;
+		mDepthStencilTexture = mDevice.CreateTexture(dsDesc);
+		mDsView = mDepthStencilTexture.CreateView();
 		// create shader 
-		ShaderModuleDesc shaderCI{};
+		std::vector<char> buffer = loadShaderData("triangle.vert.spv");
+		rhi::ShaderModuleDesc shaderCI{};
 		shaderCI.type = ShaderStage::Vertex;
 		shaderCI.entry = "main";
-		std::vector<uint32_t> buffer = loadShaderData("triangle.vert.spv");
-		auto vertexShader = m_RenderDevice->CreateShader(shaderCI, buffer.data(), buffer.size() * sizeof(uint32_t));
-		shaderCI.type = ShaderStage::Fragment;
+		shaderCI.code = { buffer.data(), buffer.size() };
+		auto vertexShader = mDevice.CreateShader(shaderCI);
 		buffer = loadShaderData("triangle.frag.spv");
-		auto fragmentShader = m_RenderDevice->CreateShader(shaderCI, buffer.data(), buffer.size() * sizeof(uint32_t));
+		shaderCI.type = ShaderStage::Fragment;
+		shaderCI.code = { buffer.data(), buffer.size() };
+		auto fragmentShader = mDevice.CreateShader(shaderCI);
 
 		// create vertex buffer and index buffer
 		BufferDesc bufferDesc{};
-		bufferDesc.access = BufferAccess::GpuOnly;
-		bufferDesc.usage = BufferUsage::VertexBuffer;
+		bufferDesc.usage = BufferUsage::Vertex;
 		bufferDesc.size = static_cast<uint32_t>(vertices.size()) * sizeof(Vertex);
-		m_VertexBuffer = m_RenderDevice->CreateBuffer(bufferDesc, vertices.data(), bufferDesc.size);
+		bufferDesc.name = "Vertex";
+		mVertexBuffer = mDevice.CreateBuffer(bufferDesc);
 
-		bufferDesc.usage = BufferUsage::IndexBuffer;
+		mQueue.WriteBuffer(mVertexBuffer, vertices.data(), bufferDesc.size, 0);
+
+		bufferDesc.usage = BufferUsage::Index;
 		bufferDesc.size = indices.size() * sizeof(uint32_t);
-		m_IndexBuffer = m_RenderDevice->CreateBuffer(bufferDesc, indices.data(), bufferDesc.size);
+		bufferDesc.name = "Index";
+		mIndexBuffer = mDevice.CreateBuffer(bufferDesc);
+		mQueue.WriteBuffer(mIndexBuffer, indices.data(), bufferDesc.size, 0);
 
-		bufferDesc.usage = BufferUsage::UniformBuffer;
+		bufferDesc.usage = BufferUsage::Uniform;
 		bufferDesc.size = sizeof(ShaderData);
-		m_UniformBuffer = m_RenderDevice->CreateBuffer(bufferDesc);
+		bufferDesc.name = "Uniform";
+		mUniformBuffer = mDevice.CreateBuffer(bufferDesc);
+
 		// These match the following shader layout (see triangle.vert):
 		//	layout (location = 0) in vec3 inPos;
 		//	layout (location = 1) in vec3 inColor;
 		VertexInputAttribute vertexInputs[] =
 		{
-			{0, 0, TextureFormat::RGB32_FLOAT}, 
-			{0, 1, TextureFormat::RGB32_FLOAT} 
+			{0, 0, VertexFormat::Float32x3}, 
+			{0, 1, VertexFormat::Float32x3}
 		};
 
-		// create resouce set and layout
-		ResourceSetLayoutEntry layoutBindings[] = { ResourceSetLayoutEntry::UniformBuffer(ShaderStage::Vertex, 0) };
+		// create Bind set and layout
+		BindSetLayoutEntry layoutEntry[] = { BindSetLayoutEntry::UniformBuffer(ShaderStage::Vertex, 0) };
 
-		BindSetEntry bindings[] = { BindSetEntry::UniformBuffer(m_UniformBuffer, 0) };
+		BindSetEntry entry[] = { BindSetEntry::Buffer(mUniformBuffer, 0) };
 
-		m_ResourceSetLayout = m_RenderDevice->CreateBindSetLayout(layoutBindings, 1);
-		m_ResourceSet = m_RenderDevice->CreateBindSet(m_ResourceSetLayout, bindings, 1);
+		rhi::BindSetLayoutDesc bindSetLayoutDesc{};
+		bindSetLayoutDesc.entries = layoutEntry;
+		bindSetLayoutDesc.entryCount = 1;
+		mBindSetLayout = mDevice.CreateBindSetLayout(bindSetLayoutDesc);
+		rhi::BindSetDesc bindSetDesc{};
+		bindSetDesc.entries = entry;
+		bindSetDesc.entryCount = 1;
+		bindSetDesc.layout = mBindSetLayout;
+		mBindSet = mDevice.CreateBindSet(bindSetDesc);
+		// create pipelineLayout
+		rhi::PipelineLayoutDesc desc{};
+		desc.bindSetLayouts = &mBindSetLayout;
+		desc.bindSetLayoutCount = 1;
+		rhi::PipelineLayout pipelineLayout = mDevice.CreatePipelineLayout(desc);
 
+		ShaderState vertexState{ vertexShader };
+		ShaderState fragmentState{ fragmentShader };
 		// create pipeline
 		RenderPipelineDesc pipelineCI{};
-		pipelineCI.primType = PrimitiveType::TriangleList;
+		pipelineCI.pipelineLayout = pipelineLayout;
 		pipelineCI.vertexAttributes = vertexInputs;
 		pipelineCI.vertexAttributeCount = 2;
-		pipelineCI.vertexShader = vertexShader;
-		pipelineCI.fragmentShader = fragmentShader;
-		pipelineCI.resourceSetLayouts = &m_ResourceSetLayout;
-		pipelineCI.resourceSetLayoutCount = 1;
-		pipelineCI.renderTargetFormatCount = 1;
-		pipelineCI.colorAttachmentFormats[0] = m_SwapChain->getRenderTargetFormat();
-		pipelineCI.depthStencilFormat = m_SwapChain->getDepthStencilFormat();
-		pipelineCI.depthStencilState.depthTestEnable = true;
-		pipelineCI.rasterState.cullMode = CullMode::back;
-		pipelineCI.rasterState.frontCounterClockwise = false;
+		pipelineCI.vertexShader = &vertexState;
+		pipelineCI.fragmentShader = &fragmentState;
+		pipelineCI.colorAttachmentFormats[0] = mSurface.GetSwapChainFormat();
+		pipelineCI.colorAttachmentCount = 1;
+		pipelineCI.depthStencilFormat = mDepthStencilTexture.GetFormat();
+		pipelineCI.depthStencilState.depthTestEnable = false;
+		pipelineCI.rasterState.cullMode = CullMode::None;
+		pipelineCI.rasterState.frontFace = FrontFace::FrontCounterClockwise;
+		pipelineCI.rasterState.primitiveType = PrimitiveType::TriangleList;
 
-		m_Pipeline = m_RenderDevice->CreateGraphicsPipeline(pipelineCI);
+		mPipeline = mDevice.CreateRenderPipeline(pipelineCI);
 
-		delete vertexShader;
-		delete fragmentShader;
-
-		m_CmdList = m_RenderDevice->CreateCommandRecorder();
+		mCommandEncoder = mDevice.CreateCommandEncoder();
 
 		camera.position = glm::vec3(0, 0, 3);
 
-		m_GraphicState.pipeline = m_Pipeline;
-		m_GraphicState.colorAttachmentCount = 1;
-		m_GraphicState.indexBuffer = IndexBufferBinding().setBuffer(m_IndexBuffer).setFormat(TextureFormat::R32_UINT).setOffset(0);
-		m_GraphicState.vertexBufferCount = 1;
-		m_GraphicState.vertexBuffers[0] = VertexBufferBinding().setBuffer(m_VertexBuffer).setSlot(0).setOffset(0);
-		m_GraphicState.viewportCount = 1;
-		m_GraphicState.viewports[0] = { (float)m_windowWidth, (float)m_windowHeight };
-		m_GraphicState.clearRenderTarget = true;
-	}
-
-	void run()
-	{
-		while (!glfwWindowShouldClose(m_Window))
-		{
-			glfwPollEvents();
-
-			m_SwapChain->beginFrame();
-			// draw 
-			render();
-			m_SwapChain->present();
-		}
-	}
-
-	void render()
-	{
-		// Update the uniform buffer for the next frame
+				// Update the uniform buffer for the next frame
 		ShaderData shaderData{};
 		camera.update();
-		glm::mat4 projection = glm::perspective(glm::radians(70.f), (float)m_windowWidth / (float)m_windowHeight, 10000.f, 0.1f);
-		//projection[1][1] *= -1;
+		glm::mat4 projection = glm::perspective(glm::radians(70.f), (float)mWindowWidth / (float)mWindowHeight, 10000.f, 0.1f);
+		projection[1][1] *= -1;
 		glm::mat4 view = camera.getViewMatrix();
 		shaderData.projectionMatrix = projection;
 		shaderData.viewMatrix = view;
 		shaderData.modelMatrix = glm::mat4(1.0f);
 
-		auto rtv = m_SwapChain->getCurrentRenderTargetView();
-		auto dsv = m_SwapChain->getDepthStencilView();
+		mQueue.WriteBuffer(mUniformBuffer, &shaderData, sizeof(ShaderData), 0);
+	}
 
-		m_GraphicState.renderTargetViews[0] = rtv;
-		m_GraphicState.depthStencilView = dsv;
-		// If no scissor is provided, it will be set to the corresponding viewport size.
-		Rect scissor{ (int)m_windowWidth / 4 * 3, (int)m_windowHeight / 4 * 3 };
+	void run()
+	{
+		while (!glfwWindowShouldClose(mWindow))
+		{
+			glfwPollEvents();
 
-		m_CmdList->open();
-		m_CmdList->WriteBuffer(m_UniformBuffer, &shaderData, sizeof(ShaderData), 0);
-		m_CmdList->setPipeline(m_GraphicState);
-		m_CmdList->commitShaderResources(m_ResourceSet);
-		//m_CmdList->setScissors(&scissor, 1);
-		m_CmdList->DrawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-		m_CmdList->close();
+			mSurface.AcquireNextTexture();
+			// draw 
+			render();
+			mSurface.Present();
+			mDevice.Tick();
+			mFrameCount++;
+		}
+	}
 
-		m_RenderDevice->Submit(&m_CmdList, 1);
+	void render()
+	{
+
+		{
+			ColorAttachment colorAttachment{};
+			colorAttachment.view = mSurface.GetCurrentTextureView();
+			DepthStencilAattachment dsAttachment{};
+			dsAttachment.view = mDsView;
+
+			rhi::RenderPassDesc passDesc{};
+			passDesc.colorAttachmentCount = 1;
+			passDesc.colorAttachments = &colorAttachment;
+			//passDesc.depthStencilAttachment = &dsAttachment;
+			RenderPassEncoder pass = mCommandEncoder.BeginRenderPass(passDesc);
+			pass.SetPipeline(mPipeline);
+			pass.SetBindSet(mBindSet, 0);
+			pass.SetIndexBuffer(mIndexBuffer, IndexFormat::Uint32);
+			pass.SetVertexBuffers(0, 1, &mVertexBuffer);
+			pass.DrawIndexed(indices.size());
+			pass.End();
+		}
+		CommandList commandList = mCommandEncoder.Finish();
+		mQueue.Submit(&commandList, 1);
 	}
 
 	void cleanUp()
 	{
-		if (m_RenderDevice)
-		{
-			m_RenderDevice->WaitIdle();
-		}
-		delete m_IndexBuffer;
-		m_IndexBuffer = nullptr;
-		delete m_VertexBuffer;
-		m_VertexBuffer = nullptr;
-		delete m_UniformBuffer;
-		m_UniformBuffer = nullptr;
-		delete m_Pipeline;
-		m_Pipeline = nullptr;
-		delete m_ResourceSetLayout;
-		m_ResourceSetLayout = nullptr;
-		delete m_ResourceSet;
-		m_ResourceSet = nullptr;
-		m_SwapChain = nullptr;
-		m_RenderDevice = nullptr;
 		glfwTerminate();
 	}
 private:
-	IBuffer* m_UniformBuffer;
-	IBuffer* m_VertexBuffer;
-	IBuffer* m_IndexBuffer;
-	IRenderPipeline* m_Pipeline;
-	ICommandEncoder* m_CmdList;
-	IBindSetLayout* m_ResourceSetLayout;
-	IBindSetLayout* m_ResourceSet;
+	rhi::Buffer mUniformBuffer;
+	rhi::Buffer mVertexBuffer;
+	rhi::Buffer mIndexBuffer;
+	rhi::RenderPipeline mPipeline;
+	rhi::CommandEncoder mCommandEncoder;
+	rhi::BindSetLayout mBindSetLayout;
+	rhi::BindSet mBindSet;
 
-	uint32_t m_windowWidth = 1024;
-	uint32_t m_windowHeight = 768;
-	GLFWwindow* m_Window;
+	uint32_t mWindowWidth = 1024;
+	uint32_t mWindowHeight = 768;
+	GLFWwindow* mWindow;
 
-	RenderPassDesc m_GraphicState{};
+	rhi::Texture mDepthStencilTexture;
+	rhi::TextureView mDsView;
 
-	std::unique_ptr<ISwapChain> m_SwapChain;
-	std::unique_ptr<IDevice> m_RenderDevice;
+	rhi::Surface mSurface;
+	rhi::Device mDevice;
+	rhi::Queue mQueue;
+
+	uint64_t mFrameCount = 0;
 
 	static void GLFW_KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 	{

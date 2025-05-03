@@ -1,28 +1,28 @@
 #pragma once
 
-#include "rhi/RHIStruct.h"
+#include "RHIStruct.h"
 #include "common/Ref.hpp"
 #include "common/RefCounted.h"
 
-namespace rhi
+namespace rhi::impl
 {
-	class Surface final : public RefCounted
+	class SurfaceBase : public RefCounted
 	{
 	public:
-		static Ref<Surface> CreateFromWindowsHWND(InstanceBase* instance, void* hwnd, void* hinstance);
-		//static Ref<Surface> CreateFromWaylandSurface(InstanceBase* instance, void* display, void* surface);
 		void APIConfigure(const SurfaceConfiguration& config);
 		SurfaceAcquireNextTextureStatus APIAcquireNextTexture();
 		TextureBase* APIGetCurrentTexture();
+		TextureViewBase* APIGetCurrentTextureView();
+		TextureFormat APIGetSwapChainFormat() const;
 		void APIPresent();
 		void APIUnconfigure();
 
 		InstanceBase* GetInstance() const;
 		void* GetHInstance() const;
 		void* GetHWND() const;
-	private:
-		explicit Surface(InstanceBase* instance);
-		~Surface();
+	protected:
+		explicit SurfaceBase(InstanceBase* instance);
+		~SurfaceBase();
 		Ref<DeviceBase> mDevice;
 		InstanceBase* mInstance;
 		Ref<SwapChainBase> mSwapChain;

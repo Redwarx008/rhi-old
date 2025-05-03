@@ -1,9 +1,9 @@
 #pragma once
 
 #include "ResourceBase.h"
-#include "rhi/RHIStruct.h"
+#include "RHIStruct.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	class DeviceBase;
 

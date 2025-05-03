@@ -2,7 +2,7 @@
 
 #include <bitset>
 
-namespace rhi
+namespace rhi::impl
 {
     template <size_t N>
     class BitSetIterator

@@ -3,7 +3,7 @@
 #include "../AdapterBase.h"
 #include <vulkan/vulkan.h>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 
 	class Adapter final : public AdapterBase
@@ -12,7 +12,7 @@ namespace rhi::vulkan
 		explicit Adapter(InstanceBase* instance, VkPhysicalDevice vulkanPhysicalDevice);
 		~Adapter() = default;
 		// api
-		DeviceBase* CreateDevice(const DeviceDesc& desc) override;
+		DeviceBase* APICreateDevice(const DeviceDesc& desc) override;
 		// internal
 		VkPhysicalDevice GetHandle() const;
 	private:

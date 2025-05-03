@@ -1,6 +1,6 @@
 #include "ComputePipelineBase.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	ComputePipelineBase::ComputePipelineBase(DeviceBase* device, const ComputePipelineDesc& desc) :
 		PipelineBase(device, desc)

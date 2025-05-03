@@ -1,6 +1,6 @@
 #include "EncodingContext.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	CommandAllocator& EncodingContext::GetCommandAllocator()
 	{

@@ -82,8 +82,8 @@ ENDIF()
 add_subdirectory(third_party)
 
 set(interface_rhi 
-	"include/rhi/RHI.h"
-	"include/rhi/RHIStruct.h")
+	"include/rhi/rhi.h"
+	"src/RHIStruct.h" "include/rhi/rhi_cpp.h" )
 set(common_rhi
 	  )
 
@@ -163,9 +163,9 @@ set (src
 	 "src/CallbackTaskManager.cpp" 
 	 "src/ComputePipelineBase.h"
 	 "src/ComputePipelineBase.cpp" 
-	 "src/SwapchainBase.h"
+	 "src/SwapChainBase.h"
 	 "src/SwapchainBase.cpp"
-	 "src/Surface.h" "src/Surface.cpp")
+	 "src/SurfaceBase.h" "src/SurfaceBase.cpp" "src/ComputePassEncoder.h" "src/ComputePassEncoder.cpp" "src/PassResourceUsage.cpp" "src/Commands.cpp")
 
 set(src_vk
 	"src/vulkan/VMA.cpp"
@@ -178,8 +178,8 @@ set(src_vk
 	"src/vulkan/ErrorsVk.h"
 	"src/vulkan/CommandListVk.h"
 	"src/vulkan/CommandListVk.cpp"
-	"src/vulkan/PipelineVk.h"
-	"src/vulkan/PipelineVk.cpp"  
+	
+	  
 	"src/vulkan/QueueVk.h"
 	"src/vulkan/QueueVk.cpp"
 	"src/vulkan/BufferVk.h"
@@ -214,7 +214,7 @@ set(src_vk
 	"src/vulkan/RenderPipelineVk.h" 
 	"src/vulkan/RenderPipelineVk.cpp" 
 	"src/vulkan/ComputePipelineVk.h" 
-	"src/vulkan/ComputePipelineVk.cpp" "src/vulkan/RefCountedHandle.h" )
+	"src/vulkan/ComputePipelineVk.cpp" "src/vulkan/RefCountedHandle.h"  "src/vulkan/SurfaceVk.h" "src/vulkan/SurfaceVk.cpp" "src/vulkan/VulkanEXTFunctions.h")
 
 add_library(rhi "")
 

@@ -1,9 +1,16 @@
 #include "PipelineBase.h"
 #include "PipelineLayoutBase.h"
+#include "BindSetLayoutBase.h"
+#include "ShaderModuleBase.h"
 #include "common/Utils.h"
 #include "common/Error.h"
-namespace rhi
+
+namespace rhi::impl
 {
+	ShaderStageState::ShaderStageState() {}
+
+	ShaderStageState::~ShaderStageState() {}
+
 	PipelineBase::PipelineBase(DeviceBase* device, const RenderPipelineDesc& desc) :
 		ResourceBase(device, desc.name),
 		mPipelineLayout(desc.pipelineLayout)

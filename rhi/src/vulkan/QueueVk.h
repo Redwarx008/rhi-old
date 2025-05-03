@@ -13,7 +13,7 @@
 #include <memory>
 
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	class Device;
 	class DescriptorSetAllocator;
@@ -21,7 +21,7 @@ namespace rhi::vulkan
 	class Queue final : public QueueBase
 	{
 	public:
-		static Ref<Queue> Create(Device* device, uint32_t family);
+		static Ref<Queue> Create(Device* device, uint32_t family, QueueType type);
 		~Queue();
 		// internal 
 		CommandRecordContext* GetPendingRecordingContext();
@@ -33,7 +33,7 @@ namespace rhi::vulkan
 		void EnqueueDeferredDeallocation(DescriptorSetAllocator* allocator);
 		void SubmitPendingCommands();
 	private:
-		explicit Queue(Device* device, uint32_t family) noexcept;
+		explicit Queue(Device* device, uint32_t family, QueueType type);
 		void Initialize();
 		void TickImpl(uint64_t completedSerial) override;
 		uint64_t SubmitImpl(CommandListBase* const* commands, uint32_t commandListCount) override;
@@ -46,12 +46,12 @@ namespace rhi::vulkan
 		void SetTrackingSubmitSemaphore();
 		CommandPoolAndBuffer GetOrCreateCommandPoolAndBuffer();
 		void NextRecordingContext();
-		Device* mDevice;
 
 		uint32_t mQueueFamilyIndex;
-		VkQueue mHandle;
 
-		VkSemaphore mTrackingSubmitSemaphore;
+		VkQueue mHandle = VK_NULL_HANDLE;
+
+		VkSemaphore mTrackingSubmitSemaphore = VK_NULL_HANDLE;
 
 		CommandRecordContext mRecordContext;
 
@@ -60,6 +60,7 @@ namespace rhi::vulkan
 		std::vector<CommandPoolAndBuffer> mUnusedCommandBuffer;
 
 		MutexProtected<VkResourceDeleter> mDeleter;
+
 		MutexProtected<SerialQueue<uint64_t, Ref<DescriptorSetAllocator>>> mDescriptorAllocatorsPendingDeallocation;
 	};
 }

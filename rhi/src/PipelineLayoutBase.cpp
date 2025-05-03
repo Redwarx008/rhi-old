@@ -2,7 +2,8 @@
 #include "DeviceBase.h"
 #include "BindSetLayoutBase.h"
 #include "common/Error.h"
-namespace rhi
+
+namespace rhi::impl
 {
 	PipelineLayoutBase::PipelineLayoutBase(DeviceBase* device, const PipelineLayoutDesc& desc) :
 		ResourceBase(device, desc.name)
@@ -42,5 +43,13 @@ namespace rhi
 		ASSERT(bindSetIndex < cMaxBindSets);
 		ASSERT(mBindGroupLayouts[bindSetIndex] != nullptr);
 		return mBindGroupLayouts[bindSetIndex].Get();
+	}
+
+	BindSetLayoutBase* PipelineLayoutBase::APIGetBindSetLayout(uint32_t bindSetIndex) const
+	{
+		ASSERT(bindSetIndex < cMaxBindSets);
+		ASSERT(mBindGroupLayouts[bindSetIndex] != nullptr);
+		Ref<BindSetLayoutBase> bindSetLayout = mBindGroupLayouts[bindSetIndex];
+		return bindSetLayout.Detach();
 	}
 }

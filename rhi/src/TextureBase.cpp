@@ -4,7 +4,7 @@
 #include "common/Constants.h"
 #include "common/Error.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	TextureUsage AddInternalUsage(TextureUsage usage)
 	{
@@ -97,10 +97,42 @@ namespace rhi
 		return mUsage;
 	}
 
-	TextureViewBase* TextureBase::APICreateView(const TextureViewDesc& desc)
+	TextureViewDesc FillWithDefualtTextureViewDesc(TextureBase* texture, const TextureViewDesc* desc)
 	{
-		Ref<TextureViewBase> textureView = CreateView(desc);
+		TextureViewDesc result{};
+		if (desc)
+		{
+			result = *desc;
+		}
+		if (result.dimension == TextureDimension::Undefined)
+		{
+			result.dimension = texture->APIGetDimension();
+		}
+		if (result.format == TextureFormat::Undefined)
+		{
+			result.format = texture->APIGetFormat();
+		}
+		if (result.arrayLayerCount == CArraySizeUndefined)
+		{
+			result.arrayLayerCount = texture->APIGetDepthOrArrayLayers() - result.baseArrayLayer;
+		}
+		if (result.mipLevelCount == CMipLevelCountUndefined)
+		{
+			result.mipLevelCount = texture->APIGetMipLevelCount() - result.baseMipLevel;
+		}
+		return result;
+	}
+
+	TextureViewBase* TextureBase::APICreateView(const TextureViewDesc* desc)
+	{
+		TextureViewDesc filledDesc = FillWithDefualtTextureViewDesc(this, desc);
+		Ref<TextureViewBase> textureView = CreateView(filledDesc);
 		return textureView.Detach();
+	}
+
+	void TextureBase::APIDestroy()
+	{
+		Destroy();
 	}
 
 	bool TextureBase::IsDestoryed() const
@@ -123,18 +155,19 @@ namespace rhi
 	}
 
 
-	TextureViewBase::TextureViewBase(TextureBase* texture, const TextureViewDesc& desc)
-		:
+	TextureViewBase::TextureViewBase(TextureBase* texture, const TextureViewDesc& desc) :
 		mTexture(texture),
 		mDimension(desc.dimension),
 		mFormat(desc.format),
-		mRange(ViewAspectConvert(mFormat, desc.aspect), desc.baseArrayLayer, desc.arrayLayerCount, desc.baseMipLevel, desc.mipLevelCount),
+		mRange(ViewAspectConvert(desc.format, desc.aspect), desc.baseArrayLayer, desc.arrayLayerCount, desc.baseMipLevel, desc.mipLevelCount),
 		mUsage(GetTextureViewUsage(texture->APIGetUsage(), desc.usage)),
 		mInternalUsage(GetTextureViewUsage(texture->GetInternalUsage(), desc.usage)),
 		ResourceBase(texture->GetDevice(), desc.name)
 	{
 
 	}
+
+	TextureViewBase::~TextureViewBase() {}
 
 	void TextureViewBase::Initialize()
 	{

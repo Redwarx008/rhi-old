@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <string_view>
 
-namespace rhi
+namespace rhi::impl
 {
 	class AdapterBase;
 	class BindSetBase;
@@ -19,7 +19,7 @@ namespace rhi
 	class PipelineBase;
 	class PipelineCacheBase;
 	class PipelineLayoutBase;
-	class QuerySetBase;
+	//class QuerySetBase;
 	class QueueBase;
 	class RenderPassEncoder;
 	class RenderPipelineBase;
@@ -30,80 +30,48 @@ namespace rhi
 	class TextureBase;
 	class TextureViewBase;
 	class DeviceBase;
-	class Surface;
+	class SurfaceBase;
 
-constexpr uint32_t MAX_COLOR_ATTACHMENTS = 8;
+constexpr uint32_t CMaxColorAttachments = 8;
+constexpr uint64_t CWholeSize = ~0ull;
+constexpr uint32_t CAutoCompute = uint32_t(-1);
+constexpr uint32_t CArraySizeUndefined = uint32_t(-1);
+constexpr uint32_t CMipLevelCountUndefined = uint32_t(-1);
 
-constexpr uint64_t WHOLE_SIZE = ~0ull;
-constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 
+#define ENUM_CLASS_FLAG_OPERATORS(EnumName) \
+inline constexpr EnumName operator|(EnumName a, EnumName b) { \
+    using Underlying = std::underlying_type_t<EnumName>; \
+    return static_cast<EnumName>(static_cast<Underlying>(a) | static_cast<Underlying>(b)); \
+} \
+inline constexpr EnumName operator&(EnumName a, EnumName b) { \
+    using Underlying = std::underlying_type_t<EnumName>; \
+    return static_cast<EnumName>(static_cast<Underlying>(a) & static_cast<Underlying>(b)); \
+} \
+inline constexpr EnumName operator^(EnumName a, EnumName b) { \
+    using Underlying = std::underlying_type_t<EnumName>; \
+    return static_cast<EnumName>(static_cast<Underlying>(a) ^ static_cast<Underlying>(b)); \
+} \
+inline constexpr EnumName operator~(EnumName a) { \
+    using Underlying = std::underlying_type_t<EnumName>; \
+    return static_cast<EnumName>(~static_cast<Underlying>(a)); \
+} \
+inline constexpr EnumName& operator|=(EnumName& a, EnumName b) { \
+    a = a | b; \
+    return a; \
+} \
+inline constexpr EnumName& operator&=(EnumName& a, EnumName b) { \
+    a = a & b; \
+    return a; \
+} \
+inline constexpr bool operator==(EnumName a, uint32_t b) { \
+	return static_cast<uint32_t>(a) == b; \
+} \
+inline constexpr bool operator!=(EnumName a, uint32_t b) { \
+	return !(a == b); \
+}\
 
-#define ENUM_CLASS_FLAG_OPERATORS(T) \
-    inline constexpr T operator | (T a, T b) { return T(uint32_t(a) | uint32_t(b)); } \
-	inline constexpr T operator |= (T a, T b) {return T(a = a | b);}\
-    inline constexpr T operator & (T a, T b) { return T(uint32_t(a) & uint32_t(b)); } /* NOLINT(bugprone-macro-parentheses) */ \
-	inline constexpr T operator &= (T a, T b) {return T(a = a & b);}\
-    inline constexpr T operator ~ (T a) { return T(~uint32_t(a)); } /* NOLINT(bugprone-macro-parentheses) */ \
-    inline constexpr bool operator !(T a) { return uint32_t(a) == 0; } \
-    inline constexpr bool operator ==(T a, uint32_t b) { return uint32_t(a) == b; } \
-    inline constexpr bool operator !=(T a, uint32_t b) { return uint32_t(a) != b; }	\
-
-	struct Region3D;
-
-	// resource 
-
-	enum class ResourceState : uint32_t
-	{
-		Undefined = 0 << 0,
-		Common = 1 << 0,
-		ConstantBuffer = 1 << 1,
-		VertexBuffer = 1 << 2,
-		IndexBuffer = 1 << 3,
-		IndirectBuffer = 1 << 4,
-		ShaderResource = 1 << 5,
-		UnorderedAccess = 1 << 6,
-		RenderTarget = 1 << 7,
-		DepthWrite = 1 << 8,
-		DepthRead = 1 << 9,
-		CopyDst = 1 << 10,
-		CopySource = 1 << 11,
-		ResolveDest = 1 << 12,
-		ResolveSource = 1 << 13,
-		Present = 1 << 14,
-		InitialRenderTarget = 1 << 15
-		//AccelStructRead = (1 << 15),
-		//AccelStructWrite = (1 << 16),
-		//AccelStructBuildInput = (1 << 17),
-		//AccelStructBuildBlas = (1 << 18),
-		//ShadingRateSurface = (1 << 19),
-	};
-	ENUM_CLASS_FLAG_OPERATORS(ResourceState);
-
-	enum class NativeObjectType
-	{
-		VK_Device,
-		VK_PhysicalDevice,
-		VK_Instance,
-		VK_Queue,
-		VK_CommandBuffer,
-		VK_DeviceMemory,
-		VK_Buffer,
-		VK_Image,
-		VK_ImageView,
-		//VK_AccelerationStructureKHR,
-		VK_Sampler,
-		VK_ShaderModule,
-		VK_DescriptorPool,
-		VK_DescriptorSetLayout,
-		VK_DescriptorSet,
-		VK_PipelineLayout,
-		VK_Pipeline,
-		VK_PipelineCache,
-		VK_Micromap
-	};
-
-	// buffer
-	enum class MapMode : uint8_t
+	enum class MapMode : uint32_t
 	{
 		Read,
 		Write
@@ -115,22 +83,7 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		None,
 		DeviceLost,
 		DestroyedBeforeCallback,
-		OffsetOutOfRange,
-		SizeOutOfRange,
 	};
-
-	using BufferMapCallback = void (*)(BufferMapAsyncStatus status, void* mappedAdress, void* userdata);
-
-	//enum class BufferAccess : uint8_t
-	//{
-	//	// means VK_MEMORY_HEAP_DEVICE_LOCAL_BIT
-	//	GpuOnly,
-	//	// means VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-	//	CpuWrite,
-	//	// Buffers for data written by or transferred from the GPU that you want to read back on the CPU, e.g. results of some computations.
-	//	// means vVK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT 
-	//	CpuRead,
-	//};
 
 	// defualt VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
 	enum class BufferUsage : uint32_t
@@ -149,7 +102,7 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 	};
 	ENUM_CLASS_FLAG_OPERATORS(BufferUsage);
 
-	enum class TextureDimension : uint8_t
+	enum class TextureDimension : uint32_t
 	{
 		Undefined,
 		Texture1D,
@@ -161,7 +114,7 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		Texture3D
 	};
 
-	enum class TextureFormat : uint8_t
+	enum class TextureFormat : uint32_t
 	{
 		Undefined,
 
@@ -236,7 +189,7 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		COUNT,
 	};
 
-	enum class VertexFormat : uint8_t
+	enum class VertexFormat : uint32_t
 	{
 		Uint8,
 		Uint8x2,
@@ -280,13 +233,13 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		Unorm10_10_10_2,
 	};
 
-	enum class IndexFormat : uint8_t
+	enum class IndexFormat : uint32_t
 	{
 		Uint16,
 		Uint32
 	};
 
-	enum class TextureUsage : uint8_t
+	enum class TextureUsage : uint32_t
 	{
 		None = 0 << 0,
 		CopySrc = 1 << 0,
@@ -297,7 +250,7 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 	};
 	ENUM_CLASS_FLAG_OPERATORS(TextureUsage);
 
-	enum class TextureAspect : uint8_t
+	enum class TextureAspect : uint32_t
 	{
 		None = 0 << 0,
 		All = 1 << 0,
@@ -352,7 +305,7 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 	};
 	ENUM_CLASS_FLAG_OPERATORS(ColorMask);
 
-	enum class SamplerAddressMode : uint8_t
+	enum class SamplerAddressMode : uint32_t
 	{
 		ClampToEdge,
 		Repeat,
@@ -361,23 +314,20 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		MirrorClampToEdge
 	};
 
-	enum class FilterMode : uint8_t
+	enum class FilterMode : uint32_t
 	{
 		Linear,
-		nearest
+		Nearest
 	};
 
-	enum class BorderColor : uint8_t
+	enum class BorderColor : uint32_t
 	{
 		FloatOpaqueBlack,
 		FloatOpaqueWhite,
 		FloatTransparentBlack
 	};
 
-
-	// shader
-
-	enum class BindingType : uint8_t
+	enum class BindingType : uint32_t
 	{
 		None,
 		SampledTexture, //SRV
@@ -409,21 +359,21 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 	};
 	ENUM_CLASS_FLAG_OPERATORS(ShaderStage);
 
-	enum class FillMode : uint8_t
+	enum class FillMode : uint32_t
 	{
 		Fill = 0,
 		Line = 1,
 		Point = 2
 	};
 
-	enum class CullMode : uint8_t
+	enum class CullMode : uint32_t
 	{
 		None,
 		Front,
-		back
+		Back
 	};
 
-	enum class FrontFace : uint8_t
+	enum class FrontFace : uint32_t
 	{
 		FrontCounterClockwise,
 		FrontClockwise
@@ -453,7 +403,7 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		DecrementAndWrap = 7
 	};
 
-	enum class PrimitiveType : uint8_t
+	enum class PrimitiveType : uint32_t
 	{
 		PointList,
 		LineList,
@@ -464,7 +414,7 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		PatchList
 	};
 
-	enum class VertexInputRate : uint8_t
+	enum class VertexInputRate : uint32_t
 	{
 		Vertex,
 		Instance
@@ -478,20 +428,20 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		Undefined
 	};
 
-	enum class LoadOp : uint8_t
+	enum class LoadOp : uint32_t
 	{
 		DontCare,
 		Load,
 		Clear
 	};
 
-	enum class StoreOp : uint8_t
+	enum class StoreOp : uint32_t
 	{
 		Store,
 		Discard
 	};
 
-	enum class LoggingSeverity : uint8_t
+	enum class LoggingSeverity : uint32_t
 	{
 		Verbose,
 		Info,
@@ -516,15 +466,16 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		MultiDrawIndirect,
 		DepthBiasClamp,
 		DepthClamp,
-		R8UnormStorage
+		R8UnormStorage,
+		Count
 	};
 
-	enum class BackendType : uint8_t
+	enum class BackendType : uint32_t
 	{
 		Vulkan
 	};
 
-	enum class AdapterType : uint8_t
+	enum class AdapterType : uint32_t
 	{
 		DiscreteGPU,
 		IntegratedGPU,
@@ -533,13 +484,13 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		Unknown
 	};
 
-	enum class ShareMode : uint8_t
+	enum class ShareMode : uint32_t
 	{
 		Exclusive,
 		Concurrent
 	};
 
-	enum class PresentMode : uint8_t
+	enum class PresentMode : uint32_t
 	{
 		Fifo,
 		FifoRelaxed,
@@ -547,15 +498,17 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		Mailbox
 	};
 
-	enum class SurfaceAcquireNextTextureStatus : uint8_t
+	enum class SurfaceAcquireNextTextureStatus : uint32_t
 	{
 		Success,
+		Suboptimal,
 		Timeout,
 		Outdated,
 		SurfaceLost,
 		Error
 	};
 
+	using BufferMapCallback = void (*)(BufferMapAsyncStatus status, void* mappedAdress, void* userdata);
 	typedef void(_stdcall* LoggingCallback) (LoggingSeverity severity, const char* msg, void* userData);
 	//using DebugMessageCallbackFunc = std::function<void(MessageSeverity severity, const char* msg)>;
 
@@ -663,9 +616,122 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		}
 	};
 
+	struct SurfaceConfiguration
+	{
+		DeviceBase* device;
+		TextureFormat format = TextureFormat::BGRA8_SRGB;
+		uint32_t width;
+		uint32_t height;
+		PresentMode presentMode = PresentMode::Fifo;
+	};
+
+	struct ShaderState
+	{
+		ShaderModuleBase* shaderModule;
+		SpecializationConstant const* constants;
+		uint32_t constantCount;
+	};
+
+	struct VertexInputAttribute
+	{
+		uint32_t bindingBufferSlot = 0;
+		uint32_t location = 0;
+		VertexFormat format = VertexFormat::Float32x3;
+		VertexInputRate rate = VertexInputRate::Vertex;
+		// If this value is set to UINT32_MAX (default value), the offset will
+		// be computed automatically by placing the element right after the previous one.
+		uint32_t offsetInElement = CAutoCompute;
+		// Stride in bytes between two elements, for one buffer slot.
+		// If this value is set to UINT32_MAX, the stride will be
+		// computed automatically assuming that all elements in the same buffer slot that are
+		// packed one by one. or must specify the same stride in the same buffer.
+		uint32_t elementStride = CAutoCompute;
+	};
+
+	struct ColorAttachmentBlendState
+	{
+		bool        blendEnable = false;
+		BlendFactor srcColorBlend = BlendFactor::One;
+		BlendFactor destColorBlend = BlendFactor::Zero;
+		BlendOp     colorBlendOp = BlendOp::Add;
+		BlendFactor srcAlphaBlend = BlendFactor::One;
+		BlendFactor destAlphaBlend = BlendFactor::Zero;
+		BlendOp     alphaBlendOp = BlendOp::Add;
+		ColorMask   colorWriteMask = ColorMask::All;
+	};
+
+	struct BlendState
+	{
+		bool alphaToCoverageEnable = false;
+
+		ColorAttachmentBlendState colorAttachmentBlendStates[CMaxColorAttachments];
+		//std::array<ColorAttachmentBlendState, CMaxColorAttachments> colorAttachmentBlendStates;
+	};
+
+	struct StencilOpState
+	{
+		StencilOp failOp = StencilOp::Keep;
+		StencilOp passOp = StencilOp::Keep;
+		StencilOp depthFailOp = StencilOp::Keep;
+		CompareOp compareOp = CompareOp::Always;
+		uint8_t writeMask = 0xff;
+		uint8_t compareMak = 0xff;
+		uint32_t referenceValue = 0;
+	};
+
+	struct DepthStencilState
+	{
+		bool depthTestEnable = true;
+		bool depthWriteEnable = true;
+		CompareOp depthCompareOp = CompareOp::LessOrEqual;
+		int32_t depthBias = 0;
+		float depthBiasSlopeScale = 0.0f;
+		float depthBiasClamp = 0.0f;
+		bool stencilTestEnable = false;
+		uint8_t stencilReadMask = 0xff;
+		uint8_t stencilWriteMask = 0xff;
+		StencilOpState frontFaceStencil;
+		StencilOpState backFaceStencil;
+	};
 
 
-	// BindGroup
+	struct RasterState
+	{
+		PrimitiveType primitiveType = PrimitiveType::TriangleList;
+		FillMode fillMode = FillMode::Fill;
+		CullMode cullMode = CullMode::Back;
+		FrontFace frontFace = FrontFace::FrontCounterClockwise;
+		bool depthClampEnable = false; //must be false if this feature is not enabled
+		float lineWidth = 1.0f;
+	};
+
+	struct SampleState
+	{
+		uint32_t count = 1;
+		uint32_t quality = 0;
+		uint32_t mask = 0xFFFFFFFF;
+	};
+
+	struct ColorAttachment
+	{
+		TextureViewBase* view = nullptr;
+		TextureViewBase* resolveView = nullptr;
+		LoadOp loadOp = LoadOp::Clear;
+		StoreOp storeOp = StoreOp::Store;
+		Color clearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
+	};
+
+	struct DepthStencilAattachment
+	{
+		TextureViewBase* view;
+		LoadOp depthLoadOp = LoadOp::Clear;
+		StoreOp depthStoreOp = StoreOp::Store;
+		LoadOp stencilLoadOp = LoadOp::Clear;
+		StoreOp stencilStoreOp = StoreOp::Store;
+		float depthClearValue = 1.0f;
+		uint32_t stencilClearValue = 0;
+	};
+
 
 	struct BindSetLayoutEntry
 	{
@@ -733,13 +799,6 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		}
 	};
 
-	struct BindSetLayoutDesc
-	{
-		std::string_view name;
-		uint32_t entryCount;
-		BindSetLayoutEntry const* entries;
-	};
-
 	struct BindSetEntry
 	{
 		uint32_t binding = 0;
@@ -751,7 +810,20 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 
 		//for buffer
 		uint32_t bufferOffset = 0;
-		uint32_t bufferRange = 0;  // if range is 0, use the range from offset to the end of the buffer.
+		uint64_t bufferRange = CWholeSize;
+	};
+
+	struct PushConstantRange
+	{
+		ShaderStage visibility = ShaderStage::None;
+		uint32_t size = 0;
+	};
+
+	struct BindSetLayoutDesc
+	{
+		std::string_view name;
+		uint32_t entryCount;
+		BindSetLayoutEntry const* entries;
 	};
 
 	struct BindSetDesc
@@ -762,38 +834,10 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		BindSetEntry const* entries;
 	};
 
-	// pipeline
-
-	struct VertexBufferBinding
-	{
-		BufferBase* buffer = nullptr;
-		uint32_t binding = 0;
-		uint64_t offset = 0;
-
-		bool operator ==(const VertexBufferBinding& b) const
-		{
-			return buffer == b.buffer
-				&& binding == b.binding
-				&& offset == b.offset;
-		}
-
-		bool operator !=(const VertexBufferBinding& b) const { return !(*this == b); }
-		VertexBufferBinding& setBuffer(BufferBase* value) { buffer = value; return *this; }
-		VertexBufferBinding& setSlot(uint32_t value) { binding = value; return *this; }
-		VertexBufferBinding& setOffset(uint64_t value) { offset = value; return *this; }
-	};
-
-	struct IndexBufferBinding
-	{
-		BufferBase* buffer = nullptr;
-		TextureFormat format = TextureFormat::Undefined;
-		uint32_t offset = 0;
-	};
-
 	struct BufferDesc
 	{
 		size_t size = 0;
-		const char* name = nullptr;
+		std::string_view name;
 		BufferUsage usage = BufferUsage::None;
 		ShareMode shareMode = ShareMode::Exclusive;
 	};
@@ -825,9 +869,9 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		TextureFormat format = TextureFormat::Undefined;
 		TextureDimension dimension = TextureDimension::Undefined;
 		uint32_t baseMipLevel = 0;
-		uint32_t mipLevelCount = UINT32_MAX;
+		uint32_t mipLevelCount = CArraySizeUndefined;
 		uint32_t baseArrayLayer = 0;
-		uint32_t arrayLayerCount = UINT32_MAX;
+		uint32_t arrayLayerCount = CArraySizeUndefined;
 		TextureAspect aspect = TextureAspect::All;
 		TextureUsage usage = TextureUsage::None;
 	};
@@ -863,12 +907,6 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		std::string_view name;
 	};
 
-	struct PushConstantRange
-	{
-		ShaderStage visibility = ShaderStage::None;
-		uint32_t size = 0;
-	};
-
 	struct PipelineLayoutDesc
 	{
 		std::string_view name;
@@ -877,90 +915,11 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		PushConstantRange pushConstantRange;
 	};
 
-	struct ShaderState
+	struct PipelineLayoutDesc2
 	{
-		ShaderModuleBase* shaderModule;
-		SpecializationConstant const* constants;
-		uint32_t constantCount;
-	};
-
-	struct VertexInputAttribute
-	{
-		uint32_t bindingBufferSlot = 0;
-		uint32_t location = 0;
-		TextureFormat format = TextureFormat::R16_UINT;
-		VertexInputRate rate = VertexInputRate::Vertex;
-		// If this value is set to UINT32_MAX (default value), the offset will
-		// be computed automatically by placing the element right after the previous one.
-		uint32_t offsetInElement = AUTO_COMPUTE;
-		// Stride in bytes between two elements, for one buffer slot.
-		// If this value is set to UINT32_MAX, the stride will be
-		// computed automatically assuming that all elements in the same buffer slot that are
-		// packed one by one. or must specify the same stride in the same buffer.
-		uint32_t elementStride = AUTO_COMPUTE;
-	};
-
-	struct BlendState
-	{
-		bool alphaToCoverageEnable = false;
-
-		struct ColorAttachmentBlendState
-		{
-			bool        blendEnable = false;
-			BlendFactor srcColorBlend = BlendFactor::One;
-			BlendFactor destColorBlend = BlendFactor::Zero;
-			BlendOp     colorBlendOp = BlendOp::Add;
-			BlendFactor srcAlphaBlend = BlendFactor::One;
-			BlendFactor destAlphaBlend = BlendFactor::Zero;
-			BlendOp     alphaBlendOp = BlendOp::Add;
-			ColorMask   colorWriteMask = ColorMask::All;
-		};
-
-		ColorAttachmentBlendState colorAttachmentBlendStates[MAX_COLOR_ATTACHMENTS];
-	};
-
-	struct StencilOpState
-	{
-		StencilOp failOp = StencilOp::Keep;
-		StencilOp passOp = StencilOp::Keep;
-		StencilOp depthFailOp = StencilOp::Keep;
-		CompareOp compareOp = CompareOp::Always;
-		uint8_t writeMask = 0xff;
-		uint8_t compareMak = 0xff;
-		uint32_t referenceValue = 0;
-	};
-
-	struct DepthStencilState
-	{
-		bool            depthTestEnable = true;
-		bool            depthWriteEnable = true;
-		CompareOp		depthCompareOp = CompareOp::LessOrEqual;
-		int32_t depthBias = 0;
-		float depthBiasSlopeScale = 0.0f;
-		float depthBiasClamp = 0.0f;
-		bool            stencilTestEnable = false;
-		uint8_t         stencilReadMask = 0xff;
-		uint8_t         stencilWriteMask = 0xff;
-		StencilOpState	frontFaceStencil;
-		StencilOpState	backFaceStencil;
-	};
-
-
-	struct RasterState
-	{
-		PrimitiveType primitiveType = PrimitiveType::TriangleList;
-		FillMode fillMode = FillMode::Fill;
-		CullMode cullMode = CullMode::back;
-		FrontFace frontFace = FrontFace::FrontCounterClockwise;
-		bool depthClampEnable = false; //must be false if this feature is not enabled
-		float lineWidth = 1.0f;
-	};
-
-	struct SampleState
-	{
-		uint32_t count = 1;
-		uint32_t quality = 0;
-		uint32_t mask = 0xFFFFFFFF;
+		std::string_view name;
+		ShaderState const* shaders;
+		uint32_t shaderCount;
 	};
 
 	struct RenderPipelineDesc
@@ -984,7 +943,7 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 
 		uint32_t viewportCount = 1;
 		uint32_t colorAttachmentCount = 0;
-		TextureFormat colorAttachmentFormats[MAX_COLOR_ATTACHMENTS];
+		TextureFormat colorAttachmentFormats[CMaxColorAttachments];
 		TextureFormat depthStencilFormat = TextureFormat::Undefined;
 
 		uint32_t patchControlPoints = 0;
@@ -996,27 +955,6 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		ShaderState* computeShader = nullptr;
 
 		PipelineLayoutBase* pipelineLayout;
-	};
-
-
-	struct ColorAttachment
-	{
-		TextureViewBase* view = nullptr;
-		TextureViewBase* resolveView = nullptr;
-		LoadOp loadOp = LoadOp::Clear;
-		StoreOp storeOp = StoreOp::Store;
-		Color clearValue = {0.0f, 0.0f, 0.0f, 0.0f};
-	};
-
-	struct DepthStencilAattachment
-	{
-		TextureViewBase* view;
-		LoadOp depthLoadOp = LoadOp::Clear;
-		StoreOp depthStoreOp = StoreOp::Store;
-		LoadOp stencilLoadOp = LoadOp::Clear;
-		StoreOp stencilStoreOp = StoreOp::Store;
-		float depthClearValue = 1.0f;
-		uint32_t stencilClearValue = 0;
 	};
 
 	struct RenderPassDesc
@@ -1120,15 +1058,5 @@ constexpr uint32_t AUTO_COMPUTE = uint32_t(-1);
 		std::string_view name;
 		uint32_t requiredFeatureCount = 0;
 		FeatureName const* requiredFeatures;
-	};
-
-	// swap chain
-	struct SurfaceConfiguration
-	{
-		DeviceBase* device;
-		TextureFormat format = TextureFormat::BGRA8_SRGB;
-		uint32_t width;
-		uint32_t height;
-		PresentMode presentMode = PresentMode::Fifo;
 	};
 }

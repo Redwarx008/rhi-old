@@ -1,15 +1,15 @@
 #pragma once
 
-#include "rhi/rhi.h"
-#include <vulkan/vulkan.h>
-#include <vk_mem_alloc.h>
-
+#include "../RHIStruct.h"
 #include "../common/Ref.hpp"
 #include "../common/RefCounted.h"
 #include "../BufferBase.h"
+
+#include <vulkan/vulkan.h>
+#include <vk_mem_alloc.h>
 #include <array>
 
-namespace rhi::vulkan
+namespace rhi::impl::vulkan
 {
 	class Queue;
 	class Buffer final :  public BufferBase
@@ -28,7 +28,7 @@ namespace rhi::vulkan
 		uint64_t GetAllocatedSize() const;
 		ResourceType GetType() const override;
 	private:
-		explicit Buffer(DeviceBase* device, const BufferDesc& desc) noexcept;
+		explicit Buffer(DeviceBase* device, const BufferDesc& desc);
 		bool Initialize();
 		void DestroyImpl() override;
 		void MarkUsedInPendingCommandList(Queue* queue);

@@ -3,12 +3,14 @@
 #include "DeviceBase.h"
 #include <string_view>
 
-namespace rhi
+namespace rhi::impl
 {
 	ResourceBase::ResourceBase(DeviceBase* device, std::string_view name) :
 		mDevice(device),
 		mName(name)
 	{}
+
+	ResourceBase::~ResourceBase() {}
 
 	DeviceBase* ResourceBase::GetDevice() const
 	{

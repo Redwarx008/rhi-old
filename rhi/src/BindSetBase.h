@@ -1,11 +1,11 @@
 #pragma once
 
-#include "rhi/RHIStruct.h"
+#include "RHIStruct.h"
 #include "ResourceBase.h"
 #include "common/Ref.hpp"
 #include <vector>
 
-namespace rhi
+namespace rhi::impl
 {
 	class DeviceBase;
 	class BindSetLayoutBase;
@@ -13,11 +13,12 @@ namespace rhi
 	class BindSetBase : public ResourceBase
 	{
 	public:
+		void APIDestroy();
 		ResourceType GetType() const override;
 		BindSetLayoutBase* GetLayout();
 		const std::vector<BindSetEntry>& GetBindingEntries() const;
 	protected:
-		explicit BindSetBase(DeviceBase* device, const BindSetDesc& desc) noexcept;
+		explicit BindSetBase(DeviceBase* device, const BindSetDesc& desc);
 		~BindSetBase();
 
 	private:

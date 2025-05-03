@@ -1,9 +1,9 @@
 #pragma once
 
 #include <cstdint>
-#include "rhi/RHIStruct.h"
+#include "../RHIStruct.h"
 
-namespace rhi
+namespace rhi::impl
 {
 	static constexpr uint32_t cMaxBindSets = 4u;
 	static constexpr uint32_t cMaxBindingsPerBindSet = 1000u;
