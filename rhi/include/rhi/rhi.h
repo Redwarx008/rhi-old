@@ -54,6 +54,9 @@ struct RHISampleState;
 struct RHIColorAttachment;
 struct RHIDepthStencilAattachment;
 struct RHISurfaceConfiguration;
+struct RHITextureSubresourceRange;
+struct RHITextureSubresources;
+struct RHIResourceTransfer;
 struct RHIDrawIndirectCommand;
 struct RHIDrawIndexedIndirectCommand;
 struct RHIDispatchIndirectCommand;
@@ -763,6 +766,31 @@ typedef struct RHISurfaceConfiguration
 	RHIPresentMode presentMode;
 }RHISurfaceConfiguration;
 
+
+typedef struct RHITextureSubresourceRange
+{
+	RHITextureAspect aspect;
+	uint32_t baseMipLevel;
+	uint32_t mipLevelCount;
+	uint32_t baseArrayLayer;
+	uint32_t arrayLayerCount;
+}RHITextureSubresourceRange;
+
+typedef struct RHITextureSubresources
+{
+	RHITexture texture;
+	RHITextureSubresourceRange range;
+}RHITextureSubresources;
+
+typedef struct RHIResourceTransfer
+{
+	RHIQueue receivingQueue;
+	RHIBuffer const* buffers;
+	uint32_t bufferCount;
+	RHITextureSubresources const* textureSubresources;
+	uint32_t textureSubresourceCount;
+}RHIResourceTransfer;
+
 typedef struct RHIDrawIndirectCommand
 {
 	uint32_t    vertexCount;
@@ -978,8 +1006,8 @@ void rhiDeviceRelease(RHIDevice device);
 // methods of Queue
 void rhiQueueWriteBuffer(RHIQueue queue, RHIBuffer buffer, const void* data, uint64_t dataSize, uint64_t offset);
 void rhiQueueWriteTexture(RHIQueue queue, const RHITextureSlice* dstTexture, const void* data, size_t dataSize, const RHITextureDataLayout* dataLayout);
-void rhiQueueWaitQueue(RHIQueue queue, RHIQueue waitQueue, uint64_t submitSerial);
-uint64_t rhiQueueSubmit(RHIQueue queue, RHICommandList const* commands, uint32_t commandListCount);
+void rhiQueueWaitFor(RHIQueue queue, RHIQueue waitQueue, uint64_t submitSerial);
+uint64_t rhiQueueSubmit(RHIQueue queue, RHICommandList const* commands, uint32_t commandListCount, RHIResourceTransfer const* transfers, uint32_t transferCount);
 void rhiQueueAddRef(RHIQueue queue);
 void rhiQueueRelease(RHIQueue queue);
 // methods of Surface

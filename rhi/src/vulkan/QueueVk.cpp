@@ -183,13 +183,40 @@ namespace rhi::impl::vulkan
 		NextRecordingContext();
 	}
 
-	uint64_t Queue::SubmitImpl(CommandListBase* const* commands, uint32_t commandListCount)
+	uint64_t Queue::SubmitImpl(CommandListBase* const* commands, uint32_t commandListCount, ResourceTransfer const* transfers, uint32_t transferCount)
 	{
 		for (uint32_t i = 0; i < commandListCount; ++i)
 		{
 			checked_cast<CommandList>(commands[i])->RecordCommands(this);
 		}
 
+		for (uint32_t i = 0; i < transferCount; ++i)
+		{
+			const ResourceTransfer& resourceTransfer = transfers[i];
+			Queue* receivingQueue = checked_cast<Queue>(resourceTransfer.receivingQueue);
+
+			for (uint32_t bufferIndex = 0; bufferIndex < resourceTransfer.bufferCount; ++bufferIndex)
+			{
+				Buffer* buffer = checked_cast<Buffer>(resourceTransfer.buffers[i]);
+				buffer->TransitionOwnership(this, receivingQueue);
+			}
+
+			for (uint32_t textureIndex = 0; textureIndex < resourceTransfer.textureSubresourceCount; ++textureIndex)
+			{
+				const TextureSubresources& subresources = resourceTransfer.textureSubresources[i];
+				Texture* texture = checked_cast<Texture>(subresources.texture);
+				SubresourceRange range{};
+				range.aspects = AspectConvert(texture->APIGetFormat(), subresources.range.aspect);
+				range.baseArrayLayer = subresources.range.baseArrayLayer;
+				range.layerCount = subresources.range.arrayLayerCount;
+				range.baseMipLevel = subresources.range.baseMipLevel;
+				range.levelCount = subresources.range.mipLevelCount;
+
+				texture->TransitionOwnership(this, range, receivingQueue);
+			}
+
+			GetPendingRecordingContext()->EmitBarriers();
+		}
 		SubmitPendingCommands();
 		return GetLastSubmittedSerial();
 	}
@@ -293,7 +320,7 @@ namespace rhi::impl::vulkan
 		vkCmdCopyBufferToImage(commanBuffer, buffer->GetHandle(), texture->GetHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 	}
 
-	void Queue::WaitQueueImpl(QueueBase* queue, uint64_t submitSerial)
+	void Queue::WaitForImpl(QueueBase* queue, uint64_t submitSerial)
 	{
 		Queue* waitQueue = checked_cast<Queue>(queue);
 		ASSERT(waitQueue->GetPendingSubmitSerial() > submitSerial);

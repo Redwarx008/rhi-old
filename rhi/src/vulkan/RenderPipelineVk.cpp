@@ -363,6 +363,7 @@ namespace rhi::impl::vulkan
 		rasterizationStateCI.depthBiasConstantFactor = mDepthStencilState.depthBias;
 		rasterizationStateCI.depthBiasSlopeFactor = mDepthStencilState.depthBiasSlopeScale;
 		rasterizationStateCI.lineWidth = mRasterState.lineWidth;
+		rasterizationStateCI.frontFace = FrontFaceConvert(mRasterState.frontFace);
 		// blend state
 		std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachmentStates(mColorAttachmentFormats.size());
 		for (uint32_t i = 0; i < colorBlendAttachmentStates.size(); ++i)

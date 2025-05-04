@@ -11,7 +11,7 @@ namespace rhi::impl
 
 namespace rhi::impl::vulkan
 {
-	class CommandRecordContext;
+	struct CommandRecordContext;
 	class Queue;
 	class Device;
 

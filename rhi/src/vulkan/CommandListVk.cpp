@@ -103,8 +103,9 @@ namespace rhi::impl::vulkan
 		{
 			TextureView* view = checked_cast<TextureView>(renderPassCmd->colorAttachments[i].view.Get());
 			INVALID_IF(view->GetTexture()->APIGetWidth() != renderWidth || view->GetTexture()->APIGetHeight() != renderHeight,
-				"The color attachment size (width: %u, height: %u) does not match the size of the other attachments (width: %u, height: %u).", 
+				"The color attachment size (width: %u, height: %u) does not match the size of the other attachments (width: %u, height: %u).",
 				view->GetTexture()->APIGetWidth(), view->GetTexture()->APIGetHeight(), renderWidth, renderHeight);
+
 			VkRenderingAttachmentInfo& attachment = colorAttachmentInfos[i];
 			attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 			attachment.pNext = nullptr;
@@ -141,6 +142,11 @@ namespace rhi::impl::vulkan
 		VkRenderingAttachmentInfo stencilAttachment{};
 		if (renderPassCmd->depthStencilAttachment.view != nullptr)
 		{
+			TextureView* view = checked_cast<TextureView>(renderPassCmd->depthStencilAttachment.view.Get());
+			INVALID_IF(view->GetTexture()->APIGetWidth() < renderWidth || view->GetTexture()->APIGetHeight() < renderHeight,
+				"The depth stencil attachment size (width: %u, height: %u) is less than the size of the color attachments (width: %u, height: %u).",
+				view->GetTexture()->APIGetWidth(), view->GetTexture()->APIGetHeight(), renderWidth, renderHeight);
+
 			depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 			depthAttachment.imageView = checked_cast<TextureView>(renderPassCmd->depthStencilAttachment.view)->GetHandle();
 			depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -320,9 +326,9 @@ namespace rhi::impl::vulkan
 				{
 					VkViewport& viewport = viewports[i];
 					viewport.x = cmd->viewports[i].x;
-					viewport.y = cmd->viewports[i].y;
+					viewport.y = cmd->viewports[i].y + cmd->viewports[i].height;
 					viewport.width = cmd->viewports[i].width;
-					viewport.height = cmd->viewports[i].height;
+					viewport.height = -cmd->viewports[i].height;
 					viewport.minDepth = cmd->viewports[i].minDepth;
 					viewport.maxDepth = cmd->viewports[i].maxDepth;
 				}

@@ -819,6 +819,30 @@ inline constexpr bool operator!=(EnumName a, uint32_t b) { \
 		uint32_t size = 0;
 	};
 
+	struct TextureSubresourceRange
+	{
+		TextureAspect aspect = TextureAspect::All;
+		uint32_t baseMipLevel = 0;
+		uint32_t mipLevelCount;
+		uint32_t baseArrayLayer = 0;
+		uint32_t arrayLayerCount;
+	};
+
+	struct TextureSubresources
+	{
+		TextureBase* texture;
+		TextureSubresourceRange range;
+	};
+
+	struct ResourceTransfer
+	{
+		QueueBase* receivingQueue;
+		BufferBase* const* buffers;
+		uint32_t bufferCount;
+		TextureSubresources const* textureSubresources;
+		uint32_t textureSubresourceCount;
+	};
+
 	struct BindSetLayoutDesc
 	{
 		std::string_view name;

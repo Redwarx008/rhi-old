@@ -71,9 +71,9 @@ namespace rhi::impl
 		TickImpl(completedSerial);
 	}
 
-	uint64_t QueueBase::APISubmit(CommandListBase* const* commands, uint32_t commandListCount)
+	uint64_t QueueBase::APISubmit(CommandListBase* const* commands, uint32_t commandListCount, ResourceTransfer const* transfers, uint32_t transferCount)
 	{
-		return SubmitImpl(commands, commandListCount);
+		return SubmitImpl(commands, commandListCount, transfers, transferCount);
 		//Tick();
 	}
 
@@ -108,8 +108,8 @@ namespace rhi::impl
 	{
 		//ASSERT(HasFlag(buffer->APIGetUsage(), BufferUsage::CopyDst));
 		INVALID_IF(dataSize > buffer->APIGetSize() - offset || offset > buffer->APIGetSize(),
-			"Write range (bufferOffset: %u, size: %u) does not fit in %s size (%u).",
-			offset, dataSize, buffer, buffer->APIGetSize());
+			"Write range (bufferOffset: %u, size: %u) does not fit in Buffer(%s) size (%u).",
+			offset, dataSize, buffer->GetName(), buffer->APIGetSize());
 
 		if (HasFlag(buffer->APIGetUsage(), BufferUsage::MapWrite | BufferUsage::MapRead))
 		{
@@ -239,8 +239,8 @@ namespace rhi::impl
 		CopyFromStagingToTextureImpl(allocation.buffer, dstTexture, alignedDataLayout);
 	}
 
-	void QueueBase::APIWaitQueue(QueueBase* queue, uint64_t submitSerial)
+	void QueueBase::APIWaitFor(QueueBase* queue, uint64_t submitSerial)
 	{
-		WaitQueueImpl(queue, submitSerial);
+		WaitForImpl(queue, submitSerial);
 	}
 }

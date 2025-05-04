@@ -604,6 +604,9 @@ inline constexpr bool operator!=(EnumName a, uint32_t b) { \
 	struct DepthStencilAattachment;
 	struct AdapterInfo;
 	struct Limits;
+	struct TextureSubresourceRange;
+	struct TextureSubresources;
+	struct ResourceTransfer;
 
 
 	template<typename Derived, typename CType>
@@ -873,8 +876,8 @@ inline constexpr bool operator!=(EnumName a, uint32_t b) { \
 		using ObjectBase::operator=;
 		inline void WriteBuffer(Buffer& buffer, const void* data, uint64_t dataSize, uint64_t offset);
 		inline void WriteTexture(const TextureSlice& dstTexture, const void* data, size_t dataSize, const TextureDataLayout& dataLayout);
-		inline void WaitQueue(Queue queue, uint64_t submitSerial);
-		inline uint64_t Submit(CommandList const* commands, uint32_t commandListCount);
+		inline void WaitFor(Queue queue, uint64_t submitSerial);
+		inline uint64_t Submit(CommandList const* commands, uint32_t commandListCount, ResourceTransfer const* transfers = nullptr, uint32_t transferCount = 0);
 	private:
 		friend ObjectBase<Queue, RHIQueue>;
 		static inline void AddRef(RHIQueue handle);
@@ -1367,13 +1370,13 @@ inline constexpr bool operator!=(EnumName a, uint32_t b) { \
 	{
 		rhiQueueWriteTexture(Get(), reinterpret_cast<const RHITextureSlice*>(&dstTexture), data, dataSize, reinterpret_cast<const RHITextureDataLayout*>(&dataLayout));
 	}
-	void Queue::WaitQueue(Queue queue, uint64_t submitSerial)
+	void Queue::WaitFor(Queue queue, uint64_t submitSerial)
 	{
-		rhiQueueWaitQueue(Get(), queue.Get(), submitSerial);
+		rhiQueueWaitFor(Get(), queue.Get(), submitSerial);
 	}
-	uint64_t Queue::Submit(CommandList const* commands, uint32_t commandListCount)
+	uint64_t Queue::Submit(CommandList const* commands, uint32_t commandListCount, ResourceTransfer const* transfers, uint32_t transferCount)
 	{
-		return rhiQueueSubmit(Get(), reinterpret_cast<RHICommandList const*>(commands), commandListCount);
+		return rhiQueueSubmit(Get(), reinterpret_cast<RHICommandList const*>(commands), commandListCount, reinterpret_cast<RHIResourceTransfer const*>(transfers), transferCount);
 	}
 	void Queue::AddRef(RHIQueue handle)
 	{
@@ -2196,6 +2199,49 @@ inline constexpr bool operator!=(EnumName a, uint32_t b) { \
 	static_assert(offsetof(SurfaceConfiguration, width) == offsetof(RHISurfaceConfiguration, width));
 	static_assert(offsetof(SurfaceConfiguration, height) == offsetof(RHISurfaceConfiguration, height));
 	static_assert(offsetof(SurfaceConfiguration, presentMode) == offsetof(RHISurfaceConfiguration, presentMode));
+
+	struct TextureSubresourceRange
+	{
+		TextureAspect aspect = TextureAspect::All;
+		uint32_t baseMipLevel = 0;
+		uint32_t mipLevelCount;
+		uint32_t baseArrayLayer = 0;
+		uint32_t arrayLayerCount;
+	};
+	static_assert(sizeof(TextureSubresourceRange) == sizeof(RHITextureSubresourceRange), "sizeof mismatch for TextureSubresourceRange");
+	static_assert(alignof(TextureSubresourceRange) == alignof(RHITextureSubresourceRange), "alignof mismatch for TextureSubresourceRange");
+	static_assert(offsetof(TextureSubresourceRange, aspect) == offsetof(RHITextureSubresourceRange, aspect));
+	static_assert(offsetof(TextureSubresourceRange, baseMipLevel) == offsetof(RHITextureSubresourceRange, baseMipLevel));
+	static_assert(offsetof(TextureSubresourceRange, mipLevelCount) == offsetof(RHITextureSubresourceRange, mipLevelCount));
+	static_assert(offsetof(TextureSubresourceRange, baseArrayLayer) == offsetof(RHITextureSubresourceRange, baseArrayLayer));
+	static_assert(offsetof(TextureSubresourceRange, arrayLayerCount) == offsetof(RHITextureSubresourceRange, arrayLayerCount));
+
+	struct TextureSubresources
+	{
+		Texture texture;
+		TextureSubresourceRange range;
+	};
+	static_assert(sizeof(TextureSubresources) == sizeof(RHITextureSubresources), "sizeof mismatch for TextureSubresources");
+	static_assert(alignof(TextureSubresources) == alignof(RHITextureSubresources), "alignof mismatch for TextureSubresources");
+	static_assert(offsetof(TextureSubresources, texture) == offsetof(RHITextureSubresources, texture));
+	static_assert(offsetof(TextureSubresources, range) == offsetof(RHITextureSubresources, range));
+
+	struct ResourceTransfer
+	{
+		Queue receivingQueue;
+		Buffer const* buffers;
+		uint32_t bufferCount;
+		TextureSubresources const* textureSubresources;
+		uint32_t textureSubresourceCount;
+	};
+	static_assert(sizeof(ResourceTransfer) == sizeof(RHIResourceTransfer), "sizeof mismatch for ResourceTransfer");
+	static_assert(alignof(ResourceTransfer) == alignof(RHIResourceTransfer), "alignof mismatch for ResourceTransfer");
+	static_assert(offsetof(ResourceTransfer, receivingQueue) == offsetof(RHIResourceTransfer, receivingQueue));
+	static_assert(offsetof(ResourceTransfer, buffers) == offsetof(RHIResourceTransfer, buffers));
+	static_assert(offsetof(ResourceTransfer, bufferCount) == offsetof(RHIResourceTransfer, bufferCount));
+	static_assert(offsetof(ResourceTransfer, textureSubresources) == offsetof(RHIResourceTransfer, textureSubresources));
+	static_assert(offsetof(ResourceTransfer, textureSubresourceCount) == offsetof(RHIResourceTransfer, textureSubresourceCount));
+
 
 	struct BindSetLayoutDesc
 	{

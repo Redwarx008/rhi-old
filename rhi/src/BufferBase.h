@@ -43,7 +43,7 @@ namespace rhi::impl
 
 		State mState = State::Unmapped;
 
-		QueueType mLastUsedQueue = QueueType::Graphics;
+		QueueType mLastUsedQueue = QueueType::Undefined;
 
 		struct UsageTrackInQueue
 		{

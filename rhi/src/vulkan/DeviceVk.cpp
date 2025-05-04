@@ -135,7 +135,7 @@ namespace rhi::impl::vulkan
 			if (!queueFamlies[static_cast<uint32_t>(QueueType::Transfer)].has_value() &&
 				queueFamilyProps.queueFlags & VK_QUEUE_TRANSFER_BIT &&
 				!(queueFamilyProps.queueFlags & VK_QUEUE_GRAPHICS_BIT) &&
-				!(queueFamilyProps.queueFlags & VK_QUEUE_TRANSFER_BIT))
+				!(queueFamilyProps.queueFlags & VK_QUEUE_COMPUTE_BIT))
 			{
 				queueFamlies[static_cast<uint32_t>(QueueType::Transfer)] = i;
 			}

@@ -178,13 +178,13 @@ void rhiQueueWriteTexture(RHIQueue queue, const RHITextureSlice* dstTexture, con
 {
 	queue->APIWriteTexture(*reinterpret_cast<const TextureSlice*>(dstTexture), data, dataSize, *reinterpret_cast<const TextureDataLayout*>(dataLayout));
 }
-void rhiQueueWaitQueue(RHIQueue queue, RHIQueue waitQueue, uint64_t submitSerial)
+void rhiQueueWaitFor(RHIQueue queue, RHIQueue waitQueue, uint64_t submitSerial)
 {
-	queue->APIWaitQueue(waitQueue, submitSerial);
+	queue->APIWaitFor(waitQueue, submitSerial);
 }
-uint64_t rhiQueueSubmit(RHIQueue queue, RHICommandList const* commands, uint32_t commandListCount)
+uint64_t rhiQueueSubmit(RHIQueue queue, RHICommandList const* commands, uint32_t commandListCount, RHIResourceTransfer const* transfers, uint32_t transferCount)
 {
-	return queue->APISubmit(reinterpret_cast<CommandListBase* const*>(commands), commandListCount);
+	return queue->APISubmit(reinterpret_cast<CommandListBase* const*>(commands), commandListCount, reinterpret_cast<ResourceTransfer const*>(transfers), transferCount);
 }
 void rhiQueueAddRef(RHIQueue queue)
 {

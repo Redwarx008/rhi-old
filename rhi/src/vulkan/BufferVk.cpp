@@ -319,7 +319,7 @@ namespace rhi::impl::vulkan
 		ShaderStage& srcStage = mUsageTrackInQueues[static_cast<uint32_t>(mLastUsedQueue)].lastWriteShaderStage;
 
 		VkBufferMemoryBarrier2 barrier{};
-		barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+		barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
 		barrier.srcAccessMask = AccessFlagsConvert(srcUsage);
 		barrier.srcStageMask = PipelineStageConvert(srcUsage, srcStage);
 		barrier.dstAccessMask = 0;
@@ -347,6 +347,7 @@ namespace rhi::impl::vulkan
 	void Buffer::TrackUsageAndGetResourceBarrier(Queue* queue, BufferUsage usage, ShaderStage shaderStage)
 	{
 		QueueType queueType = queue->GetType();
+		mLastUsedQueue = queueType;
 
 		// we need a VkBufferMemoryBarrier to transfer queue ownership.
 		bool needTransferOwnership = mShareMode != ShareMode::Concurrent && mLastUsedQueue != QueueType::Undefined && mLastUsedQueue != queueType;
@@ -468,7 +469,6 @@ namespace rhi::impl::vulkan
 		}
 
 		queue->GetPendingRecordingContext()->AddBufferBarrier(barrier);
-		mLastUsedQueue = queue->GetType();
 	}
 
 	ResourceType Buffer::GetType() const

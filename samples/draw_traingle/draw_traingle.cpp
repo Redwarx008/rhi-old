@@ -54,9 +54,9 @@ struct Vertex {
 };
 
 const std::vector<Vertex> vertices{
-	{ {  1.0f,  1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
-	{ { -1.0f,  1.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
-	{ {  0.0f, -1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } }
+	{ {  1.0f,  -1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
+	{ { -1.0f,  -1.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
+	{ {  0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } }
 };
 
 std::vector<uint32_t> indices{ 0, 1, 2 };
@@ -150,13 +150,10 @@ public:
 		bufferDesc.name = "Vertex";
 		mVertexBuffer = mDevice.CreateBuffer(bufferDesc);
 
-		mQueue.WriteBuffer(mVertexBuffer, vertices.data(), bufferDesc.size, 0);
-
 		bufferDesc.usage = BufferUsage::Index;
 		bufferDesc.size = indices.size() * sizeof(uint32_t);
 		bufferDesc.name = "Index";
 		mIndexBuffer = mDevice.CreateBuffer(bufferDesc);
-		mQueue.WriteBuffer(mIndexBuffer, indices.data(), bufferDesc.size, 0);
 
 		bufferDesc.usage = BufferUsage::Uniform;
 		bufferDesc.size = sizeof(ShaderData);
@@ -204,7 +201,7 @@ public:
 		pipelineCI.colorAttachmentFormats[0] = mSurface.GetSwapChainFormat();
 		pipelineCI.colorAttachmentCount = 1;
 		pipelineCI.depthStencilFormat = mDepthStencilTexture.GetFormat();
-		pipelineCI.depthStencilState.depthTestEnable = false;
+		pipelineCI.depthStencilState.depthTestEnable = true;
 		pipelineCI.rasterState.cullMode = CullMode::None;
 		pipelineCI.rasterState.frontFace = FrontFace::FrontCounterClockwise;
 		pipelineCI.rasterState.primitiveType = PrimitiveType::TriangleList;
@@ -215,17 +212,39 @@ public:
 
 		camera.position = glm::vec3(0, 0, 3);
 
-				// Update the uniform buffer for the next frame
+		// Update the uniform buffer for the next frame
 		ShaderData shaderData{};
 		camera.update();
 		glm::mat4 projection = glm::perspective(glm::radians(70.f), (float)mWindowWidth / (float)mWindowHeight, 10000.f, 0.1f);
-		projection[1][1] *= -1;
+
 		glm::mat4 view = camera.getViewMatrix();
 		shaderData.projectionMatrix = projection;
 		shaderData.viewMatrix = view;
 		shaderData.modelMatrix = glm::mat4(1.0f);
 
-		mQueue.WriteBuffer(mUniformBuffer, &shaderData, sizeof(ShaderData), 0);
+
+		if (Queue transferQueue = mDevice.GetQueue(QueueType::Transfer))
+		{
+			transferQueue.WriteBuffer(mIndexBuffer, indices.data(), indices.size() * sizeof(uint32_t), 0);
+			transferQueue.WriteBuffer(mVertexBuffer, vertices.data(), vertices.size() * sizeof(Vertex), 0);
+			transferQueue.WriteBuffer(mUniformBuffer, &shaderData, sizeof(ShaderData), 0);
+
+			Buffer buffersNeedTransfer[] = { mVertexBuffer, mIndexBuffer, mUniformBuffer };
+
+			ResourceTransfer transfer{};
+			transfer.receivingQueue = mQueue;
+			transfer.buffers = buffersNeedTransfer;
+			transfer.bufferCount = 3;
+			uint64_t submitSerial = transferQueue.Submit(nullptr, 0, &transfer, 1);
+			mQueue.WaitFor(transferQueue, submitSerial);
+		}
+		else
+		{
+			mQueue.WriteBuffer(mIndexBuffer, indices.data(), indices.size() * sizeof(uint32_t), 0);
+			mQueue.WriteBuffer(mVertexBuffer, vertices.data(), vertices.size() * sizeof(Vertex), 0);
+			mQueue.WriteBuffer(mUniformBuffer, &shaderData, sizeof(ShaderData), 0);
+		}
+
 	}
 
 	void run()
@@ -255,7 +274,7 @@ public:
 			rhi::RenderPassDesc passDesc{};
 			passDesc.colorAttachmentCount = 1;
 			passDesc.colorAttachments = &colorAttachment;
-			//passDesc.depthStencilAttachment = &dsAttachment;
+			passDesc.depthStencilAttachment = &dsAttachment;
 			RenderPassEncoder pass = mCommandEncoder.BeginRenderPass(passDesc);
 			pass.SetPipeline(mPipeline);
 			pass.SetBindSet(mBindSet, 0);
